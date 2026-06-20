@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+.pnp/
+
+# Env & secrets — NEVER commit API keys
+.env
+.env.local
+.env*.local
+*.key
+
+# Build output
+dist/
+.vercel/
+.output/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TADA 會長就職典禮背板示意圖</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;600;900&family=Noto+Sans+TC:wght@300;400;700&family=DM+Mono&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 40px;
+  min-height: 100vh;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+
+h1 {
+  color: #c4922a;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+
+/* ── BACKDROP STAGE ── */
+.stage {
+  width: 100%;
+  max-width: 1100px;
+  aspect-ratio: 16/9;
+  background: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(196,146,42,0.2);
+  box-shadow: 0 0 80px rgba(196,146,42,0.08), 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+/* ── BACKGROUND LAYERS ── */
+
+/* Deep grid */
+.bg-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(74,124,89,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74,124,89,0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Radial glow center-left (speaker spotlight feel) */
+.bg-glow {
+  position: absolute;
+  left: 22%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 55%;
+  aspect-ratio: 1;
+  background: radial-gradient(ellipse, rgba(196,146,42,0.07) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+/* Top gold line */
+.stripe-top {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent 0%, #c4922a 25%, #e8b84b 50%, #c4922a 75%, transparent 100%);
+}
+.stripe-bottom {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #2d5235 25%, #4a7c59 50%, #2d5235 75%, transparent 100%);
+}
+
+/* ── LOGO WALL (right 55%) ── */
+.logo-wall {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 54%;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 0;
+  opacity: 0.85;
+}
+
+.logo-cell {
+  border: 1px solid rgba(255,255,255,0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  position: relative;
+  transition: all .3s;
+}
+
+.logo-cell:hover {
+  background: rgba(196,146,42,0.1);
+  border-color: rgba(196,146,42,0.3);
+  z-index: 5;
+}
+
+.logo-icon {
+  font-size: clamp(14px, 2.2vw, 22px);
+  line-height: 1;
+}
+
+.logo-name {
+  font-size: clamp(7px, 0.8vw, 10px);
+  color: rgba(255,255,255,0.55);
+  text-align: center;
+  line-height: 1.3;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 400;
+}
+
+.logo-industry {
+  font-size: clamp(6px, 0.65vw, 8px);
+  color: rgba(196,146,42,0.7);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.05em;
+}
+
+/* Industry color accent bars */
+.logo-cell::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 20%; right: 20%;
+  height: 1.5px;
+}
+.logo-cell.agri::after  { background: #6a8f5a; }
+.logo-cell.fish::after  { background: #4a8fa0; }
+.logo-cell.live::after  { background: #a07840; }
+.logo-cell.food::after  { background: #c4922a; }
+.logo-cell.tech::after  { background: #5a6aa0; }
+.logo-cell.forest::after{ background: #3d6b3d; }
+
+/* ── LEFT PANEL ── */
+.left-panel {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 46%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 3% 3% 4%;
+}
+
+/* ── SPEAKER SILHOUETTE ── */
+.speaker-wrap {
+  position: absolute;
+  bottom: 0;
+  left: 4%;
+  width: 30%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.speaker-silhouette {
+  width: 100%;
+  aspect-ratio: 0.55/1;
+  position: relative;
+}
+
+/* SVG silhouette of standing person */
+.speaker-silhouette svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 20px rgba(196,146,42,0.3));
+}
+
+/* Stage light cone */
+.spotlight {
+  position: absolute;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 200%;
+  height: 120%;
+  background: conic-gradient(from 270deg at 50% 100%, transparent 70deg, rgba(196,146,42,0.06) 90deg, rgba(255,255,255,0.04) 100deg, rgba(196,146,42,0.06) 110deg, transparent 130deg);
+  pointer-events: none;
+}
+
+/* ── TITLE BLOCK (bottom left) ── */
+.title-block {
+  position: absolute;
+  bottom: 5%;
+  left: 34%;
+  width: 18%;
+}
+
+.title-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: clamp(6px, 0.7vw, 9px);
+  letter-spacing: 0.25em;
+  color: #c4922a;
+  margin-bottom: 4px;
+}
+
+.title-main {
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(10px, 1.4vw, 18px);
+  font-weight: 900;
+  color: white;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+}
+
+.title-sub {
+  font-size: clamp(7px, 0.8vw, 10px);
+  color: rgba(255,255,255,0.45);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.title-name {
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(14px, 2vw, 26px);
+  font-weight: 900;
+  color: #e8b84b;
+  margin-top: 6px;
+  letter-spacing: 0.08em;
+}
+
+.title-role {
+  font-size: clamp(7px, 0.8vw, 10px);
+  color: rgba(196,146,42,0.8);
+  letter-spacing: 0.2em;
+  font-family: 'DM Mono', monospace;
+  margin-top: 2px;
+}
+
+/* ── ASSOCIATION LOGO top-left ── */
+.assoc-logo {
+  position: absolute;
+  top: 5%;
+  left: 3%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.assoc-seal {
+  width: clamp(28px, 4vw, 48px);
+  height: clamp(28px, 4vw, 48px);
+  border: 1.5px solid rgba(196,146,42,0.6);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(196,146,42,0.08);
+}
+.assoc-seal-icon { font-size: clamp(12px, 1.8vw, 20px); }
+.assoc-seal-text { font-size: clamp(5px, 0.6vw, 7px); color: #c4922a; letter-spacing: 0.05em; }
+
+.assoc-name {
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(8px, 1vw, 13px);
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+}
+
+.assoc-name span {
+  font-size: clamp(6px, 0.7vw, 9px);
+  color: rgba(255,255,255,0.35);
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  display: block;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+
+/* ── TAGLINE ── */
+.tagline {
+  position: absolute;
+  top: 5%;
+  right: 1%;
+  width: 52%;
+  text-align: right;
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(8px, 1.1vw, 15px);
+  font-weight: 600;
+  color: rgba(255,255,255,0.15);
+  letter-spacing: 0.15em;
+}
+
+/* Vertical divider */
+.v-divider {
+  position: absolute;
+  top: 8%; bottom: 8%;
+  left: 46%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(196,146,42,0.3) 20%, rgba(196,146,42,0.3) 80%, transparent);
+}
+
+/* ── PHOTO PLACEHOLDER (replaces silhouette) ── */
+.photo-placeholder {
+  position: absolute;
+  bottom: 0;
+  left: 3%;
+  width: 28%;
+  aspect-ratio: 0.65/1;
+  border: 1px dashed rgba(196,146,42,0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(196,146,42,0.03);
+}
+
+.photo-placeholder-icon { font-size: clamp(20px, 3vw, 40px); opacity: 0.3; }
+.photo-placeholder-text {
+  font-size: clamp(7px, 0.8vw, 10px);
+  color: rgba(196,146,42,0.5);
+  letter-spacing: 0.1em;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ── LABEL BELOW STAGE ── */
+.stage-label {
+  margin-top: 12px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.15em;
+  font-family: 'DM Mono', monospace;
+}
+</style>
+</head>
+<body>
+
+<h1>TADA — 會長就職典禮背板示意圖</h1>
+
+<div class="stage">
+
+  <!-- BG layers -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+  <div class="stripe-top"></div>
+  <div class="stripe-bottom"></div>
+
+  <!-- Association logo top-left -->
+  <div class="assoc-logo">
+    <div class="assoc-seal">
+      <div class="assoc-seal-icon">🌾</div>
+      <div class="assoc-seal-text">TADA</div>
+    </div>
+    <div class="assoc-name">
+      台灣科技農企業發展協會
+      <span>Agricultural Technology Development Association</span>
+    </div>
+  </div>
+
+  <!-- Tagline top-right -->
+  <div class="tagline">智耕傳承 · AI元年</div>
+
+  <!-- Vertical divider -->
+  <div class="v-divider"></div>
+
+  <!-- Speaker photo placeholder -->
+  <div class="photo-placeholder">
+    <div class="photo-placeholder-icon">👤</div>
+    <div class="photo-placeholder-text">會長照片<br>陳肇浩</div>
+  </div>
+
+  <!-- Spotlight under speaker -->
+  <div class="spotlight" style="position:absolute;bottom:0;left:15%;width:18%;height:90%;background:conic-gradient(from 260deg at 50% 100%,transparent 65deg,rgba(196,146,42,0.05) 90deg,rgba(255,255,255,0.03) 100deg,rgba(196,146,42,0.05) 110deg,transparent 135deg);pointer-events:none;"></div>
+
+  <!-- Title block -->
+  <div class="title-block">
+    <div class="title-eyebrow">INAUGURATION SPEECH</div>
+    <div class="title-main">就職典禮</div>
+    <div class="title-sub">台灣科技農企業發展協會<br>第 XX 屆理監事改選大會</div>
+    <div class="title-name">陳肇浩</div>
+    <div class="title-role">CHAIRMAN — TADA</div>
+  </div>
+
+  <!-- Logo wall -->
+  <div class="logo-wall">
+
+    <!-- Row 1 -->
+    <div class="logo-cell agri"><div class="logo-icon">🌾</div><div class="logo-name">壽米屋<br>米屋智農</div><div class="logo-industry">糧農</div></div>
+    <div class="logo-cell fish"><div class="logo-icon">🐟</div><div class="logo-name">某某<br>水產</div><div class="logo-industry">漁業</div></div>
+    <div class="logo-cell live"><div class="logo-icon">🐄</div><div class="logo-name">某某<br>牧場</div><div class="logo-industry">畜牧</div></div>
+    <div class="logo-cell tech"><div class="logo-icon">💻</div><div class="logo-name">某某<br>農技</div><div class="logo-industry">科技</div></div>
+    <div class="logo-cell food"><div class="logo-icon">🍱</div><div class="logo-name">某某<br>食品</div><div class="logo-industry">食品</div></div>
+
+    <!-- Row 2 -->
+    <div class="logo-cell agri"><div class="logo-icon">🥦</div><div class="logo-name">某某<br>有機農</div><div class="logo-industry">蔬果</div></div>
+    <div class="logo-cell fish"><div class="logo-icon">🦐</div><div class="logo-name">某某<br>養殖場</div><div class="logo-industry">水產</div></div>
+    <div class="logo-cell forest"><div class="logo-icon">🌲</div><div class="logo-name">某某<br>林業</div><div class="logo-industry">林業</div></div>
+    <div class="logo-cell tech"><div class="logo-icon">📡</div><div class="logo-name">某某<br>感測</div><div class="logo-industry">IoT</div></div>
+    <div class="logo-cell agri"><div class="logo-icon">🍊</div><div class="logo-name">某某<br>果園</div><div class="logo-industry">果業</div></div>
+
+    <!-- Row 3 -->
+    <div class="logo-cell live"><div class="logo-icon">🐔</div><div class="logo-name">某某<br>禽畜</div><div class="logo-industry">家禽</div></div>
+    <div class="logo-cell food"><div class="logo-icon">🧃</div><div class="logo-name">某某<br>飲品</div><div class="logo-industry">飲料</div></div>
+    <div class="logo-cell agri"><div class="logo-icon">🌿</div><div class="logo-name">某某<br>茶業</div><div class="logo-industry">茶葉</div></div>
+    <div class="logo-cell tech"><div class="logo-icon">🔬</div><div class="logo-name">某某<br>生技</div><div class="logo-industry">生技</div></div>
+    <div class="logo-cell fish"><div class="logo-icon">🐠</div><div class="logo-name">某某<br>漁港</div><div class="logo-industry">漁業</div></div>
+
+    <!-- Row 4 -->
+    <div class="logo-cell food"><div class="logo-icon">🌽</div><div class="logo-name">某某<br>雜糧</div><div class="logo-industry">雜糧</div></div>
+    <div class="logo-cell tech"><div class="logo-icon">🤖</div><div class="logo-name">某某<br>AI農業</div><div class="logo-industry">AI</div></div>
+    <div class="logo-cell agri"><div class="logo-icon">🍇</div><div class="logo-name">某某<br>果酒</div><div class="logo-industry">農產加工</div></div>
+    <div class="logo-cell live"><div class="logo-icon">🐖</div><div class="logo-name">某某<br>牧業</div><div class="logo-industry">畜牧</div></div>
+    <div class="logo-cell forest"><div class="logo-icon">🌱</div><div class="logo-name">某某<br>苗圃</div><div class="logo-industry">園藝</div></div>
+
+  </div>
+
+</div>
+
+<div class="stage-label">▲ 示意圖｜會員企業 Logo 及會長照片待確認後替換</div>
+
+</body>
+</html>

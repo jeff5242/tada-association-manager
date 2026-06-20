@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>邀請函｜智耕傳承 AI賦能論壇</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600;900&family=Noto+Sans+TC:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1a14;
+    --gold: #b8913a;
+    --gold-light: #d4a853;
+    --gold-pale: #f5ecd4;
+    --green-deep: #2a3d2a;
+    --green-mid: #3d5c35;
+    --green-light: #6a8f5a;
+    --cream: #f9f5ec;
+    --white: #ffffff;
+  }
+
+  body {
+    background: var(--green-deep);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    font-family: 'Noto Sans TC', sans-serif;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--cream);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(184,145,58,0.3);
+  }
+
+  /* Top border accent */
+  .card::before {
+    content: '';
+    display: block;
+    height: 5px;
+    background: linear-gradient(90deg, var(--green-mid), var(--gold), var(--gold-light), var(--gold), var(--green-mid));
+  }
+
+  /* Background texture */
+  .card-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    background-image: repeating-linear-gradient(
+      45deg,
+      var(--green-deep) 0px,
+      var(--green-deep) 1px,
+      transparent 1px,
+      transparent 12px
+    );
+    pointer-events: none;
+  }
+
+  .card-inner {
+    position: relative;
+    z-index: 1;
+    padding: 40px 36px 36px;
+  }
+
+  /* Header seal */
+  .seal-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .seal {
+    width: 52px;
+    height: 52px;
+    border: 2px solid var(--gold);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: white;
+  }
+
+  .seal-icon { font-size: 22px; line-height: 1; }
+  .seal-text { font-size: 8px; color: var(--gold); letter-spacing: 0.05em; font-weight: 500; }
+
+  .org-block { flex: 1; }
+  .org-name {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green-deep);
+    letter-spacing: 0.1em;
+  }
+  .org-sub {
+    font-size: 10px;
+    color: var(--green-light);
+    letter-spacing: 0.05em;
+    margin-top: 2px;
+  }
+
+  /* Divider */
+  .divider-gold {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), var(--gold-light), var(--gold), transparent);
+    margin: 20px 0;
+  }
+
+  /* Invite label */
+  .invite-label {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  /* Event title */
+  .event-title {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--green-deep);
+    text-align: center;
+    line-height: 1.35;
+    letter-spacing: 0.05em;
+  }
+
+  .event-title .highlight {
+    color: var(--gold);
+  }
+
+  .event-subtitle {
+    font-size: 12px;
+    color: var(--green-light);
+    text-align: center;
+    margin-top: 8px;
+    letter-spacing: 0.15em;
+  }
+
+  /* Ceremony badge */
+  .ceremony-badge {
+    margin: 20px auto;
+    width: fit-content;
+    background: var(--green-deep);
+    color: var(--gold-pale);
+    font-family: 'Noto Serif TC', serif;
+    font-size: 11px;
+    padding: 6px 20px;
+    letter-spacing: 0.2em;
+    font-weight: 600;
+  }
+
+  /* Info grid */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 24px 0;
+  }
+
+  .info-cell {
+    background: white;
+    border-left: 3px solid var(--gold);
+    padding: 12px 14px;
+  }
+
+  .info-cell.full { grid-column: 1 / -1; }
+
+  .info-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .info-value {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.4;
+  }
+
+  .info-value .sub {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--green-light);
+    font-family: 'Noto Sans TC', sans-serif;
+    display: block;
+    margin-top: 1px;
+  }
+
+  /* Program list */
+  .program-section {
+    margin: 20px 0;
+  }
+
+  .program-title {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .program-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(184,145,58,0.2);
+  }
+
+  .program-item:last-child { border-bottom: none; }
+
+  .program-time {
+    font-size: 11px;
+    color: var(--gold);
+    font-weight: 600;
+    min-width: 72px;
+    padding-top: 1px;
+    font-family: 'Noto Serif TC', serif;
+  }
+
+  .program-name {
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.4;
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 400;
+  }
+
+  .program-name em {
+    font-style: normal;
+    font-size: 11px;
+    color: var(--green-light);
+    display: block;
+  }
+
+  /* Special note */
+  .special-note {
+    background: var(--green-deep);
+    padding: 14px 18px;
+    margin: 20px 0;
+    position: relative;
+  }
+
+  .special-note::before {
+    content: '✦';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--gold);
+    font-size: 14px;
+    background: var(--cream);
+    padding: 0 6px;
+  }
+
+  .special-note p {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 12px;
+    color: var(--gold-pale);
+    text-align: center;
+    line-height: 1.8;
+    letter-spacing: 0.05em;
+  }
+
+  .special-note strong {
+    color: var(--gold-light);
+  }
+
+  /* QR placeholder */
+  .rsvp-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: white;
+    padding: 14px 16px;
+    margin: 16px 0;
+  }
+
+  .qr-box {
+    width: 64px;
+    height: 64px;
+    border: 1.5px solid var(--gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 28px;
+    color: var(--gold);
+  }
+
+  .rsvp-text .rsvp-label {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+
+  .rsvp-text .rsvp-desc {
+    font-size: 11px;
+    color: var(--ink);
+    line-height: 1.6;
+  }
+
+  .rsvp-text .rsvp-contact {
+    font-size: 10px;
+    color: var(--green-light);
+    margin-top: 3px;
+  }
+
+  /* Footer */
+  .card-footer {
+    border-top: 1px solid rgba(184,145,58,0.3);
+    padding-top: 16px;
+    text-align: center;
+  }
+
+  .footer-text {
+    font-size: 10px;
+    color: var(--green-light);
+    letter-spacing: 0.1em;
+    line-height: 1.8;
+  }
+
+  .footer-text span { color: var(--gold); }
+
+  /* Bottom border */
+  .card::after {
+    content: '';
+    display: block;
+    height: 5px;
+    background: linear-gradient(90deg, var(--green-mid), var(--gold), var(--gold-light), var(--gold), var(--green-mid));
+  }
+
+  @media (max-width: 420px) {
+    .card-inner { padding: 28px 20px 24px; }
+    .event-title { font-size: 22px; }
+    .info-grid { grid-template-columns: 1fr; }
+    .info-cell.full { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-bg"></div>
+
+  <div class="card-inner">
+
+    <!-- Header -->
+    <div class="seal-row">
+      <div class="seal">
+        <div class="seal-icon">🌾</div>
+        <div class="seal-text">農協</div>
+      </div>
+      <div class="org-block">
+        <div class="org-name">農業科技農業協會</div>
+        <div class="org-sub">Agricultural Technology Association</div>
+      </div>
+    </div>
+
+    <div class="divider-gold"></div>
+
+    <!-- Title -->
+    <div class="invite-label">誠摯邀請您出席</div>
+
+    <h1 class="event-title">
+      智耕傳承<br>
+      <span class="highlight">AI 賦能論壇</span>
+    </h1>
+    <div class="event-subtitle">暨 下屆會長就職典禮</div>
+
+    <div class="ceremony-badge">第 XX 屆 理監事改選大會</div>
+
+    <div class="divider-gold"></div>
+
+    <!-- Info -->
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="info-label">DATE 日期</div>
+        <div class="info-value">
+          2026年 X月 X日
+          <span class="sub">星期 X（週日下午）</span>
+        </div>
+      </div>
+      <div class="info-cell">
+        <div class="info-label">TIME 時間</div>
+        <div class="info-value">
+          13:00 開始
+          <span class="sub">12:30 開放入場</span>
+        </div>
+      </div>
+      <div class="info-cell full">
+        <div class="info-label">VENUE 地點</div>
+        <div class="info-value">
+          ＿＿＿＿＿＿ 會館
+          <span class="sub">台灣 ── 縣市 ── 區 ── 路 ── 號</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Program -->
+    <div class="program-section">
+      <div class="program-title">▸ 活動議程 PROGRAM</div>
+
+      <div class="program-item">
+        <div class="program-time">13:00</div>
+        <div class="program-name">
+          貴賓報到 · 交流茶敘
+          <em>AI 體驗展示同步開放</em>
+        </div>
+      </div>
+      <div class="program-item">
+        <div class="program-time">13:30</div>
+        <div class="program-name">
+          改選大會 · 會長就職典禮
+          <em>致詞、授証、合影</em>
+        </div>
+      </div>
+      <div class="program-item">
+        <div class="program-time">13:50</div>
+        <div class="program-name">
+          主題演講：AI 來了，農業怎麼用？
+          <em>副秘書長 Jeff Fang 主講</em>
+        </div>
+      </div>
+      <div class="program-item">
+        <div class="program-time">14:30</div>
+        <div class="program-name">
+          二代傳承論壇：從接班到領班
+          <em>案例分享 · 圓桌對話</em>
+        </div>
+      </div>
+      <div class="program-item">
+        <div class="program-time">15:50</div>
+        <div class="program-name">
+          新一屆施政展望宣示
+          <em>會員 AI 推廣計畫公布</em>
+        </div>
+      </div>
+    </div>
+
+    <!-- Special note -->
+    <div class="special-note">
+      <p>
+        本次論壇特別歡迎<strong>攜帶家族第二代</strong>共同出席<br>
+        現場設有 AI 實作體驗區，手機即可操作<br>
+        <strong>無技術門檻，三分鐘看見AI的力量</strong>
+      </p>
+    </div>
+
+    <!-- RSVP -->
+    <div class="rsvp-row">
+      <div class="qr-box">📱</div>
+      <div class="rsvp-text">
+        <div class="rsvp-label">RSVP 敬請回覆</div>
+        <div class="rsvp-desc">掃描 QR Code 線上回覆出席<br>或聯繫協會秘書處確認名額</div>
+        <div class="rsvp-contact">回覆截止日：活動前 X 天 ｜ 名額有限，敬請把握</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="divider-gold"></div>
+    <div class="card-footer">
+      <div class="footer-text">
+        主辦單位｜<span>農業科技農業協會</span><br>
+        協辦單位｜<span>MilkIdea Corporation 牛奶創意</span><br>
+        著裝建議：商務正式 ｜ Business Attire
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
