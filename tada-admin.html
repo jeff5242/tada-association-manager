@@ -95,6 +95,47 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 .prog-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
 .prog-item .prog-label{font-size:11px;color:var(--gray);display:flex;justify-content:space-between;margin-bottom:4px;}
 .prog-item .prog-num{font-size:16px;font-weight:700;}
+
+/* ── MOBILE ── */
+@media(max-width:600px){
+  .topbar{padding:0 12px;height:44px;gap:8px;}
+  .topbar-logo span{display:none;}
+  .topbar-logo{font-size:13px;}
+  .topbar-tabs{margin-left:8px;gap:0;}
+  .tab{padding:5px 10px;font-size:11px;}
+  .ai-pill{font-size:10px;padding:2px 8px;gap:4px;}
+
+  .page{padding:12px 10px;}
+
+  .stat-row{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+  .stat-card{padding:10px 12px;}
+  .stat-label{font-size:9px;}
+  .stat-num{font-size:22px;}
+  .stat-sub{font-size:10px;}
+
+  .sub-tabs{margin-bottom:12px;}
+  .sub-tab{padding:6px 14px;font-size:11px;}
+
+  .toolbar{gap:6px;margin-bottom:10px;}
+  .search-input{padding:6px 10px;font-size:12px;}
+  .filter-select{padding:6px 8px;font-size:11px;}
+
+  /* 手機 table → card 模式 */
+  table thead{display:none;}
+  table,tbody,tr,td{display:block;width:100%;}
+  tr{background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:8px;padding:10px 12px;position:relative;}
+  tr:hover td{background:transparent;}
+  td{padding:2px 0;border:none;font-size:12px;}
+  td::before{content:attr(data-label);font-size:10px;color:var(--gray);letter-spacing:.1em;display:block;margin-bottom:1px;}
+  .name-cell{font-size:14px;margin-bottom:4px;}
+  .org-cell{max-width:100%;}
+  td:last-child{margin-top:8px;}
+  .btn-sm{width:100%;text-align:center;padding:6px 0;}
+
+  .section-card{padding:14px 12px;}
+  [style*="grid-template-columns:1fr 1fr 1fr"]{grid-template-columns:1fr!important;}
+  [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important;}
+}
 </style>
 </head>
 <body>
@@ -325,11 +366,11 @@ function renderMembers(){
   document.getElementById('member-tbody').innerHTML=data.map((m,i)=>{
     const ri=boardData.indexOf(m);
     return `<tr>
-      <td style="font-size:11px;color:var(--gray);">${m.role}</td>
-      <td class="name-cell">${m.name}</td>
-      <td class="org-cell">${m.company||'–'}</td>
-      <td>${statusHTML[m.status]}</td>
-      <td style="font-size:11px;color:var(--gray);">${m.note||'–'}</td>
+      <td data-label="職稱" style="font-size:11px;color:var(--gray);">${m.role}</td>
+      <td data-label="姓名" class="name-cell">${m.name}</td>
+      <td data-label="公司" class="org-cell">${m.company||'–'}</td>
+      <td data-label="狀態">${statusHTML[m.status]}</td>
+      <td data-label="備註" style="font-size:11px;color:var(--gray);">${m.note||'–'}</td>
       <td><button class="btn btn-outline btn-sm" onclick="advanceMember(${ri})">${nextLabel[m.status]}</button></td>
     </tr>`;
   }).join('');
@@ -359,12 +400,12 @@ function renderGuests(){
   document.getElementById('guest-tbody').innerHTML=data.map(g=>{
     const ri=guestData.indexOf(g);
     return `<tr>
-      <td class="name-cell" style="max-width:160px;">${g.name}</td>
-      <td class="org-cell">${g.org}</td>
-      <td>${trainBadge(g.train)}</td>
-      <td>${mealBadge(g.meal)}</td>
-      <td>${statusHTML[g.status]}</td>
-      <td style="font-size:11px;color:var(--gray);">${g.note||'–'}</td>
+      <td data-label="姓名／職稱" class="name-cell" style="max-width:160px;">${g.name}</td>
+      <td data-label="機關單位" class="org-cell">${g.org}</td>
+      <td data-label="高鐵">${trainBadge(g.train)}</td>
+      <td data-label="用餐">${mealBadge(g.meal)}</td>
+      <td data-label="狀態">${statusHTML[g.status]}</td>
+      <td data-label="備註" style="font-size:11px;color:var(--gray);">${g.note||'–'}</td>
       <td><button class="btn btn-outline btn-sm" onclick="advanceGuest(${ri})">${nextLabel[g.status]}</button></td>
     </tr>`;
   }).join('');
