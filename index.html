@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>邀請函｜智耕傳承 農業新世代 — TADA 第六屆</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600;900&family=Noto+Sans+TC:wght@300;400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--gold-pale:#f5ecd4;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;}
+body{background:var(--green-deep);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;font-family:'Noto Sans TC',sans-serif;}
+.card{width:100%;max-width:540px;background:var(--cream);position:relative;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,0.5),0 0 0 1px rgba(184,145,58,0.25);}
+.top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.card-bg{position:absolute;inset:0;opacity:0.03;background-image:repeating-linear-gradient(45deg,var(--green-deep) 0px,var(--green-deep) 1px,transparent 1px,transparent 14px);pointer-events:none;}
+.inner{position:relative;z-index:1;padding:36px 32px 32px;}
+.header-row{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+.logo-box{width:54px;height:54px;border-radius:50%;border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;background:white;flex-shrink:0;overflow:hidden;}
+.org{flex:1;}
+.org-name{font-family:'Noto Serif TC',serif;font-size:13px;font-weight:600;color:var(--green-deep);letter-spacing:0.1em;}
+.org-sub{font-size:10px;color:var(--green-light);letter-spacing:0.06em;margin-top:2px;}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--gold),var(--gold-light),var(--gold),transparent);margin:18px 0;}
+.ai-badge{margin:0 auto 16px;width:fit-content;display:flex;align-items:center;gap:8px;padding:5px 16px;border:1px solid rgba(184,145,58,0.4);background:rgba(184,145,58,0.06);}
+.ai-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+.ai-text{font-size:10px;letter-spacing:0.3em;color:var(--gold);font-weight:500;}
+.invite-label{font-size:10px;letter-spacing:0.3em;color:var(--gold);text-align:center;margin-bottom:6px;font-weight:500;}
+.event-title{font-family:'Noto Serif TC',serif;font-size:28px;font-weight:900;color:var(--green-deep);text-align:center;line-height:1.3;letter-spacing:0.04em;}
+.event-title .hl{color:var(--gold);}
+.event-sub{font-size:11px;color:var(--green-light);text-align:center;margin-top:6px;letter-spacing:0.18em;}
+.ceremony{margin:16px auto;width:fit-content;background:var(--green-deep);color:var(--gold-pale);font-family:'Noto Serif TC',serif;font-size:11px;padding:5px 20px;letter-spacing:0.22em;font-weight:600;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0;}
+.info-cell{background:white;border-left:3px solid var(--gold);padding:11px 13px;}
+.info-cell.full{grid-column:1/-1;}
+.info-label{font-size:9px;letter-spacing:0.22em;color:var(--gold);font-weight:600;margin-bottom:3px;text-transform:uppercase;}
+.info-value{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:600;color:var(--ink);line-height:1.4;}
+.info-value .sub{font-size:11px;font-weight:400;color:var(--green-light);font-family:'Noto Sans TC',sans-serif;display:block;margin-top:2px;}
+.info-value .sub2{font-size:10px;font-weight:400;color:rgba(90,138,96,0.7);font-family:'Noto Sans TC',sans-serif;display:block;margin-top:1px;}
+.pillars{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0;}
+.pillar{background:var(--green-deep);padding:12px 14px;position:relative;}
+.pillar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--gold);}
+.pillar-icon{font-size:18px;margin-bottom:5px;}
+.pillar-title{font-family:'Noto Serif TC',serif;font-size:12px;font-weight:700;color:white;letter-spacing:0.08em;margin-bottom:3px;}
+.pillar-desc{font-size:10px;color:rgba(255,255,255,0.5);line-height:1.6;}
+.program-section{margin:18px 0;}
+.program-heading{font-size:9px;letter-spacing:0.25em;color:var(--gold);font-weight:600;margin-bottom:9px;}
+.program-item{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px dashed rgba(184,145,58,0.18);}
+.program-item:last-child{border-bottom:none;}
+.p-time{font-size:11px;color:var(--gold);font-weight:600;min-width:68px;font-family:'Noto Serif TC',serif;padding-top:2px;}
+.p-body{flex:1;}
+.p-name{font-size:12px;color:var(--ink);line-height:1.45;font-family:'Noto Serif TC',serif;}
+.p-name em{font-style:normal;font-size:10px;color:var(--green-light);display:block;margin-top:2px;}
+.p-tag{display:inline-block;font-size:8.5px;letter-spacing:0.1em;border:1px dashed rgba(184,145,58,0.55);color:rgba(184,145,58,0.8);padding:1px 6px;margin-bottom:3px;font-family:'Noto Sans TC',sans-serif;}
+.program-item.dinner{background:rgba(184,145,58,0.06);border-bottom:none;border-top:1px solid rgba(184,145,58,0.3);margin-top:4px;padding:10px 8px;}
+.program-item.dinner .p-time{color:var(--gold-light);}
+.program-item.dinner .p-name{color:var(--green-deep);font-weight:600;}
+.note{background:var(--green-deep);padding:13px 16px;margin:18px 0;position:relative;}
+.note::before{content:'✦';position:absolute;top:-8px;left:50%;transform:translateX(-50%);color:var(--gold);font-size:13px;background:var(--cream);padding:0 6px;}
+.note p{font-family:'Noto Serif TC',serif;font-size:11px;color:var(--gold-pale);text-align:center;line-height:1.9;letter-spacing:0.04em;}
+.note strong{color:var(--gold-light);}
+.rsvp-row{display:flex;align-items:center;gap:14px;background:white;padding:13px 15px;margin:14px 0;}
+.qr-box{width:60px;height:60px;border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:26px;color:var(--gold);}
+.rsvp-label{font-size:9px;letter-spacing:0.25em;color:var(--gold);font-weight:600;margin-bottom:3px;}
+.rsvp-desc{font-size:11px;color:var(--ink);line-height:1.6;}
+.rsvp-contact{font-size:10px;color:var(--green-light);margin-top:3px;}
+.footer{border-top:1px solid rgba(184,145,58,0.25);padding-top:14px;text-align:center;}
+.footer-text{font-size:10px;color:var(--green-light);letter-spacing:0.12em;line-height:2.2;}
+.footer-text span{color:var(--gold);}
+.bottom-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="top-bar"></div>
+  <div class="card-bg"></div>
+  <div class="inner">
+
+    <div class="header-row">
+      <div class="logo-box">
+        <svg width="54" height="54" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="20" cy="20" rx="14" ry="10" fill="#6ab04c" transform="rotate(-30 20 20)"/>
+          <ellipse cx="34" cy="20" rx="14" ry="10" fill="#6ab04c" transform="rotate(30 34 20)"/>
+          <ellipse cx="18" cy="34" rx="11" ry="8" fill="#2e86c1" transform="rotate(20 18 34)"/>
+          <ellipse cx="36" cy="34" rx="11" ry="8" fill="#2e86c1" transform="rotate(-20 36 34)"/>
+          <ellipse cx="27" cy="27" rx="4" ry="12" fill="#1a5276"/>
+          <text x="27" y="30" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="7.5" font-weight="900" fill="white" letter-spacing="0.5">TADA</text>
+        </svg>
+      </div>
+      <div class="org">
+        <div class="org-name">台灣科技農企業發展協會</div>
+        <div class="org-sub">Agricultural Technology Development Association</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="ai-badge">
+      <div class="ai-dot"></div>
+      <div class="ai-text">AI 賦能元年 · 2026</div>
+    </div>
+
+    <div class="invite-label">誠摯邀請您出席</div>
+    <h1 class="event-title">智耕傳承<br><span class="hl">農業新世代</span></h1>
+    <div class="event-sub">AI 賦能論壇暨第六屆會長就職典禮</div>
+    <div class="ceremony">第六屆　理監事改選大會</div>
+
+    <div class="divider"></div>
+
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="info-label">DATE 日期</div>
+        <div class="info-value">2026年 9月 4日<span class="sub">星期四</span></div>
+      </div>
+      <div class="info-cell">
+        <div class="info-label">TIME 時間</div>
+        <div class="info-value">13:00 開始<span class="sub">晚宴至 19:30</span></div>
+      </div>
+      <div class="info-cell full">
+        <div class="info-label">VENUE 地點</div>
+        <div class="info-value">臻愛婚宴會館　烏日高鐵店
+          <span class="sub">台中市烏日區高鐵路三段 168 號</span>
+          <span class="sub2">台中高鐵站步行約 8 分鐘　｜　停車位逾 400 個</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pillars">
+      <div class="pillar">
+        <div class="pillar-icon">🤖</div>
+        <div class="pillar-title">AI 賦能</div>
+        <div class="pillar-desc">讓每位會員企業<br>親身體驗 AI 的力量</div>
+      </div>
+      <div class="pillar">
+        <div class="pillar-icon">🌱</div>
+        <div class="pillar-title">二代傳承</div>
+        <div class="pillar-desc">從接班到領班<br>共創農業新世代</div>
+      </div>
+    </div>
+
+    <div class="program-section">
+      <div class="program-heading">▸ 活動議程 PROGRAM</div>
+      <div class="program-item">
+        <div class="p-time">13:00</div>
+        <div class="p-body"><div class="p-name">貴賓報到 · 交流茶敘</div></div>
+      </div>
+      <div class="program-item">
+        <div class="p-time">13:30</div>
+        <div class="p-body">
+          <div class="p-name">改選大會 · 第六屆會長就職典禮<em>致詞、授證、新舊交接、合影</em></div>
+        </div>
+      </div>
+      <div class="program-item">
+        <div class="p-time">13:50</div>
+        <div class="p-body">
+          <span class="p-tag">議程規劃中</span>
+          <div class="p-name">主題演講：AI 來了，農業怎麼用？<em>主講人邀請中</em></div>
+        </div>
+      </div>
+      <div class="program-item">
+        <div class="p-time">14:30</div>
+        <div class="p-body">
+          <span class="p-tag">議程規劃中</span>
+          <div class="p-name">二代傳承論壇：從接班到領班<em>案例分享 · 圓桌對話</em></div>
+        </div>
+      </div>
+      <div class="program-item">
+        <div class="p-time">15:50</div>
+        <div class="p-body">
+          <div class="p-name">新一屆施政展望暨 AI 推廣計畫公布<em>第六屆會長 陳肇浩</em></div>
+        </div>
+      </div>
+      <div class="program-item dinner">
+        <div class="p-time">17:30</div>
+        <div class="p-body">
+          <div class="p-name">豐收晚宴<em>19:30 賦歸</em></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <p>
+        本次論壇特別歡迎<strong>攜帶家族第二代</strong>共同出席<br>
+        共同見證台灣農業邁入 AI 新世代的重要時刻
+      </p>
+    </div>
+
+    <div class="rsvp-row">
+      <div class="qr-box">📱</div>
+      <div>
+        <div class="rsvp-label">RSVP 敬請回覆</div>
+        <div class="rsvp-desc">掃描 QR Code 線上回覆出席<br>或聯繫協會秘書處確認名額</div>
+        <div class="rsvp-contact">回覆截止日：活動前 7 天　｜　名額有限，敬請把握</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 會務後台入口 -->
+    <div style="text-align:center;margin:0 0 16px;">
+      <a href="tada-admin.html" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:9px 22px;background:rgba(30,51,32,0.07);border:1px solid rgba(184,145,58,0.3);color:#5a8a60;font-size:11px;font-family:'Noto Sans TC',sans-serif;letter-spacing:0.18em;text-decoration:none;transition:all .2s;" onmouseover="this.style.borderColor='#b8913a';this.style.color='#b8913a';" onmouseout="this.style.borderColor='rgba(184,145,58,0.3)';this.style.color='#5a8a60';">
+        ⚙&nbsp;&nbsp;會務後台｜邀請進度追蹤
+      </a>
+    </div>
+
+    <div class="footer">
+      <div class="footer-text">
+        主辦單位｜<span>台灣科技農企業發展協會</span><br>
+        著裝建議：商務正式 Business Attire
+      </div>
+    </div>
+
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+</body>
+</html>

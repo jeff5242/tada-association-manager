@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TADA 會務後台｜邀請進度管理</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;900&family=Noto+Sans+TC:wght@300;400;500&family=DM+Mono&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1a0f;--surface:#132014;--surface2:#1a2e1c;--border:rgba(74,124,89,0.25);
+  --gold:#c4922a;--gold-lt:#e8b84b;--green:#4a7c59;--green-lt:#7aab87;
+  --white:#f5f5f0;--gray:#8a9e8d;--ink:#d8e8da;
+  --ok:#2e7d32;--warn:#d4a017;
+}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans TC',sans-serif;font-size:14px;min-height:100vh;}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:600;color:var(--gold-lt);letter-spacing:0.08em;}
+.topbar-logo span{font-size:10px;color:var(--gray);font-weight:300;display:block;letter-spacing:0.15em;}
+.topbar-tabs{display:flex;gap:2px;margin-left:24px;}
+.tab{padding:6px 14px;font-size:12px;cursor:pointer;color:var(--gray);border-radius:4px;letter-spacing:0.05em;transition:all .15s;border:none;background:none;}
+.tab.active{background:rgba(196,146,42,0.15);color:var(--gold-lt);}
+.tab:hover:not(.active){background:rgba(255,255,255,0.05);color:var(--ink);}
+.ai-pill{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gold);border:1px solid rgba(196,146,42,0.3);padding:3px 10px;border-radius:99px;}
+.ai-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* LAYOUT */
+.page{display:none;padding:24px;}
+.page.active{display:block;}
+
+/* STAT CARDS */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);padding:16px 18px;}
+.stat-label{font-size:10px;color:var(--gray);letter-spacing:0.15em;margin-bottom:6px;}
+.stat-num{font-family:'Noto Serif TC',serif;font-size:28px;font-weight:700;color:var(--gold-lt);line-height:1;}
+.stat-sub{font-size:11px;color:var(--green-lt);margin-top:4px;}
+
+/* SECTION */
+.section-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.section-title{font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);}
+.badge{font-size:10px;padding:2px 8px;border-radius:2px;font-weight:600;letter-spacing:0.08em;}
+.badge-ok{background:rgba(46,125,50,0.2);color:#66bb6a;}
+.badge-warn{background:rgba(212,160,23,0.2);color:#ffd54f;}
+.badge-wait{background:rgba(74,124,89,0.15);color:var(--green-lt);}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:var(--surface2);color:var(--gray);font-weight:500;font-size:10px;letter-spacing:0.15em;padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:9px 12px;border-bottom:1px solid rgba(74,124,89,0.12);color:var(--ink);vertical-align:middle;}
+tr:hover td{background:rgba(74,124,89,0.06);}
+.name-cell{font-family:'Noto Serif TC',serif;font-weight:600;color:var(--white);}
+.org-cell{color:var(--gray);font-size:12px;max-width:180px;}
+
+/* STATUS */
+.status{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 9px;border-radius:2px;font-weight:600;white-space:nowrap;}
+.s-confirmed{background:rgba(46,125,50,0.2);color:#66bb6a;}
+.s-invited{background:rgba(196,146,42,0.15);color:var(--gold);}
+.s-pending{background:rgba(74,124,89,0.12);color:var(--green-lt);}
+.s-declined{background:rgba(192,57,43,0.15);color:#ef5350;}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.search-input{background:var(--surface);border:1px solid var(--border);color:var(--ink);padding:7px 12px;font-size:13px;font-family:'Noto Sans TC',sans-serif;outline:none;flex:1;min-width:140px;}
+.search-input:focus{border-color:var(--green);}
+.filter-select{background:var(--surface);border:1px solid var(--border);color:var(--ink);padding:7px 12px;font-size:12px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;outline:none;}
+.btn{padding:7px 14px;font-size:12px;cursor:pointer;border:none;font-family:'Noto Sans TC',sans-serif;letter-spacing:0.05em;transition:all .15s;}
+.btn-gold{background:var(--gold);color:#0d1a0f;font-weight:600;}
+.btn-gold:hover{background:var(--gold-lt);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--gray);}
+.btn-outline:hover{border-color:var(--green);color:var(--ink);}
+.btn-sm{padding:4px 10px;font-size:11px;}
+
+/* PROGRESS */
+.progress-bar{height:4px;background:rgba(74,124,89,0.2);border-radius:2px;overflow:hidden;margin-top:4px;}
+.progress-fill{height:100%;transition:width .3s;}
+.progress-label{font-size:10px;color:var(--gray);margin-top:2px;}
+
+/* SECTION CARD */
+.section-card{background:var(--surface);border:1px solid var(--border);padding:18px 20px;margin-bottom:20px;}
+
+/* TABS inside page */
+.sub-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.sub-tab{padding:8px 20px;font-size:12px;cursor:pointer;color:var(--gray);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;}
+.sub-tab.active{color:var(--gold-lt);border-bottom-color:var(--gold);}
+.sub-tab:hover:not(.active){color:var(--ink);}
+
+.sub-page{display:none;}
+.sub-page.active{display:block;}
+
+/* 進度總覽格 */
+.prog-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.prog-item .prog-label{font-size:11px;color:var(--gray);display:flex;justify-content:space-between;margin-bottom:4px;}
+.prog-item .prog-num{font-size:16px;font-weight:700;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">TADA 會務後台<span>邀請進度管理系統</span></div>
+  <div class="topbar-tabs">
+    <button class="tab active" onclick="switchTab('invite')">邀請進度</button>
+    <button class="tab" onclick="switchTab('dashboard')">統計總覽</button>
+  </div>
+  <div class="ai-pill"><div class="ai-dot"></div>AI Agent 協作中</div>
+</div>
+
+<!-- ══════════ 邀請進度 ══════════ -->
+<div class="page active" id="page-invite">
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-label">已確認出席</div>
+      <div class="stat-num" style="color:#66bb6a;" id="inv-confirmed">0</div>
+      <div class="stat-sub">人員已回覆確認</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">已邀請待回覆</div>
+      <div class="stat-num" style="color:var(--gold);" id="inv-invited">0</div>
+      <div class="stat-sub">等待回覆中</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">尚未邀請</div>
+      <div class="stat-num" style="color:var(--green-lt);" id="inv-pending">0</div>
+      <div class="stat-sub">待發出邀請</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">婉謝 / 無法出席</div>
+      <div class="stat-num" style="color:#ef5350;" id="inv-declined">0</div>
+      <div class="stat-sub"></div>
+    </div>
+  </div>
+
+  <!-- Sub tabs: 理監事 / 貴賓 -->
+  <div class="sub-tabs">
+    <button class="sub-tab active" onclick="switchSubTab('members')">理監事名單</button>
+    <button class="sub-tab" onclick="switchSubTab('guests')">貴賓名冊</button>
+  </div>
+
+  <!-- 理監事 -->
+  <div class="sub-page active" id="sub-members">
+    <div class="toolbar">
+      <input class="search-input" type="text" placeholder="搜尋姓名、職稱…" oninput="filterMembers(this.value)">
+      <select class="filter-select" onchange="filterMembersStatus(this.value)">
+        <option value="">全部狀態</option>
+        <option value="confirmed">已確認</option>
+        <option value="invited">已邀請</option>
+        <option value="pending">未邀請</option>
+        <option value="declined">婉謝</option>
+      </select>
+      <span style="margin-left:auto;font-size:11px;color:var(--gray);white-space:nowrap;">共 <span id="member-count">0</span> 筆</span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>職稱</th><th>姓名</th><th>公司</th><th>邀請狀態</th><th>備註</th><th>操作</th>
+        </tr></thead>
+        <tbody id="member-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 貴賓 -->
+  <div class="sub-page" id="sub-guests">
+    <div class="toolbar">
+      <input class="search-input" type="text" placeholder="搜尋姓名、機關…" oninput="filterGuests(this.value)">
+      <select class="filter-select" onchange="filterGuestsStatus(this.value)">
+        <option value="">全部狀態</option>
+        <option value="confirmed">已確認</option>
+        <option value="invited">已邀請</option>
+        <option value="pending">未邀請</option>
+        <option value="declined">婉謝</option>
+      </select>
+      <select class="filter-select" onchange="filterGuestsCat(this.value)">
+        <option value="">全部類別</option>
+        <option value="農業部">農業部</option>
+        <option value="大學">大學院校</option>
+        <option value="中衛">中衛</option>
+        <option value="其他">其他</option>
+      </select>
+      <button class="btn btn-gold" onclick="exportCSV()">匯出 CSV</button>
+      <span style="font-size:11px;color:var(--gray);white-space:nowrap;">共 <span id="guest-count">0</span> 筆</span>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>姓名 / 職稱</th><th>機關單位</th><th>高鐵接送</th><th>用餐</th><th>邀請狀態</th><th>備註</th><th>操作</th>
+        </tr></thead>
+        <tbody id="guest-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ 統計總覽 ══════════ -->
+<div class="page" id="page-dashboard">
+  <div class="section-card">
+    <div class="section-header"><div class="section-title">邀請進度總覽</div><span class="badge badge-warn">第六屆籌備中</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div>
+        <div style="font-size:11px;color:var(--gray);margin-bottom:10px;">理監事（共 20 人）</div>
+        <div id="dash-member-prog"></div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--gray);margin-bottom:10px;">貴賓名冊（共 32 人）</div>
+        <div id="dash-guest-prog"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header"><div class="section-title">活動資訊</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:13px;">
+      <div><div class="stat-label">活動日期</div><div style="color:var(--white);font-family:'Noto Serif TC',serif;margin-top:4px;">2026 年 9 月 4 日（四）</div></div>
+      <div><div class="stat-label">地點</div><div style="color:var(--white);margin-top:4px;">臻愛婚宴會館 烏日高鐵店<br><span style="color:var(--gray);font-size:11px;">台中市烏日區高鐵路三段 168 號</span></div></div>
+      <div><div class="stat-label">時程</div><div style="color:var(--white);margin-top:4px;">13:00 開始<br><span style="color:var(--gray);font-size:11px;">豐收晚宴 17:30 ～ 19:30</span></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────
+
+const boardData = [
+  {role:'理事長',name:'胡炳輝',company:'',note:'團體會員 20,000 已匯',status:'pending'},
+  {role:'榮譽理事長',name:'吳昆民',company:'',note:'',status:'pending'},
+  {role:'榮譽理事長',name:'宋鴻琳',company:'',note:'',status:'pending'},
+  {role:'副理事長',name:'唐迎華',company:'',note:'北區',status:'pending'},
+  {role:'副理事長',name:'陳耀松',company:'',note:'中區',status:'pending'},
+  {role:'副理事長',name:'許德全',company:'',note:'南區',status:'pending'},
+  {role:'常務理事',name:'林建智',company:'',note:'',status:'pending'},
+  {role:'理事',name:'洪柏昱',company:'',note:'',status:'pending'},
+  {role:'理事',name:'蘇鵬',company:'',note:'',status:'pending'},
+  {role:'理事',name:'陳肇浩',company:'米屋智農',note:'下屆會長',status:'confirmed'},
+  {role:'理事',name:'蕭頡紋',company:'',note:'個人會員 6000 已匯',status:'pending'},
+  {role:'理事',name:'林岳毅',company:'',note:'個人會員 6000 已匯',status:'pending'},
+  {role:'理事',name:'許炳煌',company:'',note:'',status:'pending'},
+  {role:'常務監事',name:'劉中庸',company:'',note:'',status:'pending'},
+  {role:'監事',name:'甘文聰',company:'',note:'',status:'pending'},
+  {role:'監事',name:'歐陵合',company:'',note:'',status:'pending'},
+  {role:'候補理事',name:'宋元博',company:'',note:'入會費已匯',status:'pending'},
+  {role:'候補理事',name:'李鎮崑',company:'',note:'待補入會費',status:'pending'},
+  {role:'候補理事',name:'許家銘',company:'',note:'待補入會費',status:'pending'},
+  {role:'候補監事',name:'陳彥傑',company:'',note:'20,000+2000 已匯',status:'pending'},
+];
+
+const guestData = [
+  {name:'胡署長忠一',org:'農業部農糧署',train:'x',meal:2,note:'',status:'pending'},
+  {name:'姚副署長志旺',org:'農業部農糧署',train:'x',meal:2,note:'',status:'pending'},
+  {name:'何技正小珍',org:'農業部農糧署',train:'x',meal:'x',note:'',status:'pending'},
+  {name:'陳組長立儀',org:'農業部農糧署作物生產組',train:'x',meal:2,note:'',status:'pending'},
+  {name:'黃教授裕益',org:'中興大學',train:'x',meal:1,note:'前台灣設施協會理事長',status:'pending'},
+  {name:'李紅曦 司長',org:'農業部科技司',train:'15:30',meal:2,note:'哲嘉接',status:'pending'},
+  {name:'陳瑞榮 副司長',org:'農業部科技司',train:'15:30',meal:0,note:'哲嘉接',status:'pending'},
+  {name:'謝董事長明達',org:'財團法人中衛發展中心',train:'?',meal:2,note:'',status:'pending'},
+  {name:'林總經理進財',org:'財團法人中衛發展中心',train:'?',meal:1,note:'',status:'pending'},
+  {name:'袁副總威五',org:'財團法人中衛發展中心',train:'x',meal:'x',note:'',status:'pending'},
+  {name:'許處長彰敏',org:'嘉義縣政府農業處',train:'x',meal:1,note:'',status:'pending'},
+  {name:'盧院長虎生',org:'國立臺灣大學生農學院',train:'15:30',meal:0,note:'宗正接',status:'pending'},
+  {name:'林院長裕彬',org:'國立臺灣大學生農學院',train:'?',meal:'?',note:'',status:'pending'},
+  {name:'徐前院長源泰',org:'國立臺灣大學生農學院',train:'?',meal:'?',note:'',status:'pending'},
+  {name:'張主任宏浩',org:'國立臺灣大學農經系',train:'16:48',meal:1,note:'宗正接',status:'pending'},
+  {name:'郭教授彥甫',org:'臺灣大學生物機電工程學系',train:'15:30',meal:1,note:'宗正接',status:'pending'},
+  {name:'艾校長群',org:'嘉義大學',train:'x',meal:1,note:'2022年榮退',status:'pending'},
+  {name:'黃副校長光亮',org:'嘉義大學',train:'x',meal:1,note:'2023年1月任期滿',status:'pending'},
+  {name:'葉鄉長孟龍',org:'新港鄉公所',train:'x',meal:1,note:'',status:'pending'},
+  {name:'吳董事長明敏',org:'農業金庫',train:'x',meal:3,note:'',status:'pending'},
+  {name:'藍顧問科銘',org:'外貿協會國際行銷咨詢',train:'x',meal:2,note:'',status:'pending'},
+  {name:'蔡副所長致榮',org:'農試所',train:'x',meal:2,note:'',status:'pending'},
+  {name:'方分所長怡丹',org:'農試所嘉義分所',train:'x',meal:2,note:'',status:'pending'},
+  {name:'郭場長坤峯',org:'桃園農改場',train:'x',meal:'x',note:'',status:'pending'},
+  {name:'黃董事長清龍',org:'龍隆無塵室科技',train:'?',meal:1,note:'',status:'pending'},
+  {name:'陳總經理永贀',org:'好好物流',train:'15:30',meal:2,note:'維維接，榮退',status:'pending'},
+  {name:'梁社長鴻彬',org:'豐年社',train:'15:30',meal:1,note:'維維接',status:'pending'},
+  {name:'盧軒毅總監、吳尚鴻攝影總監',org:'豐年社',train:'x',meal:2,note:'',status:'pending'},
+  {name:'陳丞彥、陳思岑',org:'廈門人天景農業科技',train:'15:30',meal:2,note:'易鑫接',status:'pending'},
+  {name:'呂盷陞 博士',org:'農試所',train:'x',meal:2,note:'',status:'pending'},
+  {name:'王仕賢技監',org:'蘭科主任',train:'x',meal:1,note:'',status:'pending'},
+  {name:'陳尚仁組長',org:'蔬菜及種苗組',train:'x',meal:2,note:'',status:'pending'},
+];
+
+// ── STATE ─────────────────────────────────────────────────
+let mFilter='', mStatus='';
+let gFilter='', gStatus='', gCat='';
+
+const nextStatus = {pending:'invited',invited:'confirmed',confirmed:'declined',declined:'pending'};
+const nextLabel  = {pending:'標記已邀請',invited:'確認出席',confirmed:'標記婉謝',declined:'重置'};
+const statusHTML = {
+  confirmed:'<span class="status s-confirmed">✓ 已確認</span>',
+  invited:  '<span class="status s-invited">已邀請</span>',
+  pending:  '<span class="status s-pending">未邀請</span>',
+  declined: '<span class="status s-declined">婉謝</span>',
+};
+
+// ── TABS ─────────────────────────────────────────────────
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('page-'+id).classList.add('active');
+  if(id==='dashboard') renderDash();
+}
+
+function switchSubTab(id){
+  document.querySelectorAll('.sub-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.sub-page').forEach(p=>p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('sub-'+id).classList.add('active');
+}
+
+// ── MEMBERS ──────────────────────────────────────────────
+function filterMembers(q){ mFilter=q; renderMembers(); }
+function filterMembersStatus(s){ mStatus=s; renderMembers(); }
+
+function renderMembers(){
+  const data = boardData.filter(m=>{
+    const q = !mFilter || m.name.includes(mFilter)||m.role.includes(mFilter);
+    const s = !mStatus || m.status===mStatus;
+    return q&&s;
+  });
+  document.getElementById('member-count').textContent=data.length;
+  document.getElementById('member-tbody').innerHTML=data.map((m,i)=>{
+    const ri=boardData.indexOf(m);
+    return `<tr>
+      <td style="font-size:11px;color:var(--gray);">${m.role}</td>
+      <td class="name-cell">${m.name}</td>
+      <td class="org-cell">${m.company||'–'}</td>
+      <td>${statusHTML[m.status]}</td>
+      <td style="font-size:11px;color:var(--gray);">${m.note||'–'}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="advanceMember(${ri})">${nextLabel[m.status]}</button></td>
+    </tr>`;
+  }).join('');
+  updateStats();
+}
+
+function advanceMember(i){
+  boardData[i].status=nextStatus[boardData[i].status];
+  renderMembers();
+}
+
+// ── GUESTS ───────────────────────────────────────────────
+function filterGuests(q){ gFilter=q; renderGuests(); }
+function filterGuestsStatus(s){ gStatus=s; renderGuests(); }
+function filterGuestsCat(c){ gCat=c; renderGuests(); }
+
+function renderGuests(){
+  const data=guestData.filter(g=>{
+    const q=!gFilter||g.name.includes(gFilter)||g.org.includes(gFilter);
+    const s=!gStatus||g.status===gStatus;
+    const c=!gCat||g.org.includes(gCat==='大學'?'大學':gCat==='農業部'?'農業部':gCat==='中衛'?'中衛':gCat);
+    return q&&s&&c;
+  });
+  document.getElementById('guest-count').textContent=data.length;
+  const trainBadge=v=>v==='x'?'<span style="color:var(--gray)">不需</span>':v==='?'?'<span style="color:var(--warn)">待確</span>':`<span style="color:var(--gold)">${v}</span>`;
+  const mealBadge=v=>v==='x'||v===0?'<span style="color:var(--gray)">–</span>':v==='?'?'<span style="color:var(--warn)">?</span>':`<b style="color:var(--green-lt)">${v}</b>`;
+  document.getElementById('guest-tbody').innerHTML=data.map(g=>{
+    const ri=guestData.indexOf(g);
+    return `<tr>
+      <td class="name-cell" style="max-width:160px;">${g.name}</td>
+      <td class="org-cell">${g.org}</td>
+      <td>${trainBadge(g.train)}</td>
+      <td>${mealBadge(g.meal)}</td>
+      <td>${statusHTML[g.status]}</td>
+      <td style="font-size:11px;color:var(--gray);">${g.note||'–'}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="advanceGuest(${ri})">${nextLabel[g.status]}</button></td>
+    </tr>`;
+  }).join('');
+  updateStats();
+}
+
+function advanceGuest(i){
+  guestData[i].status=nextStatus[guestData[i].status];
+  renderGuests();
+}
+
+// ── STATS ─────────────────────────────────────────────────
+function updateStats(){
+  const all=[...boardData,...guestData];
+  document.getElementById('inv-confirmed').textContent=all.filter(x=>x.status==='confirmed').length;
+  document.getElementById('inv-invited').textContent=all.filter(x=>x.status==='invited').length;
+  document.getElementById('inv-pending').textContent=all.filter(x=>x.status==='pending').length;
+  document.getElementById('inv-declined').textContent=all.filter(x=>x.status==='declined').length;
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────
+function renderDash(){
+  renderProgBlock('dash-member-prog', boardData);
+  renderProgBlock('dash-guest-prog', guestData);
+}
+
+function renderProgBlock(id, data){
+  const total=data.length;
+  const cats=[
+    {label:'已確認',key:'confirmed',color:'#66bb6a'},
+    {label:'已邀請',key:'invited',color:'var(--gold)'},
+    {label:'未邀請',key:'pending',color:'var(--green-lt)'},
+    {label:'婉謝',key:'declined',color:'#ef5350'},
+  ];
+  document.getElementById(id).innerHTML=cats.map(c=>{
+    const n=data.filter(x=>x.status===c.key).length;
+    const pct=total?Math.round(n/total*100):0;
+    return `<div style="margin-bottom:10px;">
+      <div class="prog-label" style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray);margin-bottom:3px;">
+        <span>${c.label}</span><span style="color:${c.color};font-weight:600;">${n} 人</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${c.color};"></div></div>
+      <div class="progress-label">${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ── EXPORT ────────────────────────────────────────────────
+function exportCSV(){
+  const rows=[['類型','姓名','單位／職稱','邀請狀態','備註']];
+  boardData.forEach(m=>rows.push(['理監事',m.name,m.role,m.status,m.note]));
+  guestData.forEach(g=>rows.push(['貴賓',g.name,g.org,g.status,g.note]));
+  const csv=rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='TADA_邀請進度_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+// ── INIT ──────────────────────────────────────────────────
+renderMembers();
+renderGuests();
+updateStats();
+</script>
+</body>
+</html>
