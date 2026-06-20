@@ -3,92 +3,830 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>台灣科技農企業發展協會 — 數位資產入口</title>
+<title>台灣科技農企業發展協會</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;900&family=Noto+Sans+TC:wght@300;400;500&family=DM+Mono&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0d1a0f;--card:#16221a;--line:#27382b;--gold:#c4922a;--goldlt:#e8b84b;--white:#fff;--gray:#9db0a2;--moss:#2d5235}
-body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--white);min-height:100vh;padding:48px 24px}
-.wrap{max-width:960px;margin:0 auto}
-.kick{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.3em;color:var(--gold);text-transform:uppercase;margin-bottom:12px}
-h1{font-family:'Noto Serif TC',serif;font-size:clamp(26px,5vw,42px);font-weight:900;line-height:1.3;margin-bottom:14px}
-h1 em{font-style:normal;color:var(--goldlt)}
-.sub{font-size:15px;color:var(--gray);max-width:580px;line-height:1.8;margin-bottom:12px}
-.event-info{display:inline-flex;gap:20px;font-size:12px;color:var(--gray);font-family:'DM Mono',monospace;margin-bottom:40px;flex-wrap:wrap;}
-.event-info span{color:var(--goldlt);}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;margin-bottom:40px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:26px;text-decoration:none;color:inherit;transition:all .25s;display:flex;flex-direction:column;gap:10px}
-.card:hover{border-color:var(--gold);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.4)}
-.card.admin{border-color:rgba(196,146,42,0.3);}
-.icon{font-size:32px}
-.card h2{font-family:'Noto Serif TC',serif;font-size:19px;font-weight:600;color:var(--goldlt)}
-.card p{font-size:13px;color:var(--gray);line-height:1.7;flex:1}
-.tag{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);letter-spacing:.1em}
-.arrow{color:var(--gold);font-size:14px;margin-top:8px}
-.section-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--gold);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--line);}
-footer{margin-top:48px;padding-top:24px;border-top:1px solid var(--line);font-size:12px;color:var(--gray);line-height:1.9}
-footer a{color:var(--gold);text-decoration:none}
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600;900&family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --ink:        #0d1a0f;
+  --forest:     #1a3320;
+  --moss:       #2d5235;
+  --fern:       #4a7c59;
+  --sage:       #7aab87;
+  --mist:       #c8dece;
+  --gold:       #c4922a;
+  --gold-lt:    #e8b84b;
+  --rice:       #f5f0e4;
+  --white:      #ffffff;
+  --gray:       #6b7a6e;
+  --border:     rgba(74,124,89,0.2);
+  --nav-h:      64px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--rice);
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  background: rgba(13,26,15,0.95);
+  backdrop-filter: blur(12px);
+  display: flex; align-items: center;
+  padding: 0 32px;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(196,146,42,0.25);
+}
+.nav-logo {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 14px; font-weight: 600;
+  color: var(--gold-lt);
+  letter-spacing: 0.08em;
+  flex: 1;
+}
+.nav-logo span { color: rgba(255,255,255,0.5); font-weight: 300; font-size: 12px; display: block; letter-spacing: 0.15em; }
+.nav-links { display: flex; gap: 6px; }
+.nav-links a {
+  color: rgba(255,255,255,0.65);
+  text-decoration: none;
+  font-size: 13px; font-weight: 400;
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: all .2s;
+  letter-spacing: 0.05em;
+}
+.nav-links a:hover { color: var(--gold-lt); background: rgba(196,146,42,0.1); }
+.nav-cta {
+  margin-left: 12px;
+  background: var(--gold);
+  color: var(--ink) !important;
+  font-weight: 700 !important;
+  border-radius: 4px;
+}
+.nav-cta:hover { background: var(--gold-lt) !important; }
+.nav-hamburger { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
+.nav-hamburger span { display: block; width: 22px; height: 2px; background: white; margin: 4px 0; transition: all .3s; }
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  background: var(--forest);
+  display: flex; flex-direction: column;
+  justify-content: center;
+  padding: calc(var(--nav-h) + 60px) 32px 80px;
+  position: relative;
+  overflow: hidden;
+}
+/* Signature: animated growth line */
+.hero-growline {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--gold), var(--gold-lt), var(--gold), transparent);
+  transform-origin: left;
+  animation: growline 2s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+@keyframes growline {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+/* subtle grid texture */
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(74,124,89,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74,124,89,0.08) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+.hero-inner { max-width: 900px; margin: 0 auto; position: relative; }
+.hero-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; letter-spacing: 0.35em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 12px;
+}
+.hero-eyebrow::after { content: ''; flex: 1; max-width: 80px; height: 1px; background: var(--gold); opacity: 0.4; }
+.hero h1 {
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(36px, 6vw, 72px);
+  font-weight: 900;
+  color: var(--white);
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  margin-bottom: 24px;
+}
+.hero h1 em { font-style: normal; color: var(--gold-lt); }
+.hero-desc {
+  font-size: 16px; color: rgba(255,255,255,0.65);
+  max-width: 560px; line-height: 1.9;
+  margin-bottom: 40px;
+}
+.hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 24px;
+  font-size: 14px; font-weight: 600;
+  border-radius: 4px; cursor: pointer;
+  border: none; text-decoration: none;
+  transition: all .2s; letter-spacing: 0.05em;
+}
+.btn-gold { background: var(--gold); color: var(--ink); }
+.btn-gold:hover { background: var(--gold-lt); transform: translateY(-1px); }
+.btn-outline { background: transparent; color: var(--white); border: 1px solid rgba(255,255,255,0.3); }
+.btn-outline:hover { border-color: var(--gold); color: var(--gold-lt); }
+.hero-stats {
+  display: flex; gap: 40px; margin-top: 56px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 32px; flex-wrap: wrap;
+}
+.stat-item {}
+.stat-num {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 32px; font-weight: 900;
+  color: var(--gold-lt); line-height: 1;
+}
+.stat-label { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 4px; letter-spacing: 0.1em; }
+
+/* ── SECTIONS COMMON ── */
+section { padding: 80px 32px; }
+.section-inner { max-width: 1100px; margin: 0 auto; }
+.section-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; letter-spacing: 0.3em;
+  color: var(--gold); text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.section-title {
+  font-family: 'Noto Serif TC', serif;
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 900; color: var(--forest);
+  margin-bottom: 12px; line-height: 1.3;
+}
+.section-sub { font-size: 15px; color: var(--gray); max-width: 540px; }
+
+/* ── NEWS ── */
+#news { background: var(--white); }
+.news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; margin-top: 40px; }
+.news-card {
+  border: 1px solid var(--border);
+  background: var(--rice);
+  overflow: hidden; cursor: pointer;
+  transition: all .25s;
+}
+.news-card:hover { border-color: var(--fern); transform: translateY(-3px); box-shadow: 0 12px 32px rgba(26,51,32,0.1); }
+.news-tag-bar { height: 3px; background: var(--moss); }
+.news-tag-bar.gold { background: var(--gold); }
+.news-tag-bar.sage { background: var(--sage); }
+.news-body { padding: 20px; }
+.news-meta { font-size: 11px; color: var(--gray); letter-spacing: 0.1em; font-family: 'DM Mono', monospace; margin-bottom: 8px; }
+.news-title-text { font-family: 'Noto Serif TC', serif; font-size: 16px; font-weight: 600; color: var(--forest); line-height: 1.5; margin-bottom: 10px; }
+.news-excerpt { font-size: 13px; color: var(--gray); line-height: 1.7; }
+.news-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.news-category { font-size: 11px; color: var(--fern); font-weight: 600; letter-spacing: 0.1em; }
+.news-arrow { font-size: 14px; color: var(--gold); }
+.load-more-row { text-align: center; margin-top: 32px; }
+/* RSS badge */
+.rss-note { font-size: 12px; color: var(--gray); margin-top: 12px; }
+
+/* ── MEMBERS ── */
+#members { background: var(--rice); }
+.member-search-row { display: flex; gap: 12px; margin: 32px 0 24px; flex-wrap: wrap; }
+.member-search {
+  flex: 1; min-width: 200px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  background: white; font-size: 14px;
+  color: var(--ink); outline: none;
+  font-family: 'Noto Sans TC', sans-serif;
+  border-radius: 4px;
+}
+.member-search:focus { border-color: var(--fern); }
+.member-filter {
+  padding: 10px 16px; border: 1px solid var(--border);
+  background: white; font-size: 13px; color: var(--ink);
+  cursor: pointer; outline: none; border-radius: 4px;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+.member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.member-card {
+  background: white; border: 1px solid var(--border);
+  padding: 20px; display: flex; gap: 14px; align-items: flex-start;
+  transition: all .2s;
+}
+.member-card:hover { border-color: var(--fern); box-shadow: 0 4px 16px rgba(26,51,32,0.08); }
+.member-avatar {
+  width: 44px; height: 44px;
+  background: var(--moss);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Noto Serif TC', serif;
+  font-size: 16px; font-weight: 900; color: var(--gold-lt);
+  flex-shrink: 0; border-radius: 50%;
+}
+.member-info { flex: 1; min-width: 0; }
+.member-name { font-family: 'Noto Serif TC', serif; font-size: 15px; font-weight: 700; color: var(--forest); }
+.member-title { font-size: 12px; color: var(--gold); font-weight: 600; margin: 2px 0; letter-spacing: 0.05em; }
+.member-company { font-size: 12px; color: var(--gray); }
+.member-industry { display: inline-block; margin-top: 6px; font-size: 10px; background: var(--mist); color: var(--moss); padding: 2px 8px; border-radius: 99px; letter-spacing: 0.05em; }
+.member-count { font-size: 13px; color: var(--gray); margin-bottom: 12px; }
+
+/* ── KM / KNOWLEDGE ── */
+#km { background: var(--forest); }
+#km .section-title { color: var(--white); }
+#km .section-sub { color: rgba(255,255,255,0.55); }
+#km .section-tag { color: var(--gold-lt); }
+.km-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 40px; }
+.km-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 28px;
+  transition: all .25s; cursor: pointer;
+}
+.km-card:hover { background: rgba(196,146,42,0.1); border-color: var(--gold); }
+.km-icon { font-size: 28px; margin-bottom: 14px; }
+.km-name { font-family: 'Noto Serif TC', serif; font-size: 17px; font-weight: 700; color: white; margin-bottom: 8px; }
+.km-desc { font-size: 13px; color: rgba(255,255,255,0.5); line-height: 1.7; }
+.km-count { margin-top: 16px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--gold); letter-spacing: 0.1em; }
+
+/* ── AI ASSISTANT ── */
+#ai { background: var(--white); }
+.ai-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; margin-top: 40px; }
+.ai-intro h3 { font-family: 'Noto Serif TC', serif; font-size: 22px; font-weight: 700; color: var(--forest); margin-bottom: 12px; }
+.ai-intro p { font-size: 14px; color: var(--gray); line-height: 1.8; margin-bottom: 16px; }
+.ai-features { list-style: none; }
+.ai-features li { font-size: 13px; color: var(--ink); padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start; }
+.ai-features li::before { content: '▸'; color: var(--gold); flex-shrink: 0; margin-top: 2px; }
+/* Chat UI */
+.chat-box {
+  background: var(--rice);
+  border: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  height: 460px;
+}
+.chat-header {
+  background: var(--forest);
+  padding: 14px 18px;
+  display: flex; align-items: center; gap: 10px;
+}
+.chat-status { width: 8px; height: 8px; background: var(--gold-lt); border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.chat-title { font-size: 13px; font-weight: 600; color: white; letter-spacing: 0.05em; }
+.chat-sub { font-size: 11px; color: rgba(255,255,255,0.45); }
+.chat-messages {
+  flex: 1; overflow-y: auto;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); }
+.msg { max-width: 82%; display: flex; flex-direction: column; gap: 4px; }
+.msg.bot { align-self: flex-start; }
+.msg.user { align-self: flex-end; }
+.msg-bubble {
+  padding: 10px 14px;
+  font-size: 13px; line-height: 1.6;
+  border-radius: 2px;
+}
+.msg.bot .msg-bubble { background: white; color: var(--ink); border: 1px solid var(--border); border-bottom-left-radius: 0; }
+.msg.user .msg-bubble { background: var(--moss); color: white; border-bottom-right-radius: 0; }
+.msg-time { font-size: 10px; color: var(--gray); font-family: 'DM Mono', monospace; }
+.msg.user .msg-time { text-align: right; }
+.chat-typing { display: none; align-items: center; gap: 4px; padding: 10px 14px; }
+.chat-typing span { width: 6px; height: 6px; background: var(--sage); border-radius: 50%; animation: typing .8s infinite; }
+.chat-typing span:nth-child(2) { animation-delay: .15s; }
+.chat-typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes typing { 0%,80%,100%{transform:scale(1)} 40%{transform:scale(1.4)} }
+.chat-input-row {
+  display: flex; gap: 0;
+  border-top: 1px solid var(--border);
+}
+.chat-input {
+  flex: 1; padding: 12px 16px;
+  border: none; background: white;
+  font-size: 13px; color: var(--ink);
+  outline: none; font-family: 'Noto Sans TC', sans-serif;
+}
+.chat-send {
+  padding: 12px 18px;
+  background: var(--moss); border: none;
+  color: white; font-size: 16px; cursor: pointer;
+  transition: background .2s;
+}
+.chat-send:hover { background: var(--forest); }
+.chat-suggestions { padding: 8px 12px; display: flex; gap: 6px; flex-wrap: wrap; background: white; border-top: 1px solid var(--border); }
+.suggestion-chip {
+  font-size: 11px; padding: 4px 10px;
+  border: 1px solid var(--border); background: var(--rice);
+  cursor: pointer; color: var(--fern); border-radius: 99px;
+  transition: all .2s; white-space: nowrap;
+}
+.suggestion-chip:hover { background: var(--fern); color: white; border-color: var(--fern); }
+
+/* ── EVENTS ── */
+#events { background: var(--rice); }
+.events-list { margin-top: 36px; display: flex; flex-direction: column; gap: 16px; }
+.event-row {
+  background: white; border: 1px solid var(--border);
+  display: flex; align-items: stretch; overflow: hidden;
+  transition: all .2s; cursor: pointer;
+}
+.event-row:hover { border-color: var(--fern); box-shadow: 0 4px 16px rgba(26,51,32,0.08); }
+.event-date-block {
+  background: var(--forest);
+  color: white; padding: 16px 20px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-width: 72px;
+}
+.event-month { font-size: 11px; letter-spacing: 0.15em; color: var(--gold-lt); font-weight: 600; }
+.event-day { font-family: 'Noto Serif TC', serif; font-size: 28px; font-weight: 900; line-height: 1; }
+.event-body { flex: 1; padding: 16px 20px; }
+.event-title-text { font-family: 'Noto Serif TC', serif; font-size: 15px; font-weight: 700; color: var(--forest); margin-bottom: 4px; }
+.event-meta-row { font-size: 12px; color: var(--gray); display: flex; gap: 16px; flex-wrap: wrap; }
+.event-badge {
+  margin-left: auto; padding: 16px 20px;
+  display: flex; align-items: center;
+}
+.event-status {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  padding: 4px 10px;
+}
+.event-status.open { color: var(--moss); border: 1px solid var(--moss); }
+.event-status.soon { color: var(--gold); border: 1px solid var(--gold); }
+
+/* ── ABOUT ── */
+#about { background: var(--ink); }
+#about .section-title { color: white; }
+#about .section-sub { color: rgba(255,255,255,0.5); }
+#about .section-tag { color: var(--gold); }
+.about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 48px; }
+.about-mission h3 { font-family: 'Noto Serif TC', serif; font-size: 20px; font-weight: 700; color: var(--gold-lt); margin-bottom: 16px; }
+.about-mission p { font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.9; margin-bottom: 16px; }
+.board-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.board-card { background: rgba(255,255,255,0.05); padding: 14px 16px; border-left: 2px solid var(--gold); }
+.board-role { font-size: 10px; color: var(--gold); letter-spacing: 0.15em; font-weight: 600; margin-bottom: 4px; }
+.board-name { font-family: 'Noto Serif TC', serif; font-size: 15px; font-weight: 700; color: white; }
+.board-company { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--ink);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 40px 32px;
+  text-align: center;
+}
+.footer-logo { font-family: 'Noto Serif TC', serif; font-size: 16px; font-weight: 700; color: var(--gold-lt); letter-spacing: 0.1em; margin-bottom: 8px; }
+.footer-info { font-size: 12px; color: rgba(255,255,255,0.3); line-height: 2; }
+.footer-info a { color: rgba(255,255,255,0.4); }
+.footer-powered { margin-top: 16px; font-size: 11px; color: rgba(255,255,255,0.2); }
+.footer-powered a { color: rgba(196,146,42,0.5); text-decoration: none; }
+
+/* ── LOADING OVERLAY ── */
+.loading { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: var(--gold-lt); border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  nav { padding: 0 16px; }
+  .nav-links { display: none; }
+  .nav-hamburger { display: block; margin-left: auto; }
+  .nav-links.open { display: flex; flex-direction: column; position: absolute; top: var(--nav-h); left: 0; right: 0; background: var(--ink); padding: 16px; gap: 4px; }
+  section { padding: 56px 20px; }
+  .ai-wrap { grid-template-columns: 1fr; }
+  .about-grid { grid-template-columns: 1fr; }
+  .hero { padding: calc(var(--nav-h) + 40px) 20px 60px; }
+  .hero-stats { gap: 24px; }
+  .board-grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="kick">TADA · Digital Assets</div>
-  <h1>台灣科技農企業發展協會<br><em>數位資產入口</em></h1>
-  <p class="sub">彙整協會第六屆 AI 推廣計畫的數位成果。點選下方卡片預覽各模組。</p>
-  <div class="event-info">
-    <div>活動日期 <span>2026.09.04（四）</span></div>
-    <div>地點 <span>臻愛婚宴館 烏日高鐵店</span></div>
-    <div>新任會長 <span>陳肇浩（米屋智農）</span></div>
-  </div>
 
-  <div class="section-label">PUBLIC · 公開模組</div>
-  <div class="grid">
-    <a class="card" href="platform/">
-      <div class="icon">🌾</div>
-      <span class="tag">PLATFORM</span>
-      <h2>協會數位平台</h2>
-      <p>整合最新消息、會員名錄、知識中心與 Claude AI 助理的一站式溝通平台。</p>
-      <span class="arrow">開啟 →</span>
-    </a>
-    <a class="card" href="backdrop/">
-      <div class="icon">🎤</div>
-      <span class="tag">BACKDROP</span>
-      <h2>會長就職背板</h2>
-      <p>黃仁勳風格的就職典禮背板示意圖，含會員企業 Logo 牆與會長照片區。</p>
-      <span class="arrow">開啟 →</span>
-    </a>
-    <a class="card" href="invitation/">
-      <div class="icon">✉️</div>
-      <span class="tag">INVITATION</span>
-      <h2>電子邀請卡</h2>
-      <p>AI 賦能論壇暨會長就職典禮的精緻電子邀請卡，可手機直覽與轉發。</p>
-      <span class="arrow">開啟 →</span>
-    </a>
-    <a class="card" href="TADA_第六屆邀請函_v9.html">
-      <div class="icon">📋</div>
-      <span class="tag">INVITATION v9</span>
-      <h2>第六屆邀請函 v9</h2>
-      <p>正式邀請函最新版本（v9），供列印或數位傳送使用。</p>
-      <span class="arrow">開啟 →</span>
-    </a>
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    台灣科技農企業發展協會
+    <span>TADA — Agricultural Technology Association</span>
   </div>
-
-  <div class="section-label">INTERNAL · 內部工具</div>
-  <div class="grid">
-    <a class="card admin" href="tada-admin.html">
-      <div class="icon">📊</div>
-      <span class="tag">ADMIN</span>
-      <h2>邀請進度後台</h2>
-      <p>管理理監事與貴賓邀請狀態，追蹤出席確認、高鐵接送與用餐人數。</p>
-      <span class="arrow">開啟 →</span>
-    </a>
+  <div class="nav-links" id="navLinks">
+    <a href="#news">最新消息</a>
+    <a href="#members">會員名錄</a>
+    <a href="#km">知識中心</a>
+    <a href="#ai">AI 助理</a>
+    <a href="#events">活動</a>
+    <a href="#about">關於協會</a>
+    <a href="#ai" class="nav-cta btn">問 AI 助理</a>
   </div>
+  <button class="nav-hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
 
-  <footer>
-    台灣科技農企業發展協會（TADA）｜第六屆籌備中<br>
-    活動日期：2026 年 9 月 4 日（四）｜臻愛婚宴會館 烏日高鐵店<br>
-    本入口頁與各模組為靜態網頁，部署於 <a href="https://github.com/jeff5242/tada-association-manager">GitHub Pages</a>。
-  </footer>
-</div>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">台灣科技農企業發展協會</div>
+    <h1>智耕傳承<br><em>農業 × 科技 × AI</em></h1>
+    <p class="hero-desc">由台灣農、林、漁、牧各大產業龍頭組成，以科技為輔佐，將小農躍進科技農。攜手推動 AI 賦能，共創台灣農業的世界品牌。</p>
+    <div class="hero-actions">
+      <a href="#ai" class="btn btn-gold">🤖 詢問 AI 助理</a>
+      <a href="#members" class="btn btn-outline">瀏覽會員名錄</a>
+      <a href="../portal.html" class="btn btn-outline" style="gap:6px;">✉️ 數位資產入口</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item"><div class="stat-num">15+</div><div class="stat-label">年協會歷史</div></div>
+      <div class="stat-item"><div class="stat-num">60+</div><div class="stat-label">會員企業</div></div>
+      <div class="stat-item"><div class="stat-num">8</div><div class="stat-label">農業業種涵蓋</div></div>
+      <div class="stat-item"><div class="stat-num">2026</div><div class="stat-label">AI 推廣元年</div></div>
+    </div>
+  </div>
+  <div class="hero-growline"></div>
+</section>
+
+<!-- NEWS -->
+<section id="news">
+  <div class="section-inner">
+    <div class="section-tag">LATEST NEWS</div>
+    <h2 class="section-title">最新消息</h2>
+    <p class="section-sub">協會公告、活動報導、AI農業趨勢。內容整合自協會部落格及會員投稿。</p>
+    <div id="newsGrid" class="news-grid">
+      <!-- JS rendered -->
+    </div>
+    <p class="rss-note">📡 內容來源：協會部落格 tada0722.blogspot.com（自動同步）</p>
+    <div class="load-more-row">
+      <button class="btn btn-outline" style="border-color:var(--border);color:var(--gray)" onclick="loadMoreNews()">載入更多文章</button>
+    </div>
+  </div>
+</section>
+
+<!-- MEMBERS -->
+<section id="members">
+  <div class="section-inner">
+    <div class="section-tag">MEMBER DIRECTORY</div>
+    <h2 class="section-title">會員名錄</h2>
+    <p class="section-sub">依產業別、企業規模快速搜尋，促進會員相互連結合作。</p>
+    <div class="member-search-row">
+      <input class="member-search" type="text" id="memberSearch" placeholder="🔍 搜尋姓名、公司、職稱..." oninput="filterMembers()">
+      <select class="member-filter" id="industryFilter" onchange="filterMembers()">
+        <option value="">全部業種</option>
+        <option value="農業">農業</option>
+        <option value="漁業">漁業</option>
+        <option value="畜牧">畜牧</option>
+        <option value="林業">林業</option>
+        <option value="科技">科技</option>
+        <option value="食品">食品加工</option>
+      </select>
+    </div>
+    <p class="member-count" id="memberCount"></p>
+    <div class="member-grid" id="memberGrid"></div>
+  </div>
+</section>
+
+<!-- KM -->
+<section id="km">
+  <div class="section-inner">
+    <div class="section-tag">KNOWLEDGE CENTER</div>
+    <h2 class="section-title">知識中心</h2>
+    <p class="section-sub">協會累積的產業知識、政策文件、AI應用指南，全部在這裡。</p>
+    <div class="km-grid">
+      <div class="km-card">
+        <div class="km-icon">🌾</div>
+        <div class="km-name">農業 AI 應用指南</div>
+        <div class="km-desc">從病蟲害辨識、產量預測到智慧灌溉，AI 在農業的實際應用案例與操作手冊。</div>
+        <div class="km-count">12 份文件</div>
+      </div>
+      <div class="km-card">
+        <div class="km-icon">📋</div>
+        <div class="km-name">政策法規資料庫</div>
+        <div class="km-desc">農委會最新補助計畫、農業法規彙整、SBIR 申請攻略，一站查詢。</div>
+        <div class="km-count">28 份文件</div>
+      </div>
+      <div class="km-card">
+        <div class="km-icon">🏢</div>
+        <div class="km-name">二代傳承資源包</div>
+        <div class="km-desc">企業傳承框架、SOP 數位化模板、接班計畫工具表，協助家族企業順利交棒。</div>
+        <div class="km-count">9 份文件</div>
+      </div>
+      <div class="km-card">
+        <div class="km-icon">🤝</div>
+        <div class="km-name">會員交流精華</div>
+        <div class="km-desc">歷屆大會紀錄、座談會精華摘要、會員成功案例分享彙整。</div>
+        <div class="km-count">35 份紀錄</div>
+      </div>
+      <div class="km-card">
+        <div class="km-icon">📊</div>
+        <div class="km-name">農業市場研究</div>
+        <div class="km-desc">台灣農產品市場分析、出口趨勢報告、品牌建立策略，協助會員掌握市場脈動。</div>
+        <div class="km-count">17 份報告</div>
+      </div>
+      <div class="km-card">
+        <div class="km-icon">🎓</div>
+        <div class="km-name">教育訓練資源</div>
+        <div class="km-desc">農業科技課程錄影、AI工具入門教學、台大農企業班學習資源。</div>
+        <div class="km-count">22 份影片/講義</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI ASSISTANT -->
+<section id="ai">
+  <div class="section-inner">
+    <div class="section-tag">AI ASSISTANT</div>
+    <h2 class="section-title">協會 AI 助理</h2>
+    <p class="section-sub">由 Claude AI 驅動，可回答協會業務、入會資訊、AI農業應用等問題。</p>
+    <div class="ai-wrap">
+      <div class="ai-intro">
+        <h3>隨時在線的智慧助手</h3>
+        <p>不用等秘書回電，協會 AI 助理能立刻回答你的問題，並連結知識中心的豐富資料。</p>
+        <ul class="ai-features">
+          <li>協會章程、入會流程、會費標準即時查詢</li>
+          <li>AI 農業應用諮詢與工具推薦</li>
+          <li>活動報名、場地、議程說明</li>
+          <li>知識中心文件快速導覽</li>
+          <li>二代傳承初步評估與資源推薦</li>
+          <li>會員企業媒合初步建議</li>
+        </ul>
+      </div>
+      <div class="chat-box">
+        <div class="chat-header">
+          <div class="chat-status"></div>
+          <div>
+            <div class="chat-title">TADA AI 助理</div>
+            <div class="chat-sub">台灣科技農企業發展協會</div>
+          </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg bot">
+            <div class="msg-bubble">👋 您好！我是 TADA 協會 AI 助理，可以幫您回答關於協會業務、入會流程、AI農業應用等問題。請問有什麼需要協助的嗎？</div>
+            <div class="msg-time">剛剛</div>
+          </div>
+        </div>
+        <div class="chat-typing" id="chatTyping">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="chat-suggestions" id="chatSuggestions">
+          <div class="suggestion-chip" onclick="sendSuggestion(this)">如何申請入會？</div>
+          <div class="suggestion-chip" onclick="sendSuggestion(this)">協會有什麼活動？</div>
+          <div class="suggestion-chip" onclick="sendSuggestion(this)">AI農業怎麼開始？</div>
+        </div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chatInput" type="text" placeholder="輸入問題..." onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="chat-send" onclick="sendChat()">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EVENTS -->
+<section id="events">
+  <div class="section-inner">
+    <div class="section-tag">EVENTS</div>
+    <h2 class="section-title">近期活動</h2>
+    <p class="section-sub">改選大會、論壇、會員交流、AI工作坊，一覽無遺。</p>
+    <div class="events-list">
+      <div class="event-row">
+        <div class="event-date-block"><div class="event-month">SEP</div><div class="event-day">04</div></div>
+        <div class="event-body">
+          <div class="event-title-text">智耕傳承 AI 賦能論壇暨第六屆會長就職典禮</div>
+          <div class="event-meta-row"><span>📍 臻愛婚宴會館 烏日高鐵店</span><span>🕐 13:00 開始，豐收晚宴 17:30–19:30</span><span>👥 全體會員及貴賓</span></div>
+        </div>
+        <div class="event-badge"><span class="event-status soon">籌備中</span></div>
+      </div>
+      <div class="event-row">
+        <div class="event-date-block"><div class="event-month">SEP</div><div class="event-day">04</div></div>
+        <div class="event-body">
+          <div class="event-title-text">新任會長陳肇浩就職典禮</div>
+          <div class="event-meta-row"><span>📍 台中市烏日區高鐵路三段 168 號</span><span>🕐 典禮時程確認中</span><span>👥 理監事、貴賓</span></div>
+        </div>
+        <div class="event-badge"><span class="event-status soon">邀請進行中</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="section-inner">
+    <div class="section-tag">ABOUT TADA</div>
+    <h2 class="section-title">關於協會</h2>
+    <p class="section-sub">緣自 2010 年台大農企業菁英碩士學分班，十五年來持續推動台灣農業升級。</p>
+    <div class="about-grid">
+      <div class="about-mission">
+        <h3>協會宗旨</h3>
+        <p>台灣的農業需要有「共同品牌」行銷全世界，藉由品牌的建立提升農產品的價值，建立具有世界觀的行銷通路，及計畫性生產，以避免「果賤傷農」。</p>
+        <p>以科技為輔佐，將「小農」躍進至「科技農」，藉由科技的機具輔助及科學管理的方法，減少因天災所產生的人禍。</p>
+        <p>所有農業業種大團結，以母雞帶小雞的方式，讓已具備雛型的台灣產業，將經驗分享與協助正在成長中的農業，拉拔台灣農產世界看得到。</p>
+        <h3 style="margin-top:28px">2026 重點方向</h3>
+        <p>新一屆施政聚焦「AI賦能」與「二代傳承」，由副秘書長 Jeff Fang 統籌推動會員 AI 導入輔導計畫。</p>
+      </div>
+      <div>
+        <h3 style="font-family:'Noto Serif TC',serif;font-size:18px;font-weight:700;color:var(--gold-lt);margin-bottom:16px">理監事名單</h3>
+        <div class="board-grid" id="boardGrid">
+          <!-- JS rendered -->
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">台灣科技農企業發展協會</div>
+  <div class="footer-info">
+    Taiwan Agricultural Technology Development Association<br>
+    副秘書長：Jeff Fang ｜ MilkIdea Corporation<br>
+    <a href="http://tada0722.blogspot.com" target="_blank">tada0722.blogspot.com</a>
+  </div>
+  <div class="footer-powered">Powered by <a href="#" target="_blank">MilkIdea × Claude AI</a></div>
+</footer>
+
+<script>
+// ── DEMO DATA ──────────────────────────────────────────
+const newsData = [
+  { date:'2026-06-01', title:'協會下屆會長改選公告', excerpt:'依協會章程規定，本屆理監事任期屆滿，訂於近期召開改選大會，歡迎全體會員踴躍出席。', category:'公告', color:'gold' },
+  { date:'2026-05-20', title:'AI農業應用研討會圓滿落幕', excerpt:'本次研討會吸引逾百位會員及農業業者參與，現場展示多項AI辨識與智慧農業解決方案，獲得熱烈迴響。', category:'活動紀錄', color:'moss' },
+  { date:'2026-05-08', title:'農委會新一波智農補助開放申請', excerpt:'農委會公告2026年智慧農業補助方案，最高補助比例達60%，協會協助會員申請諮詢。', category:'政策資訊', color:'sage' },
+  { date:'2026-04-15', title:'會員企業壽米屋榮獲農業品牌大賞', excerpt:'本協會會員企業壽米屋榮獲本年度農業品牌大賞金獎，以創新行銷策略提升台灣米品牌價值。', category:'會員動態', color:'gold' },
+  { date:'2026-03-22', title:'二代傳承論壇首場：農業家族如何轉型', excerpt:'首場傳承論壇邀請三位農業二代分享接班心路歷程，與會者熱烈討論如何在傳統與創新間找到平衡。', category:'活動紀錄', color:'moss' },
+  { date:'2026-02-18', title:'台灣農產品共同品牌策略研討', excerpt:'協會邀請品牌顧問就台灣農產品共同品牌的建立策略進行深度討論，凝聚共識持續推動。', category:'活動紀錄', color:'sage' },
+];
+
+const memberData = [
+  { name:'王大明', title:'理事長', company:'大明農業科技', industry:'農業', initial:'王' },
+  { name:'李志農', title:'常務理事', company:'志農有機農場', industry:'農業', initial:'李' },
+  { name:'陳漁霖', title:'理事', company:'霖海水產', industry:'漁業', initial:'陳' },
+  { name:'林牧原', title:'理事', company:'牧原畜牧', industry:'畜牧', initial:'林' },
+  { name:'黃科農', title:'監事', company:'科農智慧農業', industry:'科技', initial:'黃' },
+  { name:'張森林', title:'監事', company:'森林開發', industry:'林業', initial:'張' },
+  { name:'Jeff Fang', title:'副秘書長', company:'MilkIdea Corporation', industry:'科技', initial:'J' },
+  { name:'吳米香', title:'會員', company:'壽米屋', industry:'食品', initial:'吳' },
+  { name:'許鮮農', title:'會員', company:'鮮友集團', industry:'農業', initial:'許' },
+  { name:'蔡漁豐', title:'會員', company:'漁豐水產', industry:'漁業', initial:'蔡' },
+  { name:'洪農技', title:'會員', company:'農技開發', industry:'科技', initial:'洪' },
+  { name:'廖牧場', title:'會員', company:'安心牧場', industry:'畜牧', initial:'廖' },
+];
+
+const boardData = [
+  { role:'理事長（現任）', name:'胡炳輝', company:'' },
+  { role:'榮譽理事長', name:'吳昆民', company:'' },
+  { role:'榮譽理事長', name:'宋鴻琳', company:'' },
+  { role:'候任理事長', name:'陳肇浩', company:'米屋智農' },
+  { role:'副理事長', name:'唐迎華', company:'北區' },
+  { role:'副理事長', name:'陳耀松', company:'中區' },
+  { role:'副理事長', name:'許德全', company:'南區' },
+  { role:'常務理事', name:'林建智', company:'' },
+  { role:'理事', name:'洪柏昱', company:'' },
+  { role:'理事', name:'蘇鵬', company:'' },
+  { role:'理事', name:'蕭頡紋', company:'' },
+  { role:'理事', name:'林岳毅', company:'' },
+  { role:'常務監事', name:'劉中庸', company:'' },
+  { role:'監事', name:'甘文聰', company:'' },
+  { role:'監事', name:'歐陵合', company:'' },
+];
+
+// ── RENDER NEWS ──
+function renderNews(data) {
+  const grid = document.getElementById('newsGrid');
+  grid.innerHTML = data.map(n => `
+    <div class="news-card">
+      <div class="news-tag-bar ${n.color}"></div>
+      <div class="news-body">
+        <div class="news-meta">${n.date}</div>
+        <div class="news-title-text">${n.title}</div>
+        <div class="news-excerpt">${n.excerpt}</div>
+      </div>
+      <div class="news-footer">
+        <span class="news-category">${n.category}</span>
+        <span class="news-arrow">→</span>
+      </div>
+    </div>`).join('');
+}
+renderNews(newsData.slice(0,3));
+let newsShown = 3;
+function loadMoreNews() {
+  newsShown = Math.min(newsShown + 3, newsData.length);
+  renderNews(newsData.slice(0, newsShown));
+}
+
+// ── RENDER MEMBERS ──
+function renderMembers(data) {
+  document.getElementById('memberCount').textContent = `共 ${data.length} 位會員`;
+  document.getElementById('memberGrid').innerHTML = data.map(m => `
+    <div class="member-card">
+      <div class="member-avatar">${m.initial}</div>
+      <div class="member-info">
+        <div class="member-name">${m.name}</div>
+        <div class="member-title">${m.title}</div>
+        <div class="member-company">${m.company}</div>
+        <span class="member-industry">${m.industry}</span>
+      </div>
+    </div>`).join('');
+}
+renderMembers(memberData);
+function filterMembers() {
+  const q = document.getElementById('memberSearch').value.toLowerCase();
+  const ind = document.getElementById('industryFilter').value;
+  const filtered = memberData.filter(m =>
+    (!q || m.name.includes(q) || m.company.includes(q) || m.title.includes(q)) &&
+    (!ind || m.industry === ind)
+  );
+  renderMembers(filtered);
+}
+
+// ── RENDER BOARD ──
+document.getElementById('boardGrid').innerHTML = boardData.map(b => `
+  <div class="board-card">
+    <div class="board-role">${b.role}</div>
+    <div class="board-name">${b.name}</div>
+    ${b.company ? `<div class="board-company">${b.company}</div>` : ''}
+  </div>`).join('');
+
+// ── AI CHAT ──
+const SYSTEM_PROMPT = `你是「TADA AI 助理」，台灣科技農企業發展協會的智慧助手。
+
+協會背景：台灣科技農企業發展協會（TADA），成立於2010年，由台大農企業菁英碩士學分班同學組成。涵蓋農、林、漁、牧、觀賞等產業龍頭企業。宗旨：推動台灣農業共同品牌、以科技輔佐農業升級、促進母雞帶小雞的產業合作。
+
+2026年重點方向：AI賦能推廣、農業二代傳承輔導。副秘書長 Jeff Fang 統籌 AI 推廣計畫。
+
+近期活動：改選大會暨 AI 賦能論壇，日期待公告。
+
+回答原則：
+1. 繁體中文回答，語氣親切專業
+2. 回答聚焦農業、AI應用、協會業務
+3. 不確定的資訊，請引導用戶聯繫秘書處
+4. 回答簡潔，善用條列式
+5. 鼓勵入會與參加活動`;
+
+const chatHistory = [];
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  // Hide suggestions after first message
+  document.getElementById('chatSuggestions').style.display = 'none';
+
+  appendMsg(msg, 'user');
+  chatHistory.push({ role: 'user', content: msg });
+
+  const typing = document.getElementById('chatTyping');
+  typing.style.display = 'flex';
+  scrollChat();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: chatHistory
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || '抱歉，目前無法回應，請稍後再試。';
+    chatHistory.push({ role: 'assistant', content: reply });
+    typing.style.display = 'none';
+    appendMsg(reply, 'bot');
+  } catch(e) {
+    typing.style.display = 'none';
+    appendMsg('連線暫時異常，請稍後再試，或直接聯繫秘書處。', 'bot');
+  }
+}
+
+function sendSuggestion(el) {
+  document.getElementById('chatInput').value = el.textContent;
+  sendChat();
+}
+
+function appendMsg(text, role) {
+  const box = document.getElementById('chatMessages');
+  const now = new Date().toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' });
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `<div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div><div class="msg-time">${now}</div>`;
+  box.appendChild(div);
+  scrollChat();
+}
+
+function scrollChat() {
+  const box = document.getElementById('chatMessages');
+  box.scrollTop = box.scrollHeight;
+}
+</script>
 </body>
 </html>
