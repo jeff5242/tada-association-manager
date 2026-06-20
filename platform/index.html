@@ -239,6 +239,14 @@ section { padding: 80px 32px; }
 .member-company { font-size: 12px; color: var(--gray); }
 .member-industry { display: inline-block; margin-top: 6px; font-size: 10px; background: var(--mist); color: var(--moss); padding: 2px 8px; border-radius: 99px; letter-spacing: 0.05em; }
 .member-count { font-size: 13px; color: var(--gray); margin-bottom: 12px; }
+.term-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.term-tag { font-size: 10px; padding: 1px 7px; border-radius: 99px; letter-spacing: 0.05em; border: 1px solid; }
+.term-tag.t6 { color: var(--gold); border-color: rgba(196,146,42,0.4); background: rgba(196,146,42,0.08); }
+.term-tag.t5 { color: var(--sage); border-color: rgba(122,171,135,0.4); background: rgba(122,171,135,0.08); }
+.term-tag.t4 { color: #7bb6d4; border-color: rgba(123,182,212,0.4); background: rgba(123,182,212,0.08); }
+.term-tag.t3 { color: #b89fd4; border-color: rgba(184,159,212,0.4); background: rgba(184,159,212,0.08); }
+.term-tag.t2 { color: #d4a07a; border-color: rgba(212,160,122,0.4); background: rgba(212,160,122,0.08); }
+.term-tag.t1 { color: #d47a7a; border-color: rgba(212,122,122,0.4); background: rgba(212,122,122,0.08); }
 
 /* ── KM / KNOWLEDGE ── */
 #km { background: var(--forest); }
@@ -478,13 +486,13 @@ footer {
     <div class="member-search-row">
       <input class="member-search" type="text" id="memberSearch" placeholder="🔍 搜尋姓名、公司、職稱..." oninput="filterMembers()">
       <select class="member-filter" id="industryFilter" onchange="filterMembers()">
-        <option value="">全部業種</option>
-        <option value="農業">農業</option>
-        <option value="漁業">漁業</option>
-        <option value="畜牧">畜牧</option>
-        <option value="林業">林業</option>
-        <option value="科技">科技</option>
-        <option value="食品">食品加工</option>
+        <option value="">全部屆次</option>
+        <option value="6">第六屆</option>
+        <option value="5">第五屆</option>
+        <option value="4">第四屆</option>
+        <option value="3">第三屆</option>
+        <option value="2">第二屆</option>
+        <option value="1">第一屆</option>
       </select>
     </div>
     <p class="member-count" id="memberCount"></p>
@@ -662,19 +670,29 @@ const newsData = [
   { date:'2026-02-18', title:'台灣農產品共同品牌策略研討', excerpt:'協會邀請品牌顧問就台灣農產品共同品牌的建立策略進行深度討論，凝聚共識持續推動。', category:'活動紀錄', color:'sage' },
 ];
 
+// terms: 陣列，每個元素 { session: 數字, role: 職稱 }
+// 後續新增歷屆資料時，在 terms 裡補上即可
 const memberData = [
-  { name:'王大明', title:'理事長', company:'大明農業科技', industry:'農業', initial:'王' },
-  { name:'李志農', title:'常務理事', company:'志農有機農場', industry:'農業', initial:'李' },
-  { name:'陳漁霖', title:'理事', company:'霖海水產', industry:'漁業', initial:'陳' },
-  { name:'林牧原', title:'理事', company:'牧原畜牧', industry:'畜牧', initial:'林' },
-  { name:'黃科農', title:'監事', company:'科農智慧農業', industry:'科技', initial:'黃' },
-  { name:'張森林', title:'監事', company:'森林開發', industry:'林業', initial:'張' },
-  { name:'Jeff Fang', title:'副秘書長', company:'MilkIdea Corporation', industry:'科技', initial:'J' },
-  { name:'吳米香', title:'會員', company:'壽米屋', industry:'食品', initial:'吳' },
-  { name:'許鮮農', title:'會員', company:'鮮友集團', industry:'農業', initial:'許' },
-  { name:'蔡漁豐', title:'會員', company:'漁豐水產', industry:'漁業', initial:'蔡' },
-  { name:'洪農技', title:'會員', company:'農技開發', industry:'科技', initial:'洪' },
-  { name:'廖牧場', title:'會員', company:'安心牧場', industry:'畜牧', initial:'廖' },
+  { name:'胡炳輝', company:'', terms:[{session:6,role:'理事長'}], initial:'胡' },
+  { name:'吳昆民', company:'', terms:[{session:6,role:'榮譽理事長'}], initial:'吳' },
+  { name:'宋鴻琳', company:'', terms:[{session:6,role:'榮譽理事長'}], initial:'宋' },
+  { name:'唐迎華', company:'', terms:[{session:6,role:'副理事長'}], initial:'唐' },
+  { name:'陳耀松', company:'', terms:[{session:6,role:'副理事長'}], initial:'陳' },
+  { name:'許德全', company:'', terms:[{session:6,role:'副理事長'}], initial:'許' },
+  { name:'林建智', company:'', terms:[{session:6,role:'常務理事'}], initial:'林' },
+  { name:'洪柏昱', company:'', terms:[{session:6,role:'理事'}], initial:'洪' },
+  { name:'蘇鵬',   company:'', terms:[{session:6,role:'理事'}], initial:'蘇' },
+  { name:'陳肇浩', company:'米屋智農', terms:[{session:6,role:'理事（候任理事長）'}], initial:'陳' },
+  { name:'蕭頡紋', company:'', terms:[{session:6,role:'理事'}], initial:'蕭' },
+  { name:'林岳毅', company:'', terms:[{session:6,role:'理事'}], initial:'林' },
+  { name:'許炳煌', company:'', terms:[{session:6,role:'理事'}], initial:'許' },
+  { name:'劉中庸', company:'', terms:[{session:6,role:'常務監事'}], initial:'劉' },
+  { name:'甘文聰', company:'', terms:[{session:6,role:'監事'}], initial:'甘' },
+  { name:'歐陵合', company:'', terms:[{session:6,role:'監事'}], initial:'歐' },
+  { name:'宋元博', company:'', terms:[{session:6,role:'候補理事'}], initial:'宋' },
+  { name:'李鎮崑', company:'', terms:[{session:6,role:'候補理事'}], initial:'李' },
+  { name:'許家銘', company:'', terms:[{session:6,role:'候補理事'}], initial:'許' },
+  { name:'陳彥傑', company:'', terms:[{session:6,role:'候補監事'}], initial:'陳' },
 ];
 
 const boardData = [
@@ -720,27 +738,42 @@ function loadMoreNews() {
 }
 
 // ── RENDER MEMBERS ──
+const SESSION_LABEL = { 1:'第一屆', 2:'第二屆', 3:'第三屆', 4:'第四屆', 5:'第五屆', 6:'第六屆' };
+const SESSION_CLASS = { 1:'t1', 2:'t2', 3:'t3', 4:'t4', 5:'t5', 6:'t6' };
+
+function renderTermTags(terms) {
+  return `<div class="term-tags">${
+    terms.map(t => `<span class="term-tag ${SESSION_CLASS[t.session]}">${SESSION_LABEL[t.session]} ${t.role}</span>`).join('')
+  }</div>`;
+}
+
 function renderMembers(data) {
-  document.getElementById('memberCount').textContent = `共 ${data.length} 位會員`;
-  document.getElementById('memberGrid').innerHTML = data.map(m => `
+  document.getElementById('memberCount').textContent = `共 ${data.length} 位`;
+  document.getElementById('memberGrid').innerHTML = data.map(m => {
+    const latestRole = m.terms[m.terms.length - 1].role;
+    return `
     <div class="member-card">
       <div class="member-avatar">${m.initial}</div>
       <div class="member-info">
         <div class="member-name">${m.name}</div>
-        <div class="member-title">${m.title}</div>
-        <div class="member-company">${m.company}</div>
-        <span class="member-industry">${m.industry}</span>
+        <div class="member-title">${latestRole}</div>
+        ${m.company ? `<div class="member-company">${m.company}</div>` : ''}
+        ${renderTermTags(m.terms)}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 renderMembers(memberData);
+
 function filterMembers() {
-  const q = document.getElementById('memberSearch').value.toLowerCase();
-  const ind = document.getElementById('industryFilter').value;
-  const filtered = memberData.filter(m =>
-    (!q || m.name.includes(q) || m.company.includes(q) || m.title.includes(q)) &&
-    (!ind || m.industry === ind)
-  );
+  const q = document.getElementById('memberSearch').value;
+  const sess = document.getElementById('industryFilter').value;
+  const filtered = memberData.filter(m => {
+    const matchQ = !q || m.name.includes(q) || m.company.includes(q) ||
+                   m.terms.some(t => t.role.includes(q));
+    const matchS = !sess || m.terms.some(t => String(t.session) === sess);
+    return matchQ && matchS;
+  });
   renderMembers(filtered);
 }
 
