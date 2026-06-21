@@ -269,6 +269,9 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="section-title">會員名冊管理</div>
     <span class="badge badge-warn">資料存於本機瀏覽器</span>
     <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="btn btn-outline btn-sm" id="sb-pull-btn" onclick="loadFromSupabase()">↓ 從雲端載入</button>
+      <button class="btn btn-outline btn-sm" id="sb-push-btn" onclick="syncToSupabase()">☁ 同步到雲端</button>
+      <span id="sb-status" style="font-size:11px;align-self:center;"></span>
       <button class="btn btn-outline btn-sm" onclick="exportMemberJSON()">匯出 JSON</button>
       <button class="btn btn-outline btn-sm" onclick="exportMemberCSV()">匯出 CSV</button>
       <button class="btn btn-gold btn-sm" onclick="openAddModal()">＋ 新增會員</button>
@@ -389,6 +392,54 @@ const guestData = [
   {name:'王仕賢技監',org:'蘭科主任',train:'x',meal:1,note:'',status:'pending'},
   {name:'陳尚仁組長',org:'蔬菜及種苗組',train:'x',meal:2,note:'',status:'pending'},
 ];
+
+// ── SUPABASE ─────────────────────────────────────────────
+const SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
+const SB_KEY = 'sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
+const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+
+async function syncToSupabase(){
+  const btn = document.getElementById('sb-push-btn');
+  btn.disabled = true; btn.textContent = '同步中…';
+  try {
+    const payload = memberDir.map(m=>({name:m.name, company:m.company||'', terms:m.terms}));
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members`, {
+      method:'POST',
+      headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates'},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error(await res.text());
+    setSbStatus('✓ 已同步到雲端','#66bb6a');
+  } catch(e) {
+    setSbStatus('同步失敗：'+e.message,'#ef5350');
+  }
+  btn.disabled = false; btn.textContent = '☁ 同步到雲端';
+}
+
+async function loadFromSupabase(){
+  const btn = document.getElementById('sb-pull-btn');
+  btn.disabled = true; btn.textContent = '載入中…';
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members?select=name,company,terms&order=created_at.asc`, {headers: SB_HEADERS});
+    if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    if(!data.length){ setSbStatus('雲端無資料','var(--gray)'); btn.disabled=false; btn.textContent='↓ 從雲端載入'; return; }
+    memberDir = data.map(r=>({name:r.name, company:r.company||'', terms:r.terms||[]}));
+    saveMemberDir(memberDir);
+    renderMemberDir();
+    setSbStatus(`✓ 已載入 ${data.length} 筆資料`,'#66bb6a');
+  } catch(e) {
+    setSbStatus('載入失敗：'+e.message,'#ef5350');
+  }
+  btn.disabled = false; btn.textContent = '↓ 從雲端載入';
+}
+
+function setSbStatus(msg, color){
+  const el = document.getElementById('sb-status');
+  if(!el) return;
+  el.textContent = msg; el.style.color = color;
+  setTimeout(()=>{ el.textContent=''; }, 5000);
+}
 
 // ── STATE ─────────────────────────────────────────────────
 let mFilter='', mStatus='';
