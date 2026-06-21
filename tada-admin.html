@@ -604,12 +604,10 @@ async function lookupCompany(){
   btn.textContent = '查詢中…';
   status.textContent = '';
   try {
-    const url = `https://data.gcis.nat.gov.tw/od/data/api/9D17AE0D-09B5-4732-A8F4-81AAAFB0CFDE?$filter=Business_Accounting_NO eq ${taxId}&$format=JSON&$skip=0&$top=1`;
-    const res = await fetch(url);
+    const res = await fetch(`https://company.g0v.ronny.tw/id/${taxId}`);
     const data = await res.json();
-    if(data && data.length > 0){
-      const name = data[0].Company_Name;
-      document.getElementById('m-company').value = name;
+    if(data && data.data && data.data['公司名稱']){
+      document.getElementById('m-company').value = data.data['公司名稱'];
       status.textContent = '✓ 已帶入';
       status.style.color = '#66bb6a';
     } else {
