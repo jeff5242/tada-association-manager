@@ -604,7 +604,8 @@ async function lookupCompany(){
   btn.textContent = '查詢中…';
   status.textContent = '';
   try {
-    const res = await fetch(`https://company.g0v.ronny.tw/id/${taxId}`);
+    const proxy = 'https://corsproxy.io/?';
+    const res = await fetch(`${proxy}https://company.g0v.ronny.tw/id/${taxId}`);
     const data = await res.json();
     if(data && data.data && data.data['公司名稱']){
       document.getElementById('m-company').value = data.data['公司名稱'];
