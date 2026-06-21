@@ -307,7 +307,14 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;">姓名
         <input id="m-name" class="search-input" style="width:100%;margin-top:4px;" type="text" placeholder="姓名">
       </label>
-      <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;">公司 / 單位
+      <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;">統一編號（選填，可自動帶入公司名稱）
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <input id="m-taxid" class="search-input" style="flex:0 0 130px;" type="text" maxlength="8" placeholder="8 碼統編" oninput="this.value=this.value.replace(/\D/g,'')">
+          <button class="btn btn-outline btn-sm" onclick="lookupCompany()" id="lookup-btn" style="flex-shrink:0;white-space:nowrap;">🔍 查詢公司</button>
+          <span id="lookup-status" style="font-size:11px;color:var(--gray);align-self:center;"></span>
+        </div>
+      </label>
+      <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;">公司 / 單位名稱
         <input id="m-company" class="search-input" style="width:100%;margin-top:4px;" type="text" placeholder="公司或單位名稱">
       </label>
       <div style="font-size:11px;color:var(--gray);letter-spacing:.1em;">參與屆次與職稱
@@ -535,6 +542,35 @@ function deleteMember(idx){
 
 function closeMemberModal(){
   document.getElementById('member-modal').style.display = 'none';
+}
+
+async function lookupCompany(){
+  const taxId = document.getElementById('m-taxid').value.trim();
+  if(taxId.length !== 8){ alert('請輸入 8 碼統一編號'); return; }
+  const btn = document.getElementById('lookup-btn');
+  const status = document.getElementById('lookup-status');
+  btn.disabled = true;
+  btn.textContent = '查詢中…';
+  status.textContent = '';
+  try {
+    const url = `https://data.gcis.nat.gov.tw/od/data/api/9D17AE0D-09B5-4732-A8F4-81AAAFB0CFDE?$filter=Business_Accounting_NO eq ${taxId}&$format=JSON&$skip=0&$top=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data && data.length > 0){
+      const name = data[0].Company_Name;
+      document.getElementById('m-company').value = name;
+      status.textContent = '✓ 已帶入';
+      status.style.color = '#66bb6a';
+    } else {
+      status.textContent = '查無此統編';
+      status.style.color = '#ef5350';
+    }
+  } catch(e) {
+    status.textContent = '查詢失敗，請手動輸入';
+    status.style.color = '#ef5350';
+  }
+  btn.disabled = false;
+  btn.textContent = '🔍 查詢公司';
 }
 
 function exportMemberJSON(){
