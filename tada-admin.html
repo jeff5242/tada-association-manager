@@ -145,6 +145,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="topbar-tabs">
     <button class="tab active" onclick="switchTab('invite')">邀請進度</button>
     <button class="tab" onclick="switchTab('dashboard')">統計總覽</button>
+    <button class="tab" onclick="switchTab('members')">會員名冊</button>
   </div>
   <div class="ai-pill"><div class="ai-dot"></div>AI Agent 協作中</div>
 </div>
@@ -262,6 +263,65 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ 會員名冊 ══════════ -->
+<div class="page" id="page-members">
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">會員名冊管理</div>
+    <span class="badge badge-warn">資料存於本機瀏覽器</span>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="exportMemberJSON()">匯出 JSON</button>
+      <button class="btn btn-outline btn-sm" onclick="exportMemberCSV()">匯出 CSV</button>
+      <button class="btn btn-gold btn-sm" onclick="openAddModal()">＋ 新增會員</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input class="search-input" type="text" placeholder="搜尋姓名、公司、職稱…" oninput="filterMemberDir(this.value)">
+    <select class="filter-select" onchange="filterMemberDirSession(this.value)">
+      <option value="">全部屆次</option>
+      <option value="6">第六屆</option>
+      <option value="5">第五屆</option>
+      <option value="4">第四屆</option>
+      <option value="3">第三屆</option>
+      <option value="2">第二屆</option>
+      <option value="1">第一屆</option>
+    </select>
+    <span style="font-size:11px;color:var(--gray);margin-left:auto;">共 <span id="dir-count">0</span> 位</span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>姓名</th><th>公司 / 單位</th><th>職稱（最新）</th><th>參與屆次</th><th>操作</th>
+      </tr></thead>
+      <tbody id="dir-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 編輯 Modal -->
+<div id="member-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:20px;" id="modal-title">編輯會員</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;">姓名
+        <input id="m-name" class="search-input" style="width:100%;margin-top:4px;" type="text" placeholder="姓名">
+      </label>
+      <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;">公司 / 單位
+        <input id="m-company" class="search-input" style="width:100%;margin-top:4px;" type="text" placeholder="公司或單位名稱">
+      </label>
+      <div style="font-size:11px;color:var(--gray);letter-spacing:.1em;">參與屆次與職稱
+        <div id="m-terms" style="margin-top:8px;display:flex;flex-direction:column;gap:8px;"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addTermRow()">＋ 新增屆次</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:24px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeMemberModal()">取消</button>
+      <button class="btn btn-gold" onclick="saveMember()">儲存</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── DATA ─────────────────────────────────────────────────
 
@@ -343,6 +403,159 @@ function switchTab(id){
   event.target.classList.add('active');
   document.getElementById('page-'+id).classList.add('active');
   if(id==='dashboard') renderDash();
+  if(id==='members') renderMemberDir();
+}
+
+// ── 會員名冊 ─────────────────────────────────────────────
+const SESSION_NAMES = {1:'第一屆',2:'第二屆',3:'第三屆',4:'第四屆',5:'第五屆',6:'第六屆'};
+
+const DEFAULT_MEMBER_DIR = [
+  {name:'胡炳輝',company:'',terms:[{session:5,role:'理事長'}]},
+  {name:'吳昆民',company:'',terms:[{session:5,role:'榮譽理事長'}]},
+  {name:'宋鴻琳',company:'',terms:[{session:5,role:'榮譽理事長'}]},
+  {name:'唐迎華',company:'',terms:[{session:5,role:'副理事長'}]},
+  {name:'陳耀松',company:'',terms:[{session:5,role:'副理事長'}]},
+  {name:'許德全',company:'',terms:[{session:5,role:'副理事長'}]},
+  {name:'林建智',company:'',terms:[{session:5,role:'常務理事'}]},
+  {name:'洪柏昱',company:'',terms:[{session:5,role:'理事'}]},
+  {name:'蘇鵬',  company:'',terms:[{session:5,role:'理事'}]},
+  {name:'陳肇浩',company:'米屋智農',terms:[{session:5,role:'理事'}]},
+  {name:'蕭頡紋',company:'',terms:[{session:5,role:'理事'}]},
+  {name:'林岳毅',company:'',terms:[{session:5,role:'理事'}]},
+  {name:'許炳煌',company:'',terms:[{session:5,role:'理事'}]},
+  {name:'劉中庸',company:'',terms:[{session:5,role:'常務監事'}]},
+  {name:'甘文聰',company:'',terms:[{session:5,role:'監事'}]},
+  {name:'歐陵合',company:'',terms:[{session:5,role:'監事'}]},
+  {name:'宋元博',company:'',terms:[{session:5,role:'候補理事'}]},
+  {name:'李鎮崑',company:'',terms:[{session:5,role:'候補理事'}]},
+  {name:'許家銘',company:'',terms:[{session:5,role:'候補理事'}]},
+  {name:'陳彥傑',company:'',terms:[{session:5,role:'候補監事'}]},
+];
+
+function loadMemberDir(){
+  const saved = localStorage.getItem('tada_member_dir');
+  return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_MEMBER_DIR));
+}
+function saveMemberDir(data){
+  localStorage.setItem('tada_member_dir', JSON.stringify(data));
+}
+
+let memberDir = loadMemberDir();
+let dirFilter = '', dirSession = '';
+let editingIdx = null;
+
+function renderMemberDir(){
+  const data = memberDir.filter(m=>{
+    const q = !dirFilter || m.name.includes(dirFilter) || m.company.includes(dirFilter) ||
+              m.terms.some(t=>t.role.includes(dirFilter));
+    const s = !dirSession || m.terms.some(t=>String(t.session)===dirSession);
+    return q&&s;
+  });
+  document.getElementById('dir-count').textContent = data.length;
+  document.getElementById('dir-tbody').innerHTML = data.map(m=>{
+    const idx = memberDir.indexOf(m);
+    const latestRole = m.terms.length ? m.terms[m.terms.length-1].role : '—';
+    const termBadges = m.terms.map(t=>
+      `<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(196,146,42,0.4);color:var(--gold);border-radius:99px;white-space:nowrap;">${SESSION_NAMES[t.session]} ${t.role}</span>`
+    ).join(' ');
+    return `<tr>
+      <td data-label="姓名" class="name-cell">${m.name}</td>
+      <td data-label="公司" class="org-cell">${m.company||'<span style="color:var(--gray);font-size:11px;">未填寫</span>'}</td>
+      <td data-label="職稱" style="font-size:12px;color:var(--gray);">${latestRole}</td>
+      <td data-label="屆次" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;">${termBadges}</td>
+      <td data-label="操作"><button class="btn btn-outline btn-sm" onclick="openEditModal(${idx})">編輯</button>
+      <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);margin-left:4px;" onclick="deleteMember(${idx})">刪除</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterMemberDir(q){ dirFilter=q; renderMemberDir(); }
+function filterMemberDirSession(s){ dirSession=s; renderMemberDir(); }
+
+function openAddModal(){
+  editingIdx = null;
+  document.getElementById('modal-title').textContent = '新增會員';
+  document.getElementById('m-name').value = '';
+  document.getElementById('m-company').value = '';
+  document.getElementById('m-terms').innerHTML = '';
+  addTermRow();
+  document.getElementById('member-modal').style.display = 'flex';
+}
+
+function openEditModal(idx){
+  editingIdx = idx;
+  const m = memberDir[idx];
+  document.getElementById('modal-title').textContent = '編輯會員：' + m.name;
+  document.getElementById('m-name').value = m.name;
+  document.getElementById('m-company').value = m.company||'';
+  document.getElementById('m-terms').innerHTML = '';
+  m.terms.forEach(t=>addTermRow(t.session, t.role));
+  document.getElementById('member-modal').style.display = 'flex';
+}
+
+function addTermRow(session='', role=''){
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;';
+  row.innerHTML = `
+    <select class="filter-select" style="flex:0 0 100px;">
+      ${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${String(n)===String(session)?'selected':''}>${SESSION_NAMES[n]}</option>`).join('')}
+    </select>
+    <input class="search-input" type="text" placeholder="職稱（如：理事）" value="${role}" style="flex:1;">
+    <button class="btn btn-sm btn-outline" onclick="this.parentElement.remove()" style="flex-shrink:0;">✕</button>`;
+  document.getElementById('m-terms').appendChild(row);
+}
+
+function saveMember(){
+  const name = document.getElementById('m-name').value.trim();
+  if(!name){ alert('請填寫姓名'); return; }
+  const company = document.getElementById('m-company').value.trim();
+  const termRows = document.getElementById('m-terms').querySelectorAll('div');
+  const terms = Array.from(termRows).map(row=>{
+    const sel = row.querySelector('select');
+    const inp = row.querySelector('input');
+    return {session: Number(sel.value), role: inp.value.trim()};
+  }).filter(t=>t.role);
+  const member = {name, company, terms};
+  if(editingIdx !== null){
+    memberDir[editingIdx] = member;
+  } else {
+    memberDir.push(member);
+  }
+  saveMemberDir(memberDir);
+  closeMemberModal();
+  renderMemberDir();
+}
+
+function deleteMember(idx){
+  if(!confirm(`確定刪除「${memberDir[idx].name}」？`)) return;
+  memberDir.splice(idx,1);
+  saveMemberDir(memberDir);
+  renderMemberDir();
+}
+
+function closeMemberModal(){
+  document.getElementById('member-modal').style.display = 'none';
+}
+
+function exportMemberJSON(){
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(memberDir, null, 2));
+  a.download = 'TADA_會員名冊_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function exportMemberCSV(){
+  const rows = [['姓名','公司','最新職稱','屆次紀錄']];
+  memberDir.forEach(m=>{
+    const latestRole = m.terms.length ? m.terms[m.terms.length-1].role : '';
+    const termsStr = m.terms.map(t=>`${SESSION_NAMES[t.session]}${t.role}`).join('；');
+    rows.push([m.name, m.company, latestRole, termsStr]);
+  });
+  const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,﻿' + encodeURIComponent(csv);
+  a.download = 'TADA_會員名冊_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
 }
 
 function switchSubTab(id){
