@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const res = await fetch(`https://company.g0v.ronny.tw/id/${taxId}`);
+  const res = await fetch(`https://company.g0v.ronny.tw/api/show/${taxId}`);
   const data = await res.json();
 
   return new Response(JSON.stringify(data), {
