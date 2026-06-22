@@ -621,8 +621,9 @@ async function lookupCompany(){
   btn.textContent = '查詢中…';
   status.textContent = '';
   try {
-    const proxy = 'https://corsproxy.io/?';
-    const res = await fetch(`${proxy}https://company.g0v.ronny.tw/id/${taxId}`);
+    const res = await fetch(`${SB_URL}/functions/v1/company-lookup?id=${taxId}`, {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+    });
     const data = await res.json();
     if(data && data.data && data.data['公司名稱']){
       document.getElementById('m-company').value = data.data['公司名稱'];
