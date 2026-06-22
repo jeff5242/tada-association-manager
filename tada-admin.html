@@ -140,6 +140,23 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 </head>
 <body>
 
+<!-- ══════════ 密碼牆 ══════════ -->
+<div id="auth-wall" style="display:none;position:fixed;inset:0;background:#0d1a0f;z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="width:100%;max-width:360px;padding:40px 32px;background:#16221a;border:1px solid #27382b;text-align:center;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:20px;font-weight:600;color:#e8c97a;margin-bottom:6px;">TADA 會務後台</div>
+    <div style="font-size:11px;color:#6b8f73;letter-spacing:.15em;margin-bottom:28px;">請輸入存取密碼</div>
+    <input id="pw-input" type="password" placeholder="密碼" autocomplete="current-password"
+      style="width:100%;padding:10px 14px;background:#0d1a0f;border:1px solid #27382b;color:#fff;font-size:14px;outline:none;margin-bottom:10px;"
+      onkeydown="if(event.key==='Enter')checkPw()">
+    <div id="pw-error" style="font-size:11px;color:#ef5350;min-height:16px;margin-bottom:10px;"></div>
+    <button onclick="checkPw()"
+      style="width:100%;padding:11px;background:#c4922a;border:none;color:#0d1a0f;font-family:'Noto Serif TC',serif;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.08em;">
+      進入後台
+    </button>
+  </div>
+</div>
+
+<div id="main-app" style="display:none;">
 <div class="topbar">
   <div class="topbar-logo">TADA 會務後台<span>邀請進度管理系統</span></div>
   <div class="topbar-tabs">
@@ -768,6 +785,45 @@ function exportCSV(){
 renderMembers();
 renderGuests();
 updateStats();
+</script>
+
+</div><!-- /#main-app -->
+
+<script>
+// ── 密碼牆 ────────────────────────────────────────────────
+const ADMIN_PW_HASH = '1d7b558460498a3e31f06c5a69c1f9d73cf5d60c7f4f04e9b0430dbfad77bb91'; // tada2026
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPw(){
+  const val = document.getElementById('pw-input').value;
+  const hash = await sha256(val);
+  if(hash === ADMIN_PW_HASH){
+    sessionStorage.setItem('tada_admin_auth','1');
+    showApp();
+  } else {
+    document.getElementById('pw-error').textContent = '密碼錯誤，請重試';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+
+function showApp(){
+  document.getElementById('auth-wall').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+}
+
+(function init(){
+  if(sessionStorage.getItem('tada_admin_auth') === '1'){
+    showApp();
+  } else {
+    document.getElementById('auth-wall').style.display = 'flex';
+    setTimeout(()=>document.getElementById('pw-input').focus(), 100);
+  }
+})();
 </script>
 </body>
 </html>
