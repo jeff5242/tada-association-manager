@@ -604,6 +604,14 @@ footer {
     <h2 class="section-title">近期活動</h2>
     <p class="section-sub">改選大會、論壇、會員交流、AI工作坊，一覽無遺。</p>
     <div class="events-list">
+      <a class="event-row" href="https://www.foodtaipei.com.tw/zh-tw/index.html" target="_blank" rel="noopener" style="text-decoration:none;">
+        <div class="event-date-block"><div class="event-month">JUN</div><div class="event-day">24</div></div>
+        <div class="event-body">
+          <div class="event-title-text">2026 台北國際食品展｜科技食代聯合館</div>
+          <div class="event-meta-row"><span>📍 台北南港展覽館</span><span>🗓 6/24（二）– 6/27（五）</span><span>👥 TADA 會員企業聯合參展</span></div>
+        </div>
+        <div class="event-badge"><span class="event-status open">進行中 ↗</span></div>
+      </a>
       <div class="event-row">
         <div class="event-date-block"><div class="event-month">SEP</div><div class="event-day">04</div></div>
         <div class="event-body">
@@ -662,7 +670,7 @@ footer {
 <script>
 // ── DEMO DATA ──────────────────────────────────────────
 const newsData = [
-  { date:'2026-06-24', title:'TADA 組團參展 2026 台北國際食品展　科技食代聯合館亮相', excerpt:'協會以「科技食代 Tech Food Era」為主題，攜手中央畜產、財團法人台灣香蕉研究所、法布甜、藝隆農產、保證責任屏東縣蔬果生產合作社、集元果食品、玉之果企業社、弘運吉食等會員企業聯合參展，設立「台灣香蕉主題館」，展示從科技育種、品牌加工到行銷通路的完整產業鏈。', category:'活動資訊', color:'gold' },
+  { date:'2026-06-24', title:'TADA 組團參展 2026 台北國際食品展　科技食代聯合館亮相', excerpt:'協會以「科技食代 Tech Food Era」為主題，攜手中央畜產、財團法人台灣香蕉研究所、法布甜、藝隆農產、保證責任屏東縣蔬果生產合作社、集元果食品、玉之果企業社、弘運吉食等會員企業聯合參展，設立「台灣香蕉主題館」，展示從科技育種、品牌加工到行銷通路的完整產業鏈。展期 6/24–6/27，歡迎蒞臨參觀。', category:'活動資訊', color:'gold', link:'https://www.foodtaipei.com.tw/zh-tw/index.html' },
   { date:'2026-06-01', title:'協會下屆會長改選公告', excerpt:'依協會章程規定，本屆理監事任期屆滿，訂於近期召開改選大會，歡迎全體會員踴躍出席。', category:'公告', color:'gold' },
   { date:'2026-05-20', title:'AI農業應用研討會圓滿落幕', excerpt:'本次研討會吸引逾百位會員及農業業者參與，現場展示多項AI辨識與智慧農業解決方案，獲得熱烈迴響。', category:'活動紀錄', color:'moss' },
   { date:'2026-05-08', title:'農委會新一波智農補助開放申請', excerpt:'農委會公告2026年智慧農業補助方案，最高補助比例達60%，協會協助會員申請諮詢。', category:'政策資訊', color:'sage' },
@@ -719,8 +727,11 @@ const boardData = [
 // ── RENDER NEWS ──
 function renderNews(data) {
   const grid = document.getElementById('newsGrid');
-  grid.innerHTML = data.map(n => `
-    <div class="news-card">
+  grid.innerHTML = data.map(n => {
+    const wrap = n.link ? `href="${n.link}" target="_blank" rel="noopener"` : '';
+    const tag = n.link ? 'a' : 'div';
+    return `
+    <${tag} class="news-card" ${wrap} style="${n.link ? 'text-decoration:none;' : ''}">
       <div class="news-tag-bar ${n.color}"></div>
       <div class="news-body">
         <div class="news-meta">${n.date}</div>
@@ -729,9 +740,10 @@ function renderNews(data) {
       </div>
       <div class="news-footer">
         <span class="news-category">${n.category}</span>
-        <span class="news-arrow">→</span>
+        <span class="news-arrow">${n.link ? '↗' : '→'}</span>
       </div>
-    </div>`).join('');
+    </${tag}>`;
+  }).join('');
 }
 renderNews(newsData.slice(0,3));
 let newsShown = 3;
