@@ -177,11 +177,28 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
     </div>
 
     <div class="rsvp-row">
-      <div class="qr-box">📱</div>
+      <div class="qr-box" style="position:relative;overflow:hidden;">
+        <!-- LINE QR Code 待填入 -->
+        <svg width="44" height="44" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="2" width="16" height="16" rx="2" fill="none" stroke="#b8913a" stroke-width="1.5"/>
+          <rect x="6" y="6" width="8" height="8" rx="1" fill="#b8913a"/>
+          <rect x="26" y="2" width="16" height="16" rx="2" fill="none" stroke="#b8913a" stroke-width="1.5"/>
+          <rect x="30" y="6" width="8" height="8" rx="1" fill="#b8913a"/>
+          <rect x="2" y="26" width="16" height="16" rx="2" fill="none" stroke="#b8913a" stroke-width="1.5"/>
+          <rect x="6" y="30" width="8" height="8" rx="1" fill="#b8913a"/>
+          <rect x="26" y="22" width="4" height="4" fill="#b8913a" opacity="0.5"/>
+          <rect x="32" y="22" width="4" height="4" fill="#b8913a" opacity="0.5"/>
+          <rect x="38" y="22" width="4" height="4" fill="#b8913a" opacity="0.5"/>
+          <rect x="26" y="28" width="4" height="4" fill="#b8913a" opacity="0.5"/>
+          <rect x="32" y="34" width="4" height="4" fill="#b8913a" opacity="0.5"/>
+          <rect x="38" y="28" width="4" height="4" fill="#b8913a" opacity="0.5"/>
+          <rect x="38" y="38" width="4" height="4" fill="#b8913a" opacity="0.5"/>
+        </svg>
+      </div>
       <div>
-        <div class="rsvp-label">RSVP 敬請回覆</div>
-        <div class="rsvp-desc">掃描 QR Code 線上回覆出席<br>或聯繫協會秘書處確認名額</div>
-        <div class="rsvp-contact">回覆截止日：活動前 7 天　｜　名額有限，敬請把握</div>
+        <div class="rsvp-label">加入 LINE 官方帳號 · RSVP 回覆</div>
+        <div class="rsvp-desc">掃描 QR Code 加入 TADA 官方 LINE<br>回覆出席或聯繫協會秘書處確認名額</div>
+        <div class="rsvp-contact" style="color:rgba(184,145,58,0.6);font-style:italic;">LINE 帳號開通後更新　｜　回覆截止日：活動前 7 天</div>
       </div>
     </div>
 
