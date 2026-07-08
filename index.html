@@ -72,6 +72,20 @@ nav {
   border-radius: 4px;
 }
 .nav-cta:hover { background: var(--gold-lt) !important; }
+.nav-admin {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-left: 14px;
+  color: rgba(255,255,255,0.4);
+  text-decoration: none;
+  font-size: 12px; font-weight: 400;
+  padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  letter-spacing: 0.08em;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.nav-admin:hover { color: var(--gold-lt); border-color: rgba(196,146,42,0.5); background: rgba(196,146,42,0.08); }
 .nav-hamburger { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
 .nav-hamburger span { display: block; width: 22px; height: 2px; background: white; margin: 4px 0; transition: all .3s; }
 
@@ -407,7 +421,9 @@ footer {
 @media (max-width: 768px) {
   nav { padding: 0 16px; }
   .nav-links { display: none; }
-  .nav-hamburger { display: block; margin-left: auto; }
+  .nav-admin { margin-left: auto; font-size: 0; gap: 0; padding: 6px 9px; }
+  .nav-admin::before { content: '⚙'; font-size: 15px; }
+  .nav-hamburger { display: block; margin-left: 8px; }
   .nav-links.open { display: flex; flex-direction: column; position: absolute; top: var(--nav-h); left: 0; right: 0; background: var(--ink); padding: 16px; gap: 4px; }
   section { padding: 56px 20px; }
   .ai-wrap { grid-template-columns: 1fr; }
@@ -435,6 +451,7 @@ footer {
     <a href="#about">關於協會</a>
     <a href="#ai" class="nav-cta btn">問 AI 助理</a>
   </div>
+  <a href="../tada-admin.html" class="nav-admin" title="會務人員專用">⚙ 會務後台</a>
   <button class="nav-hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')">
     <span></span><span></span><span></span>
   </button>
