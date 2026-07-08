@@ -303,32 +303,12 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
       <div class="field"><label>業務項目 <span class="req">*</span></label><textarea name="business_scope" required placeholder="請簡述主要業務範圍"></textarea></div>
     </div>
     <div class="form-section">
-      <div class="form-section-title">會員代表資料</div>
-      <div class="field-row">
-        <div class="field"><label>代表姓名 <span class="req">*</span></label><input type="text" name="rep_name" required placeholder="姓名"></div>
-        <div class="field"><label>性別</label>
-          <div class="radio-group">
-            <label><input type="radio" name="rep_gender" value="男"> 男</label>
-            <label><input type="radio" name="rep_gender" value="女"> 女</label>
-          </div>
-        </div>
+      <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>會員代表資料 <span style="font-size:9px;color:var(--gray);font-weight:400;">（最多 3 位）</span></span>
+        <button type="button" id="add-rep-btn" onclick="addRepBlock()"
+          style="font-size:11px;padding:4px 12px;border:1px solid var(--border);background:white;color:var(--moss);cursor:pointer;letter-spacing:.05em;font-family:'Noto Sans TC',sans-serif;">＋ 新增代表</button>
       </div>
-      <div class="field-row">
-        <div class="field"><label>出生日期</label><input type="date" name="rep_birthday"></div>
-        <div class="field"><label>出生地</label><input type="text" name="rep_birthplace" placeholder="例：台中市"></div>
-      </div>
-      <div class="field"><label>學歷</label>
-        <select name="rep_education">
-          <option value="">請選擇</option>
-          <option>國中（含以下）</option><option>高中／高職</option><option>專科</option>
-          <option>大學</option><option>碩士</option><option>博士</option>
-        </select>
-      </div>
-      <div class="field"><label>經歷</label><textarea name="rep_experience" placeholder="代表的工作經歷"></textarea></div>
-      <div class="field-row">
-        <div class="field"><label>E-mail <span class="req">*</span></label><input type="email" name="rep_email" required placeholder="代表 Email"></div>
-        <div class="field"><label>聯絡電話 <span class="req">*</span></label><input type="tel" name="rep_tel" required placeholder="09XX-XXX-XXX"></div>
-      </div>
+      <div id="reps-container"></div>
     </div>
     <div class="form-section">
       <div class="form-section-title">本案聯絡人（如與代表不同）</div>
@@ -458,6 +438,98 @@ async function runOCR() {
   btn.textContent = '🤖 AI 辨識名片';
 }
 
+// ── 動態代表人區塊 ──────────────────────────────────────────
+const EDU_OPTIONS = ['國中（含以下）','高中／高職','專科','大學','碩士','博士'];
+const REP_PREFIXES = ['rep','rep2','rep3'];
+let repCount = 0;
+
+function repFieldId(idx, field) {
+  return `g-${REP_PREFIXES[idx]}-${field}`;
+}
+
+function buildRepBlock(idx) {
+  const isFirst = idx === 0;
+  const label = `代表人 ${idx + 1}${isFirst ? '（主要）' : ''}`;
+  const req = isFirst ? '<span class="req">*</span>' : '';
+  const reqAttr = isFirst ? 'required' : '';
+  const eduOpts = EDU_OPTIONS.map(o => `<option>${o}</option>`).join('');
+  return `
+    <div class="rep-block" id="rep-block-${idx}" style="border:1px solid var(--border);padding:14px 14px 10px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:11px;font-weight:600;color:var(--fern);">${label}</span>
+        ${!isFirst ? `<button type="button" onclick="removeRepBlock(${idx})" style="font-size:11px;color:var(--red);border:none;background:none;cursor:pointer;padding:0;">✕ 移除</button>` : ''}
+      </div>
+      <div class="field-row">
+        <div class="field"><label>姓名 ${req}</label>
+          <input type="text" id="${repFieldId(idx,'name')}" ${reqAttr} placeholder="姓名">
+        </div>
+        <div class="field"><label>性別</label>
+          <div class="radio-group">
+            <label><input type="radio" name="${repFieldId(idx,'gender')}" value="男"> 男</label>
+            <label><input type="radio" name="${repFieldId(idx,'gender')}" value="女"> 女</label>
+          </div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>出生日期</label><input type="date" id="${repFieldId(idx,'birthday')}"></div>
+        <div class="field"><label>出生地</label><input type="text" id="${repFieldId(idx,'birthplace')}" placeholder="例：台中市"></div>
+      </div>
+      <div class="field"><label>學歷</label>
+        <select id="${repFieldId(idx,'education')}">
+          <option value="">請選擇</option>${eduOpts}
+        </select>
+      </div>
+      <div class="field"><label>經歷</label>
+        <textarea id="${repFieldId(idx,'experience')}" placeholder="工作經歷"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>E-mail ${req}</label>
+          <input type="email" id="${repFieldId(idx,'email')}" ${reqAttr} placeholder="Email">
+        </div>
+        <div class="field"><label>聯絡電話 ${req}</label>
+          <input type="tel" id="${repFieldId(idx,'tel')}" ${reqAttr} placeholder="09XX-XXX-XXX">
+        </div>
+      </div>
+    </div>`;
+}
+
+function addRepBlock() {
+  if (repCount >= 3) return;
+  document.getElementById('reps-container').insertAdjacentHTML('beforeend', buildRepBlock(repCount));
+  repCount++;
+  document.getElementById('add-rep-btn').style.display = repCount >= 3 ? 'none' : '';
+}
+
+function removeRepBlock(idx) {
+  const block = document.getElementById(`rep-block-${idx}`);
+  if (block) block.remove();
+  repCount--;
+  document.getElementById('add-rep-btn').style.display = repCount >= 3 ? 'none' : '';
+}
+
+function collectRepData() {
+  const data = {};
+  for (let i = 0; i < repCount; i++) {
+    const block = document.getElementById(`rep-block-${i}`);
+    if (!block) continue;
+    const prefix = REP_PREFIXES[i];
+    const val = (f) => (document.getElementById(repFieldId(i, f)) || {}).value || '';
+    const genderRadio = block.querySelector(`input[name="${repFieldId(i,'gender')}"]:checked`);
+    if (val('name')) data[`${prefix}_name`] = val('name');
+    if (genderRadio)  data[`${prefix}_gender`] = genderRadio.value;
+    if (val('birthday')) data[`${prefix}_birthday`] = val('birthday');
+    if (val('birthplace')) data[`${prefix}_birthplace`] = val('birthplace');
+    if (val('education')) data[`${prefix}_education`] = val('education');
+    if (val('experience')) data[`${prefix}_experience`] = val('experience');
+    if (val('email')) data[`${prefix}_email`] = val('email');
+    if (val('tel')) data[`${prefix}_tel`] = val('tel');
+  }
+  return data;
+}
+
+// Initialize first rep block
+addRepBlock();
+
 // ── 送出：新申請 ────────────────────────────────────────────
 async function submitForm(e, type) {
   e.preventDefault();
@@ -469,6 +541,10 @@ async function submitForm(e, type) {
   const fd = new FormData(form);
   const payload = { type, is_renewal: false };
   for (const [k, v] of fd.entries()) if (v) payload[k] = v;
+
+  if (type === 'group') {
+    Object.assign(payload, collectRepData());
+  }
 
   try {
     const res = await fetch(`${SB_URL}/rest/v1/tada_applications`, {

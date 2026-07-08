@@ -924,6 +924,9 @@ function renderApps() {
 
   document.getElementById('app-tbody').innerHTML = data.map(a => {
     const name = a.name || a.org_name || '（未填）';
+    const repNames = [a.rep_name, a.rep2_name, a.rep3_name].filter(Boolean);
+    const repTag = (a.type === 'group' && repNames.length)
+      ? `<br><span style="font-size:10px;color:var(--gray);">代表：${repNames.join('、')}</span>` : '';
     const contact = a.email || a.rep_email || a.tel_mobile || a.rep_tel || '–';
     const typeTag = a.type === 'personal'
       ? '<span style="font-size:10px;padding:2px 7px;border:1px solid rgba(122,171,135,0.4);color:var(--green-lt);border-radius:2px;">個人</span>'
@@ -936,7 +939,7 @@ function renderApps() {
     return `<tr>
       <td data-label="申請時間" style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td>
       <td data-label="類型">${typeTag}${renewTag}</td>
-      <td data-label="姓名" class="name-cell">${name}<br><span style="font-size:11px;color:var(--gray);font-weight:400;">${a.job||a.ceo_name||''}</span></td>
+      <td data-label="姓名" class="name-cell">${name}<br><span style="font-size:11px;color:var(--gray);font-weight:400;">${a.job||a.ceo_name||''}</span>${repTag}</td>
       <td data-label="聯絡" style="font-size:12px;">${contact}</td>
       <td data-label="狀態">${APP_STATUS_HTML[a.status] || a.status}</td>
       <td data-label="備注" style="font-size:11px;color:var(--gray);max-width:140px;">${a.admin_notes||'–'}</td>
