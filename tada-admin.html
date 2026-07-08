@@ -163,6 +163,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <button class="tab active" onclick="switchTab('invite')">邀請進度</button>
     <button class="tab" onclick="switchTab('dashboard')">統計總覽</button>
     <button class="tab" onclick="switchTab('members')">會員名冊</button>
+    <button class="tab" onclick="switchTab('applications')">入會審核</button>
   </div>
   <div class="ai-pill"><div class="ai-dot"></div>AI Agent 協作中</div>
 </div>
@@ -336,6 +337,63 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ 入會審核 ══════════ -->
+<div class="page" id="page-applications">
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">入會申請審核</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="loadApplications()">↻ 重新載入</button>
+      <span id="app-sb-status" style="font-size:11px;"></span>
+    </div>
+  </div>
+
+  <!-- 統計列 -->
+  <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+    <div class="stat-card"><div class="stat-label">待審核</div><div class="stat-num" style="color:var(--gold);" id="app-cnt-pending">–</div></div>
+    <div class="stat-card"><div class="stat-label">已確認付款</div><div class="stat-num" style="color:#29b6f6;" id="app-cnt-paid">–</div></div>
+    <div class="stat-card"><div class="stat-label">已核准</div><div class="stat-num" style="color:#66bb6a;" id="app-cnt-approved">–</div></div>
+    <div class="stat-card"><div class="stat-label">婉拒</div><div class="stat-num" style="color:#ef5350;" id="app-cnt-rejected">–</div></div>
+  </div>
+
+  <div class="toolbar">
+    <input class="search-input" type="text" placeholder="搜尋姓名、Email、公司…" oninput="filterApps(this.value)">
+    <select class="filter-select" onchange="filterAppStatus(this.value)">
+      <option value="">全部狀態</option>
+      <option value="pending">待審核</option>
+      <option value="payment_confirmed">已確認付款</option>
+      <option value="approved">已核准</option>
+      <option value="rejected">婉拒</option>
+    </select>
+    <select class="filter-select" onchange="filterAppType(this.value)">
+      <option value="">全部類型</option>
+      <option value="personal">個人</option>
+      <option value="group">團體</option>
+    </select>
+    <span style="font-size:11px;color:var(--gray);margin-left:auto;">共 <span id="app-count">0</span> 筆</span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>申請時間</th><th>類型</th><th>姓名／機構</th><th>聯絡方式</th><th>狀態</th><th>備註</th><th>操作</th>
+      </tr></thead>
+      <tbody id="app-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取申請資料</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 審核備注 Modal -->
+<div id="app-notes-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:440px;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;color:var(--white);margin-bottom:16px;" id="app-modal-title">審核備注</div>
+    <textarea id="app-notes-input" style="width:100%;min-height:80px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px;font-family:'Noto Sans TC',sans-serif;font-size:13px;resize:vertical;outline:none;" placeholder="備注（選填）"></textarea>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeAppModal()">取消</button>
+      <button class="btn btn-gold" id="app-modal-confirm-btn">確認</button>
+    </div>
+  </div>
+</div>
+
 <!-- 編輯 Modal -->
 <div id="member-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
@@ -496,6 +554,7 @@ function switchTab(id){
   document.getElementById('page-'+id).classList.add('active');
   if(id==='dashboard') renderDash();
   if(id==='members') renderMemberDir();
+  if(id==='applications') loadApplications();
 }
 
 // ── 會員名冊 ─────────────────────────────────────────────
@@ -803,6 +862,154 @@ function exportCSV(){
 renderMembers();
 renderGuests();
 updateStats();
+
+// ── 入會審核 ──────────────────────────────────────────────
+let allApps = [];
+let appFilter = '', appStatusFilter = '', appTypeFilter = '';
+let pendingAction = null; // { id, action }
+
+const APP_STATUS_HTML = {
+  pending:           '<span class="status" style="background:rgba(196,146,42,0.15);color:var(--gold);">待審核</span>',
+  payment_confirmed: '<span class="status" style="background:rgba(41,182,246,0.15);color:#29b6f6;">已確認付款</span>',
+  approved:          '<span class="status" style="background:rgba(46,125,50,0.2);color:#66bb6a;">✓ 已核准</span>',
+  rejected:          '<span class="status" style="background:rgba(192,57,43,0.15);color:#ef5350;">婉拒</span>',
+};
+
+async function loadApplications() {
+  const btn = document.querySelector('[onclick="loadApplications()"]');
+  const status = document.getElementById('app-sb-status');
+  if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
+  status.textContent = '';
+  try {
+    const res = await fetch(
+      `${SB_URL}/rest/v1/tada_applications?order=created_at.desc`,
+      { headers: SB_HEADERS }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    allApps = await res.json();
+    renderApps();
+    status.style.color = '#66bb6a';
+    status.textContent = `✓ 已載入 ${allApps.length} 筆`;
+  } catch (e) {
+    status.style.color = '#ef5350';
+    status.textContent = '載入失敗：' + e.message;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '↻ 重新載入'; }
+}
+
+function filterApps(q) { appFilter = q; renderApps(); }
+function filterAppStatus(s) { appStatusFilter = s; renderApps(); }
+function filterAppType(t) { appTypeFilter = t; renderApps(); }
+
+function renderApps() {
+  const data = allApps.filter(a => {
+    const name = a.name || a.org_name || '';
+    const email = a.email || a.rep_email || '';
+    const q = !appFilter || name.includes(appFilter) || email.includes(appFilter) || (a.job||'').includes(appFilter);
+    const s = !appStatusFilter || a.status === appStatusFilter;
+    const t = !appTypeFilter || a.type === appTypeFilter;
+    return q && s && t;
+  });
+
+  document.getElementById('app-count').textContent = data.length;
+  document.getElementById('app-cnt-pending').textContent   = allApps.filter(a => a.status === 'pending').length;
+  document.getElementById('app-cnt-paid').textContent      = allApps.filter(a => a.status === 'payment_confirmed').length;
+  document.getElementById('app-cnt-approved').textContent  = allApps.filter(a => a.status === 'approved').length;
+  document.getElementById('app-cnt-rejected').textContent  = allApps.filter(a => a.status === 'rejected').length;
+
+  if (!data.length) {
+    document.getElementById('app-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">無符合條件的申請</td></tr>';
+    return;
+  }
+
+  document.getElementById('app-tbody').innerHTML = data.map(a => {
+    const name = a.name || a.org_name || '（未填）';
+    const contact = a.email || a.rep_email || a.tel_mobile || a.rep_tel || '–';
+    const typeTag = a.type === 'personal'
+      ? '<span style="font-size:10px;padding:2px 7px;border:1px solid rgba(122,171,135,0.4);color:var(--green-lt);border-radius:2px;">個人</span>'
+      : '<span style="font-size:10px;padding:2px 7px;border:1px solid rgba(196,146,42,0.4);color:var(--gold);border-radius:2px;">團體</span>';
+    const renewTag = a.is_renewal
+      ? '<span style="font-size:10px;padding:2px 6px;background:rgba(41,182,246,0.1);color:#29b6f6;margin-left:4px;">續約</span>' : '';
+    const dt = a.created_at ? new Date(a.created_at).toLocaleDateString('zh-TW', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '–';
+
+    const actions = buildActionButtons(a);
+    return `<tr>
+      <td data-label="申請時間" style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td>
+      <td data-label="類型">${typeTag}${renewTag}</td>
+      <td data-label="姓名" class="name-cell">${name}<br><span style="font-size:11px;color:var(--gray);font-weight:400;">${a.job||a.ceo_name||''}</span></td>
+      <td data-label="聯絡" style="font-size:12px;">${contact}</td>
+      <td data-label="狀態">${APP_STATUS_HTML[a.status] || a.status}</td>
+      <td data-label="備注" style="font-size:11px;color:var(--gray);max-width:140px;">${a.admin_notes||'–'}</td>
+      <td data-label="操作" style="white-space:nowrap;">${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function buildActionButtons(a) {
+  const id = a.id;
+  const btns = [];
+  if (a.status === 'pending') {
+    btns.push(`<button class="btn btn-sm" style="background:rgba(41,182,246,0.15);color:#29b6f6;border:1px solid rgba(41,182,246,0.3);" onclick="openAppModal('${id}','payment_confirmed')">確認付款</button>`);
+    btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="openAppModal('${id}','rejected')">婉拒</button>`);
+  } else if (a.status === 'payment_confirmed') {
+    btns.push(`<button class="btn btn-sm" style="background:rgba(46,125,50,0.2);color:#66bb6a;border:1px solid rgba(46,125,50,0.3);" onclick="openAppModal('${id}','approved')">同意入會</button>`);
+    btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="openAppModal('${id}','rejected')">婉拒</button>`);
+  } else if (a.status === 'approved') {
+    btns.push(`<span style="font-size:11px;color:var(--gray);">已完成</span>`);
+  } else if (a.status === 'rejected') {
+    btns.push(`<button class="btn btn-sm btn-outline" onclick="openAppModal('${id}','pending')">重置待審</button>`);
+  }
+  return btns.join('');
+}
+
+function openAppModal(id, action) {
+  pendingAction = { id, action };
+  const labels = {
+    payment_confirmed: '確認付款',
+    approved: '同意入會',
+    rejected: '婉拒申請',
+    pending: '重置為待審核',
+  };
+  document.getElementById('app-modal-title').textContent = labels[action] || action;
+  document.getElementById('app-notes-input').value = '';
+  const confirmBtn = document.getElementById('app-modal-confirm-btn');
+  confirmBtn.onclick = executeAppAction;
+  document.getElementById('app-notes-modal').style.display = 'flex';
+  document.getElementById('app-notes-input').focus();
+}
+
+function closeAppModal() {
+  document.getElementById('app-notes-modal').style.display = 'none';
+  pendingAction = null;
+}
+
+async function executeAppAction() {
+  if (!pendingAction) return;
+  const { id, action } = pendingAction;
+  const notes = document.getElementById('app-notes-input').value.trim();
+  const btn = document.getElementById('app-modal-confirm-btn');
+  btn.disabled = true; btn.textContent = '處理中…';
+
+  const now = new Date().toISOString();
+  const payload = { status: action, admin_notes: notes || null };
+  if (action === 'payment_confirmed') payload.payment_confirmed_at = now;
+  if (action === 'approved')          payload.approved_at = now;
+  if (action === 'rejected')          payload.rejected_at = now;
+
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_applications?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    closeAppModal();
+    await loadApplications();
+  } catch (e) {
+    alert('操作失敗：' + e.message);
+  }
+  btn.disabled = false; btn.textContent = '確認';
+}
 </script>
 
 </div><!-- /#main-app -->

@@ -13,77 +13,97 @@
   --gray:#6b8272;--border:#dde8e0;--ink:#1a2e1e;--red:#c0392b;
 }
 body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--ink);line-height:1.8;min-height:100vh;}
-
-/* topbar */
 .topbar{background:var(--forest);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
 .topbar-back{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.7);text-decoration:none;font-size:13px;letter-spacing:.05em;}
 .topbar-back:hover{color:var(--gold-lt);}
 .topbar-title{font-family:'Noto Serif TC',serif;font-size:13px;color:rgba(255,255,255,0.5);letter-spacing:.1em;}
-
-/* hero */
-.hero{background:var(--forest);padding:40px 24px 32px;text-align:center;}
+.hero{background:var(--forest);padding:36px 24px 28px;text-align:center;}
 .hero-badge{display:inline-block;font-size:10px;letter-spacing:.3em;color:var(--gold);border:1px solid rgba(196,146,42,0.4);padding:4px 16px;margin-bottom:14px;}
-.hero-title{font-family:'Noto Serif TC',serif;font-size:26px;font-weight:900;color:white;line-height:1.3;}
+.hero-title{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;color:white;line-height:1.3;}
 .hero-title span{color:var(--gold-lt);}
-.hero-sub{font-size:12px;color:rgba(255,255,255,0.5);margin-top:8px;letter-spacing:.1em;}
+.hero-sub{font-size:11px;color:rgba(255,255,255,0.45);margin-top:6px;letter-spacing:.1em;}
 
-/* type toggle */
-.type-wrap{max-width:600px;margin:28px auto 0;padding:0 16px;}
-.type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid rgba(196,146,42,0.4);overflow:hidden;}
-.type-btn{padding:12px;text-align:center;cursor:pointer;font-size:13px;font-family:'Noto Serif TC',serif;color:rgba(255,255,255,0.6);background:transparent;border:none;transition:all .2s;letter-spacing:.08em;}
-.type-btn.active{background:var(--gold);color:var(--forest);font-weight:700;}
+/* flow toggle: 新申請 | 續約 */
+.flow-wrap{max-width:600px;margin:24px auto 0;padding:0 16px;}
+.flow-toggle{display:grid;grid-template-columns:1fr 1fr;border:1px solid rgba(196,146,42,0.4);overflow:hidden;}
+.flow-btn{padding:11px;text-align:center;cursor:pointer;font-size:13px;font-family:'Noto Serif TC',serif;color:rgba(255,255,255,0.55);background:transparent;border:none;transition:all .2s;letter-spacing:.06em;}
+.flow-btn.active{background:var(--gold);color:var(--forest);font-weight:700;}
+
+/* member type toggle (inside new flow) */
+.type-wrap{max-width:600px;margin:12px auto 0;padding:0 16px;}
+.type-toggle{display:grid;grid-template-columns:1fr 1fr;border:1px solid rgba(255,255,255,0.2);overflow:hidden;}
+.type-btn{padding:9px;text-align:center;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.5);background:transparent;border:none;transition:all .2s;letter-spacing:.04em;}
+.type-btn.active{background:rgba(255,255,255,0.12);color:white;font-weight:600;}
 
 /* fee cards */
-.fee-row{max-width:600px;margin:20px auto 0;padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.fee-card{background:rgba(255,255,255,0.08);border:1px solid rgba(196,146,42,0.25);padding:14px 16px;text-align:center;}
-.fee-label{font-size:9px;letter-spacing:.2em;color:var(--gold);margin-bottom:4px;}
-.fee-amount{font-family:'Noto Serif TC',serif;font-size:20px;font-weight:700;color:white;}
-.fee-note{font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;}
+.fee-row{max-width:600px;margin:16px auto 0;padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fee-card{background:rgba(255,255,255,0.07);border:1px solid rgba(196,146,42,0.2);padding:12px 14px;text-align:center;}
+.fee-label{font-size:9px;letter-spacing:.2em;color:var(--gold);margin-bottom:3px;}
+.fee-amount{font-family:'Noto Serif TC',serif;font-size:18px;font-weight:700;color:white;}
+.fee-note{font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;}
 
 /* form area */
-.form-wrap{max-width:600px;margin:0 auto;padding:28px 16px 60px;}
-.form-section{margin-bottom:24px;}
-.form-section-title{font-size:10px;letter-spacing:.25em;color:var(--moss);font-weight:600;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);}
-.field{margin-bottom:14px;}
-.field label{display:block;font-size:12px;color:var(--gray);margin-bottom:4px;letter-spacing:.04em;}
+.form-wrap{max-width:600px;margin:0 auto;padding:24px 16px 60px;}
+.form-section{margin-bottom:22px;}
+.form-section-title{font-size:10px;letter-spacing:.25em;color:var(--moss);font-weight:600;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:12px;color:var(--gray);margin-bottom:3px;}
 .field label .req{color:var(--red);margin-left:2px;}
-.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--border);background:white;font-family:'Noto Sans TC',sans-serif;font-size:13px;color:var(--ink);outline:none;border-radius:0;transition:border-color .2s;}
+.field input,.field select,.field textarea{width:100%;padding:9px 11px;border:1px solid var(--border);background:white;font-family:'Noto Sans TC',sans-serif;font-size:13px;color:var(--ink);outline:none;transition:border-color .2s;}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--moss);}
-.field textarea{resize:vertical;min-height:72px;}
+.field textarea{resize:vertical;min-height:66px;}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
-.radio-group{display:flex;gap:20px;padding:8px 0;}
+.radio-group{display:flex;gap:18px;padding:7px 0;}
 .radio-group label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);cursor:pointer;}
-.radio-group input[type=radio]{accent-color:var(--moss);width:15px;height:15px;}
+.radio-group input[type=radio]{accent-color:var(--moss);width:14px;height:14px;}
+
+/* OCR card upload */
+.ocr-box{background:white;border:2px dashed var(--border);padding:20px;text-align:center;margin-bottom:16px;cursor:pointer;transition:border-color .2s;}
+.ocr-box:hover{border-color:var(--moss);}
+.ocr-box.dragging{border-color:var(--gold);background:rgba(196,146,42,0.04);}
+.ocr-icon{font-size:32px;margin-bottom:6px;}
+.ocr-title{font-size:13px;color:var(--fern);font-weight:600;margin-bottom:3px;}
+.ocr-hint{font-size:11px;color:var(--gray);}
+.ocr-preview{max-width:100%;max-height:160px;margin:8px auto 0;display:block;border:1px solid var(--border);}
+.ocr-btn{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 20px;background:var(--fern);color:white;font-size:12px;letter-spacing:.08em;border:none;cursor:pointer;font-family:'Noto Sans TC',sans-serif;}
+.ocr-btn:disabled{background:var(--gray);cursor:not-allowed;}
+.ocr-status{font-size:11px;color:var(--moss);margin-top:6px;}
 
 /* bank info */
-.bank-box{background:white;border:1px solid var(--border);border-left:3px solid var(--gold);padding:16px 18px;margin-bottom:24px;}
-.bank-title{font-size:10px;letter-spacing:.2em;color:var(--gold);font-weight:600;margin-bottom:10px;}
-.bank-row{display:flex;gap:8px;font-size:13px;margin-bottom:4px;}
-.bank-key{color:var(--gray);min-width:80px;flex-shrink:0;}
+.bank-box{background:white;border:1px solid var(--border);border-left:3px solid var(--gold);padding:14px 16px;margin-bottom:22px;}
+.bank-title{font-size:10px;letter-spacing:.2em;color:var(--gold);font-weight:600;margin-bottom:8px;}
+.bank-row{display:flex;gap:8px;font-size:13px;margin-bottom:3px;}
+.bank-key{color:var(--gray);min-width:72px;flex-shrink:0;}
 .bank-val{color:var(--ink);font-weight:500;}
 .bank-note{font-size:11px;color:var(--gray);margin-top:8px;line-height:1.7;}
 
+/* renewal lookup */
+.lookup-box{background:white;border:1px solid var(--border);padding:20px;margin-bottom:16px;}
+.lookup-title{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:600;color:var(--fern);margin-bottom:12px;}
+.lookup-row{display:flex;gap:8px;}
+.lookup-row input{flex:1;padding:9px 11px;border:1px solid var(--border);font-size:13px;outline:none;}
+.lookup-row input:focus{border-color:var(--moss);}
+.lookup-btn{padding:9px 18px;background:var(--fern);color:white;border:none;font-size:12px;cursor:pointer;letter-spacing:.06em;white-space:nowrap;}
+.lookup-result{margin-top:12px;font-size:12px;color:var(--gray);line-height:1.8;}
+.lookup-result.found{color:var(--fern);}
+.lookup-result.notfound{color:var(--red);}
+
 /* submit */
-.submit-btn{width:100%;padding:14px;background:var(--fern);color:white;font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;letter-spacing:.12em;border:none;cursor:pointer;transition:background .2s;}
+.submit-btn{width:100%;padding:13px;background:var(--fern);color:white;font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;letter-spacing:.12em;border:none;cursor:pointer;transition:background .2s;}
 .submit-btn:hover{background:var(--forest);}
-.submit-note{font-size:11px;color:var(--gray);text-align:center;margin-top:10px;line-height:1.8;}
+.submit-btn:disabled{background:var(--gray);cursor:not-allowed;}
+.submit-note{font-size:11px;color:var(--gray);text-align:center;margin-top:8px;line-height:1.8;}
 
 /* success */
-.success-box{display:none;background:white;border:1px solid var(--border);border-left:3px solid var(--moss);padding:20px;margin-top:20px;text-align:center;}
+.success-box{display:none;background:white;border:1px solid var(--border);border-left:3px solid var(--moss);padding:20px;margin-top:16px;text-align:center;}
 .success-box.show{display:block;}
-.success-icon{font-size:32px;margin-bottom:8px;}
-.success-title{font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700;color:var(--fern);margin-bottom:6px;}
+.success-icon{font-size:30px;margin-bottom:6px;}
+.success-title{font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;color:var(--fern);margin-bottom:5px;}
 .success-text{font-size:12px;color:var(--gray);line-height:1.8;}
 
-/* hidden */
-.form-block{display:none;}
-.form-block.active{display:block;}
-
-@media(max-width:480px){
-  .fee-row{grid-template-columns:1fr 1fr;}
-  .field-row,.field-row-3{grid-template-columns:1fr;}
-}
+/* hidden helpers */
+.hidden{display:none;}
+@media(max-width:480px){.field-row{grid-template-columns:1fr;}.fee-row{grid-template-columns:1fr 1fr;}}
 </style>
 </head>
 <body>
@@ -94,60 +114,112 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
 </div>
 
 <div class="hero">
-  <div class="badge" style="display:inline-block;font-size:10px;letter-spacing:.3em;color:var(--gold);border:1px solid rgba(196,146,42,0.4);padding:4px 16px;margin-bottom:14px;">JOIN TADA</div>
+  <div class="hero-badge">JOIN TADA</div>
   <h1 class="hero-title">加入<span>台灣科技農企業</span><br>發展協會</h1>
   <p class="hero-sub">Taiwan Advanced Agribusiness Development Association</p>
 
-  <div class="type-wrap">
+  <!-- 流程切換：新申請 / 續約 -->
+  <div class="flow-wrap">
+    <div class="flow-toggle">
+      <button class="flow-btn active" id="btn-new" onclick="switchFlow('new')">🌱 新會員申請</button>
+      <button class="flow-btn" id="btn-renew" onclick="switchFlow('renew')">🔄 續約會員</button>
+    </div>
+  </div>
+
+  <!-- 會員類型（新申請才顯示）-->
+  <div class="type-wrap" id="type-section">
     <div class="type-toggle">
-      <button class="type-btn active" onclick="switchType('personal')">個人會員</button>
-      <button class="type-btn" onclick="switchType('group')">團體會員</button>
+      <button class="type-btn active" id="btn-personal" onclick="switchType('personal')">個人會員</button>
+      <button class="type-btn" id="btn-group" onclick="switchType('group')">團體會員</button>
     </div>
   </div>
 
-  <!-- 個人費用 -->
-  <div class="fee-row form-block active" id="fee-personal">
-    <div class="fee-card">
-      <div class="fee-label">入會費</div>
-      <div class="fee-amount">NT$1,000</div>
-      <div class="fee-note">入會時一次繳納</div>
-    </div>
-    <div class="fee-card">
-      <div class="fee-label">常年會費</div>
-      <div class="fee-amount">NT$6,000</div>
-      <div class="fee-note">三年期，一次繳清</div>
-    </div>
+  <!-- 費用卡（新申請個人）-->
+  <div class="fee-row" id="fee-personal">
+    <div class="fee-card"><div class="fee-label">入會費</div><div class="fee-amount">NT$1,000</div><div class="fee-note">入會時繳納</div></div>
+    <div class="fee-card"><div class="fee-label">常年會費</div><div class="fee-amount">NT$6,000</div><div class="fee-note">三年，一次繳清</div></div>
   </div>
-
-  <!-- 團體費用 -->
-  <div class="fee-row form-block" id="fee-group">
-    <div class="fee-card">
-      <div class="fee-label">入會費</div>
-      <div class="fee-amount">NT$10,000</div>
-      <div class="fee-note">入會時一次繳納</div>
-    </div>
-    <div class="fee-card">
-      <div class="fee-label">常年會費</div>
-      <div class="fee-amount">NT$20,000</div>
-      <div class="fee-note">三年期，一次繳清</div>
-    </div>
+  <!-- 費用卡（新申請團體）-->
+  <div class="fee-row hidden" id="fee-group">
+    <div class="fee-card"><div class="fee-label">入會費</div><div class="fee-amount">NT$10,000</div><div class="fee-note">入會時繳納</div></div>
+    <div class="fee-card"><div class="fee-label">常年會費</div><div class="fee-amount">NT$20,000</div><div class="fee-note">三年，一次繳清</div></div>
+  </div>
+  <!-- 費用卡（續約）-->
+  <div class="fee-row hidden" id="fee-renew">
+    <div class="fee-card"><div class="fee-label">續約會費（個人）</div><div class="fee-amount">NT$6,000</div><div class="fee-note">三年，一次繳清</div></div>
+    <div class="fee-card"><div class="fee-label">續約會費（團體）</div><div class="fee-amount">NT$20,000</div><div class="fee-note">三年，一次繳清</div></div>
   </div>
 </div>
 
 <div class="form-wrap">
 
-  <!-- 個人申請表 -->
-  <form class="form-block active" id="form-personal" onsubmit="handleSubmit(event,'personal')">
+  <!-- ══ 續約查詢 ══ -->
+  <div class="hidden" id="renew-flow">
+    <div class="lookup-box">
+      <div class="lookup-title">續約會員身分查詢</div>
+      <p style="font-size:12px;color:var(--gray);margin-bottom:12px;">請輸入您加入時登記的手機或 Email，系統將帶入您的會員資料。</p>
+      <div class="lookup-row">
+        <input type="text" id="lookup-input" placeholder="手機 09XX-XXX-XXX 或 Email">
+        <button class="lookup-btn" onclick="lookupMember()">查詢</button>
+      </div>
+      <div class="lookup-result" id="lookup-result"></div>
+    </div>
+    <!-- 續約確認表單（查到後顯示）-->
+    <form id="form-renew" class="hidden" onsubmit="submitRenew(event)">
+      <div class="form-section">
+        <div class="form-section-title">確認資料</div>
+        <div class="field-row">
+          <div class="field"><label>姓名／公司名稱</label><input type="text" name="name" id="renew-name"></div>
+          <div class="field"><label>手機</label><input type="tel" name="tel_mobile" id="renew-tel"></div>
+        </div>
+        <div class="field"><label>E-mail</label><input type="email" name="email" id="renew-email"></div>
+        <div class="field"><label>資料異動備注（選填）</label><textarea name="admin_notes" placeholder="如有地址、職稱等變更，請在此說明"></textarea></div>
+      </div>
+      <div class="bank-box">
+        <div class="bank-title">繳費資訊 PAYMENT</div>
+        <div class="bank-row"><span class="bank-key">銀行</span><span class="bank-val">兆豐銀行（代號 017）</span></div>
+        <div class="bank-row"><span class="bank-key">帳號</span><span class="bank-val">078-10-00851-6</span></div>
+        <div class="bank-note">匯款後請來電告知帳號後 5 碼<br>📞 0988-558246　📧 tada201107@gmail.com</div>
+      </div>
+      <input type="hidden" name="is_renewal" value="true">
+      <input type="hidden" name="type" id="renew-type" value="personal">
+      <button type="submit" class="submit-btn">送出續約申請</button>
+      <p class="submit-note">秘書處確認付款後，將完成續約手續。</p>
+      <div class="success-box" id="success-renew">
+        <div class="success-icon">✅</div>
+        <div class="success-title">續約申請已送出！</div>
+        <div class="success-text">感謝您的續約，秘書處確認付款後將與您聯繫。<br>📞 0988-558246</div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ══ 新申請：個人 ══ -->
+  <form id="form-personal" onsubmit="submitForm(event,'personal')">
+
+    <!-- 名片 OCR -->
+    <div class="form-section">
+      <div class="form-section-title">快速填表：上傳名片辨識（選填）</div>
+      <div class="ocr-box" id="ocr-drop" onclick="document.getElementById('card-input').click()"
+           ondragover="event.preventDefault();this.classList.add('dragging')"
+           ondragleave="this.classList.remove('dragging')"
+           ondrop="handleDrop(event)">
+        <div class="ocr-icon">📇</div>
+        <div class="ocr-title">點此上傳或拍照名片</div>
+        <div class="ocr-hint">支援 JPG / PNG｜AI 自動辨識並填入欄位</div>
+        <img id="card-preview" class="ocr-preview hidden" alt="名片預覽">
+      </div>
+      <input type="file" id="card-input" accept="image/*" capture="environment" class="hidden" onchange="previewCard(this)">
+      <div style="text-align:center;">
+        <button type="button" class="ocr-btn" id="ocr-btn" onclick="runOCR()" disabled>🤖 AI 辨識名片</button>
+      </div>
+      <div class="ocr-status" id="ocr-status"></div>
+    </div>
 
     <div class="form-section">
       <div class="form-section-title">基本資料</div>
       <div class="field-row">
-        <div class="field">
-          <label>姓名 <span class="req">*</span></label>
-          <input type="text" name="name" required placeholder="請輸入姓名">
-        </div>
-        <div class="field">
-          <label>性別 <span class="req">*</span></label>
+        <div class="field"><label>姓名 <span class="req">*</span></label><input type="text" name="name" id="p-name" required placeholder="請輸入姓名"></div>
+        <div class="field"><label>性別 <span class="req">*</span></label>
           <div class="radio-group">
             <label><input type="radio" name="gender" value="男" required> 男</label>
             <label><input type="radio" name="gender" value="女"> 女</label>
@@ -155,86 +227,42 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
         </div>
       </div>
       <div class="field-row">
-        <div class="field">
-          <label>出生年月日 <span class="req">*</span></label>
-          <input type="date" name="birthday" required>
-        </div>
-        <div class="field">
-          <label>出生縣市</label>
-          <input type="text" name="birthplace" placeholder="例：台北市">
-        </div>
+        <div class="field"><label>出生年月日 <span class="req">*</span></label><input type="date" name="birthday" required></div>
+        <div class="field"><label>出生縣市</label><input type="text" name="birthplace" id="p-birthplace" placeholder="例：台北市"></div>
       </div>
-      <div class="field">
-        <label>身分證統一編號 <span class="req">*</span></label>
-        <input type="text" name="idno" required placeholder="請輸入身分證字號" maxlength="10">
-      </div>
+      <div class="field"><label>身分證統一編號 <span class="req">*</span></label><input type="text" name="id_number" required placeholder="請輸入身分證字號" maxlength="10"></div>
     </div>
 
     <div class="form-section">
       <div class="form-section-title">學歷與現職</div>
-      <div class="field">
-        <label>最高學歷</label>
-        <select name="education">
+      <div class="field"><label>最高學歷</label>
+        <select name="education" id="p-education">
           <option value="">請選擇</option>
-          <option>國中（含以下）</option>
-          <option>高中／高職</option>
-          <option>專科</option>
-          <option>大學</option>
-          <option>碩士</option>
-          <option>博士</option>
+          <option>國中（含以下）</option><option>高中／高職</option><option>專科</option>
+          <option>大學</option><option>碩士</option><option>博士</option>
         </select>
       </div>
-      <div class="field">
-        <label>經歷</label>
-        <textarea name="experience" placeholder="請簡述過往工作經歷"></textarea>
-      </div>
-      <div class="field">
-        <label>現職 <span class="req">*</span></label>
-        <input type="text" name="job" required placeholder="公司名稱／職稱">
-      </div>
-      <div class="field">
-        <label>專業領域</label>
-        <input type="text" name="expertise" placeholder="例：精準農業、農產加工、冷鏈物流…">
-      </div>
+      <div class="field"><label>經歷</label><textarea name="experience" id="p-experience" placeholder="請簡述過往工作經歷"></textarea></div>
+      <div class="field"><label>現職 <span class="req">*</span></label><input type="text" name="job" id="p-job" required placeholder="公司名稱／職稱"></div>
+      <div class="field"><label>專業領域</label><input type="text" name="expertise" id="p-expertise" placeholder="例：精準農業、農產加工…"></div>
     </div>
 
     <div class="form-section">
       <div class="form-section-title">聯絡資料</div>
-      <div class="field">
-        <label>戶籍地址 <span class="req">*</span></label>
-        <input type="text" name="addr_domicile" required placeholder="請輸入戶籍地址">
-      </div>
-      <div class="field">
-        <label>通訊地址</label>
-        <input type="text" name="addr_mail" placeholder="如與戶籍相同請留空">
-      </div>
+      <div class="field"><label>戶籍地址 <span class="req">*</span></label><input type="text" name="addr_domicile" id="p-addr" required placeholder="請輸入戶籍地址"></div>
+      <div class="field"><label>通訊地址</label><input type="text" name="addr_mail" placeholder="如與戶籍相同請留空"></div>
       <div class="field-row">
-        <div class="field">
-          <label>公司電話</label>
-          <input type="tel" name="tel_office" placeholder="02-XXXX-XXXX">
-        </div>
-        <div class="field">
-          <label>手機 <span class="req">*</span></label>
-          <input type="tel" name="tel_mobile" required placeholder="09XX-XXX-XXX">
-        </div>
+        <div class="field"><label>公司電話</label><input type="tel" name="tel_office" id="p-tel-office" placeholder="02-XXXX-XXXX"></div>
+        <div class="field"><label>手機 <span class="req">*</span></label><input type="tel" name="tel_mobile" id="p-tel-mobile" required placeholder="09XX-XXX-XXX"></div>
       </div>
-      <div class="field">
-        <label>E-mail <span class="req">*</span></label>
-        <input type="email" name="email" required placeholder="your@email.com">
-      </div>
+      <div class="field"><label>E-mail <span class="req">*</span></label><input type="email" name="email" id="p-email" required placeholder="your@email.com"></div>
     </div>
 
     <div class="form-section">
       <div class="form-section-title">推薦人（選填）</div>
       <div class="field-row">
-        <div class="field">
-          <label>推薦人 1</label>
-          <input type="text" name="ref1" placeholder="姓名">
-        </div>
-        <div class="field">
-          <label>推薦人 2</label>
-          <input type="text" name="ref2" placeholder="姓名">
-        </div>
+        <div class="field"><label>推薦人 1</label><input type="text" name="ref1" placeholder="姓名"></div>
+        <div class="field"><label>推薦人 2</label><input type="text" name="ref2" placeholder="姓名"></div>
       </div>
     </div>
 
@@ -243,81 +271,42 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
       <div class="bank-row"><span class="bank-key">銀行</span><span class="bank-val">兆豐銀行（代號 017）</span></div>
       <div class="bank-row"><span class="bank-key">帳號</span><span class="bank-val">078-10-00851-6</span></div>
       <div class="bank-row"><span class="bank-key">金額</span><span class="bank-val">入會費 NT$1,000 ＋ 常年會費 NT$6,000 ＝ <strong>NT$7,000</strong></span></div>
-      <div class="bank-note">
-        匯款後請來電告知帳號後 5 碼<br>
-        📞 0988-558246（雅琳、馨元）<br>
-        📧 tada201107@gmail.com
-      </div>
+      <div class="bank-note">匯款後請來電告知帳號後 5 碼<br>📞 0988-558246（雅琳、馨元）　📧 tada201107@gmail.com</div>
     </div>
-
-    <button type="submit" class="submit-btn">送出入會申請</button>
-    <p class="submit-note">送出後，協會秘書處將於 3–5 個工作天內與您聯繫確認。<br>如有疑問請來電 0988-558246 洽詢。</p>
-
+    <button type="submit" class="submit-btn" id="submit-personal">送出入會申請</button>
+    <p class="submit-note">送出後，協會秘書處將於 3–5 個工作天內與您聯繫確認。</p>
     <div class="success-box" id="success-personal">
       <div class="success-icon">✅</div>
       <div class="success-title">申請已送出！</div>
-      <div class="success-text">感謝您申請加入 TADA<br>秘書處將於 3–5 個工作天內與您聯繫<br>如有急事請來電 0988-558246</div>
+      <div class="success-text">感謝您申請加入 TADA<br>秘書處將於 3–5 個工作天與您聯繫<br>📞 0988-558246</div>
     </div>
   </form>
 
-  <!-- 團體申請表 -->
-  <form class="form-block" id="form-group" onsubmit="handleSubmit(event,'group')">
-
+  <!-- ══ 新申請：團體 ══ -->
+  <form id="form-group" class="hidden" onsubmit="submitForm(event,'group')">
     <div class="form-section">
       <div class="form-section-title">團體基本資料</div>
-      <div class="field">
-        <label>團體名稱 <span class="req">*</span></label>
-        <input type="text" name="org_name" required placeholder="請輸入公司或機構全名">
-      </div>
-      <div class="field">
-        <label>地址 <span class="req">*</span></label>
-        <input type="text" name="org_addr" required placeholder="請輸入公司地址">
+      <div class="field"><label>團體名稱 <span class="req">*</span></label><input type="text" name="org_name" required placeholder="請輸入公司或機構全名"></div>
+      <div class="field"><label>地址 <span class="req">*</span></label><input type="text" name="org_addr" required placeholder="公司地址"></div>
+      <div class="field-row">
+        <div class="field"><label>電話 <span class="req">*</span></label><input type="tel" name="org_tel" required placeholder="公司電話"></div>
+        <div class="field"><label>成立日期</label><input type="date" name="org_founded"></div>
       </div>
       <div class="field-row">
-        <div class="field">
-          <label>電話 <span class="req">*</span></label>
-          <input type="tel" name="org_tel" required placeholder="公司電話">
-        </div>
-        <div class="field">
-          <label>成立日期</label>
-          <input type="date" name="org_founded">
-        </div>
+        <div class="field"><label>負責人姓名 <span class="req">*</span></label><input type="text" name="ceo_name" required placeholder="負責人姓名"></div>
+        <div class="field"><label>會員人數</label><input type="number" name="member_count" placeholder="人數" min="1"></div>
       </div>
       <div class="field-row">
-        <div class="field">
-          <label>負責人姓名 <span class="req">*</span></label>
-          <input type="text" name="ceo_name" required placeholder="負責人姓名">
-        </div>
-        <div class="field">
-          <label>會員人數</label>
-          <input type="number" name="member_count" placeholder="人數" min="1">
-        </div>
+        <div class="field"><label>證照字號</label><input type="text" name="license_no" placeholder="統一編號或立案字號"></div>
+        <div class="field"><label>發證機關</label><input type="text" name="license_org" placeholder="例：經濟部"></div>
       </div>
-      <div class="field-row">
-        <div class="field">
-          <label>證照字號</label>
-          <input type="text" name="license_no" placeholder="統一編號或立案字號">
-        </div>
-        <div class="field">
-          <label>發證機關</label>
-          <input type="text" name="license_org" placeholder="例：經濟部">
-        </div>
-      </div>
-      <div class="field">
-        <label>業務項目 <span class="req">*</span></label>
-        <textarea name="business_scope" required placeholder="請簡述主要業務範圍"></textarea>
-      </div>
+      <div class="field"><label>業務項目 <span class="req">*</span></label><textarea name="business_scope" required placeholder="請簡述主要業務範圍"></textarea></div>
     </div>
-
     <div class="form-section">
       <div class="form-section-title">會員代表資料</div>
       <div class="field-row">
-        <div class="field">
-          <label>代表姓名 <span class="req">*</span></label>
-          <input type="text" name="rep_name" required placeholder="姓名">
-        </div>
-        <div class="field">
-          <label>性別</label>
+        <div class="field"><label>代表姓名 <span class="req">*</span></label><input type="text" name="rep_name" required placeholder="姓名"></div>
+        <div class="field"><label>性別</label>
           <div class="radio-group">
             <label><input type="radio" name="rep_gender" value="男"> 男</label>
             <label><input type="radio" name="rep_gender" value="女"> 女</label>
@@ -325,125 +314,243 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
         </div>
       </div>
       <div class="field-row">
-        <div class="field">
-          <label>出生日期</label>
-          <input type="date" name="rep_birthday">
-        </div>
-        <div class="field">
-          <label>出生地</label>
-          <input type="text" name="rep_birthplace" placeholder="例：台中市">
-        </div>
+        <div class="field"><label>出生日期</label><input type="date" name="rep_birthday"></div>
+        <div class="field"><label>出生地</label><input type="text" name="rep_birthplace" placeholder="例：台中市"></div>
       </div>
-      <div class="field">
-        <label>學歷</label>
+      <div class="field"><label>學歷</label>
         <select name="rep_education">
           <option value="">請選擇</option>
-          <option>國中（含以下）</option>
-          <option>高中／高職</option>
-          <option>專科</option>
-          <option>大學</option>
-          <option>碩士</option>
-          <option>博士</option>
+          <option>國中（含以下）</option><option>高中／高職</option><option>專科</option>
+          <option>大學</option><option>碩士</option><option>博士</option>
         </select>
       </div>
-      <div class="field">
-        <label>經歷</label>
-        <textarea name="rep_experience" placeholder="請簡述代表的工作經歷"></textarea>
-      </div>
+      <div class="field"><label>經歷</label><textarea name="rep_experience" placeholder="代表的工作經歷"></textarea></div>
       <div class="field-row">
-        <div class="field">
-          <label>E-mail <span class="req">*</span></label>
-          <input type="email" name="rep_email" required placeholder="代表 Email">
-        </div>
-        <div class="field">
-          <label>聯絡電話 <span class="req">*</span></label>
-          <input type="tel" name="rep_tel" required placeholder="09XX-XXX-XXX">
-        </div>
+        <div class="field"><label>E-mail <span class="req">*</span></label><input type="email" name="rep_email" required placeholder="代表 Email"></div>
+        <div class="field"><label>聯絡電話 <span class="req">*</span></label><input type="tel" name="rep_tel" required placeholder="09XX-XXX-XXX"></div>
       </div>
     </div>
-
     <div class="form-section">
       <div class="form-section-title">本案聯絡人（如與代表不同）</div>
       <div class="field-row">
-        <div class="field">
-          <label>聯絡人電話</label>
-          <input type="tel" name="contact_tel" placeholder="電話">
-        </div>
-        <div class="field">
-          <label>聯絡人 E-mail</label>
-          <input type="email" name="contact_email" placeholder="Email">
-        </div>
+        <div class="field"><label>電話</label><input type="tel" name="contact_tel" placeholder="電話"></div>
+        <div class="field"><label>E-mail</label><input type="email" name="contact_email" placeholder="Email"></div>
       </div>
     </div>
-
     <div class="form-section">
       <div class="form-section-title">推薦人（選填）</div>
       <div class="field-row">
-        <div class="field">
-          <label>推薦人 1</label>
-          <input type="text" name="ref1" placeholder="姓名">
-        </div>
-        <div class="field">
-          <label>推薦人 2</label>
-          <input type="text" name="ref2" placeholder="姓名">
-        </div>
+        <div class="field"><label>推薦人 1</label><input type="text" name="ref1" placeholder="姓名"></div>
+        <div class="field"><label>推薦人 2</label><input type="text" name="ref2" placeholder="姓名"></div>
       </div>
     </div>
-
     <div class="bank-box">
       <div class="bank-title">繳費資訊 PAYMENT</div>
       <div class="bank-row"><span class="bank-key">銀行</span><span class="bank-val">兆豐銀行（代號 017）</span></div>
       <div class="bank-row"><span class="bank-key">帳號</span><span class="bank-val">078-10-00851-6</span></div>
       <div class="bank-row"><span class="bank-key">金額</span><span class="bank-val">入會費 NT$10,000 ＋ 常年會費 NT$20,000 ＝ <strong>NT$30,000</strong></span></div>
-      <div class="bank-note">
-        匯款後請來電告知帳號後 5 碼<br>
-        📞 0988-558246（雅琳、馨元）<br>
-        📧 tada201107@gmail.com
-      </div>
+      <div class="bank-note">匯款後請來電告知帳號後 5 碼<br>📞 0988-558246（雅琳、馨元）　📧 tada201107@gmail.com</div>
     </div>
-
-    <button type="submit" class="submit-btn">送出入會申請</button>
-    <p class="submit-note">送出後，協會秘書處將於 3–5 個工作天內與您聯繫確認。<br>如有疑問請來電 0988-558246 洽詢。</p>
-
+    <button type="submit" class="submit-btn" id="submit-group">送出入會申請</button>
+    <p class="submit-note">送出後，協會秘書處將於 3–5 個工作天內與您聯繫確認。</p>
     <div class="success-box" id="success-group">
       <div class="success-icon">✅</div>
       <div class="success-title">申請已送出！</div>
-      <div class="success-text">感謝貴單位申請加入 TADA<br>秘書處將於 3–5 個工作天內與您聯繫<br>如有急事請來電 0988-558246</div>
+      <div class="success-text">感謝貴單位申請加入 TADA<br>秘書處將於 3–5 個工作天與您聯繫<br>📞 0988-558246</div>
     </div>
   </form>
 
-</div>
+</div><!-- /form-wrap -->
 
 <script>
-function switchType(type) {
-  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.form-block').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('form-' + type).classList.add('active');
-  document.getElementById('fee-' + type).classList.add('active');
+const SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
+const SB_KEY = 'sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
+
+let currentFlow = 'new';   // 'new' | 'renew'
+let currentType = 'personal'; // 'personal' | 'group'
+let cardBase64 = null;
+let cardMediaType = 'image/jpeg';
+
+// ── 流程切換 ────────────────────────────────────────────────
+function switchFlow(flow) {
+  currentFlow = flow;
+  document.getElementById('btn-new').classList.toggle('active', flow === 'new');
+  document.getElementById('btn-renew').classList.toggle('active', flow === 'renew');
+  document.getElementById('type-section').classList.toggle('hidden', flow === 'renew');
+  document.getElementById('renew-flow').classList.toggle('hidden', flow !== 'renew');
+  document.getElementById('form-personal').classList.toggle('hidden', flow !== 'new' || currentType !== 'personal');
+  document.getElementById('form-group').classList.toggle('hidden', flow !== 'new' || currentType !== 'group');
+  document.getElementById('fee-personal').classList.toggle('hidden', flow !== 'new' || currentType !== 'personal');
+  document.getElementById('fee-group').classList.toggle('hidden', flow !== 'new' || currentType !== 'group');
+  document.getElementById('fee-renew').classList.toggle('hidden', flow !== 'renew');
 }
 
-function handleSubmit(e, type) {
+function switchType(type) {
+  currentType = type;
+  document.getElementById('btn-personal').classList.toggle('active', type === 'personal');
+  document.getElementById('btn-group').classList.toggle('active', type === 'group');
+  document.getElementById('form-personal').classList.toggle('hidden', type !== 'personal');
+  document.getElementById('form-group').classList.toggle('hidden', type !== 'group');
+  document.getElementById('fee-personal').classList.toggle('hidden', type !== 'personal');
+  document.getElementById('fee-group').classList.toggle('hidden', type !== 'group');
+}
+
+// ── 名片 OCR ────────────────────────────────────────────────
+function previewCard(input) {
+  const file = input.files[0];
+  if (!file) return;
+  cardMediaType = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    cardBase64 = dataUrl.split(',')[1];
+    const preview = document.getElementById('card-preview');
+    preview.src = dataUrl;
+    preview.classList.remove('hidden');
+    document.getElementById('ocr-btn').disabled = false;
+    document.getElementById('ocr-status').textContent = '名片已載入，點「AI 辨識名片」開始辨識';
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('ocr-drop').classList.remove('dragging');
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  const input = document.getElementById('card-input');
+  input.files = dt.files;
+  previewCard(input);
+}
+
+async function runOCR() {
+  if (!cardBase64) return;
+  const btn = document.getElementById('ocr-btn');
+  const status = document.getElementById('ocr-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ 辨識中…';
+  status.textContent = '正在傳送名片給 AI 辨識，請稍候…';
+  try {
+    const res = await fetch(`${SB_URL}/functions/v1/card-ocr`, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: cardBase64, mediaType: cardMediaType }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    // 填入欄位
+    if (data.name)       document.getElementById('p-name').value = data.name;
+    if (data.job)        document.getElementById('p-job').value = data.job;
+    if (data.tel_mobile) document.getElementById('p-tel-mobile').value = data.tel_mobile;
+    if (data.tel_office) document.getElementById('p-tel-office').value = data.tel_office;
+    if (data.email)      document.getElementById('p-email').value = data.email;
+    if (data.addr)       document.getElementById('p-addr').value = data.addr;
+    if (data.expertise)  document.getElementById('p-expertise').value = data.expertise;
+    status.textContent = '✅ 辨識完成！請確認欄位並修正。';
+    status.style.color = 'var(--moss)';
+  } catch (err) {
+    status.textContent = '❌ 辨識失敗：' + err.message;
+    status.style.color = 'var(--red)';
+  }
+  btn.disabled = false;
+  btn.textContent = '🤖 AI 辨識名片';
+}
+
+// ── 送出：新申請 ────────────────────────────────────────────
+async function submitForm(e, type) {
   e.preventDefault();
   const form = e.target;
-  const data = new FormData(form);
-  const params = new URLSearchParams();
-  for (const [k, v] of data.entries()) params.append(k, v);
-  params.append('type', type === 'personal' ? '個人會員' : '團體會員');
+  const btn = form.querySelector('.submit-btn');
+  btn.disabled = true;
+  btn.textContent = '送出中…';
 
-  // 組成 mailto 讓秘書處收到申請資料
-  const subject = encodeURIComponent('TADA 入會申請 - ' + (type === 'personal' ? '個人會員' : '團體會員'));
-  let body = '入會申請表\n\n';
-  for (const [k, v] of data.entries()) {
-    if (v) body += k + ': ' + v + '\n';
+  const fd = new FormData(form);
+  const payload = { type, is_renewal: false };
+  for (const [k, v] of fd.entries()) if (v) payload[k] = v;
+
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_applications`, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    form.querySelector('.success-box').classList.add('show');
+    form.reset();
+    btn.textContent = '已送出';
+  } catch (err) {
+    alert('送出失敗，請稍後再試或來電 0988-558246\n' + err.message);
+    btn.disabled = false;
+    btn.textContent = '送出入會申請';
   }
-  window.location.href = 'mailto:tada201107@gmail.com?subject=' + subject + '&body=' + encodeURIComponent(body);
+}
 
-  document.getElementById('success-' + type).classList.add('show');
-  form.querySelector('.submit-btn').disabled = true;
-  form.querySelector('.submit-btn').textContent = '已送出';
+// ── 續約查詢 ────────────────────────────────────────────────
+async function lookupMember() {
+  const q = document.getElementById('lookup-input').value.trim();
+  const result = document.getElementById('lookup-result');
+  if (!q) { result.textContent = '請輸入手機或 Email'; return; }
+  result.textContent = '查詢中…';
+  result.className = 'lookup-result';
+
+  const col = q.includes('@') ? 'email' : 'tel_mobile';
+  const res = await fetch(
+    `${SB_URL}/rest/v1/tada_applications?${col}=eq.${encodeURIComponent(q)}&status=eq.approved&order=created_at.desc&limit=1`,
+    { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
+  );
+  const data = await res.json();
+
+  if (data.length === 0) {
+    result.textContent = '查無此會員紀錄。如有疑問請來電 0988-558246 洽詢。';
+    result.className = 'lookup-result notfound';
+    return;
+  }
+
+  const m = data[0];
+  result.innerHTML = `✅ 找到會員：<strong>${m.name || m.org_name}</strong>（${m.type === 'personal' ? '個人' : '團體'}會員）`;
+  result.className = 'lookup-result found';
+
+  document.getElementById('renew-name').value = m.name || m.org_name || '';
+  document.getElementById('renew-tel').value  = m.tel_mobile || m.rep_tel || '';
+  document.getElementById('renew-email').value = m.email || m.rep_email || '';
+  document.getElementById('renew-type').value  = m.type;
+  document.getElementById('form-renew').classList.remove('hidden');
+}
+
+// ── 送出：續約 ─────────────────────────────────────────────
+async function submitRenew(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = form.querySelector('.submit-btn');
+  btn.disabled = true;
+  btn.textContent = '送出中…';
+  const fd = new FormData(form);
+  const payload = { is_renewal: true, status: 'pending' };
+  for (const [k, v] of fd.entries()) if (v) payload[k] = v;
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_applications`, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    document.getElementById('success-renew').classList.add('show');
+    form.reset();
+    btn.textContent = '已送出';
+  } catch (err) {
+    alert('送出失敗：' + err.message);
+    btn.disabled = false;
+    btn.textContent = '送出續約申請';
+  }
 }
 </script>
-
 </body>
 </html>
