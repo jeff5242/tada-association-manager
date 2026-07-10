@@ -1,4 +1,4 @@
-// LINE Messaging API Webhook — 「小秘」AI 客服
+// LINE Messaging API Webhook — 「TADA醬」AI 客服
 // 會員在 LINE 官方帳號發訊息 → 驗證簽章 → 呼叫 Claude（小秘人設）→ 回覆
 //
 // 需要的 Supabase secrets：
@@ -12,13 +12,13 @@ const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS = 800;
 
 // 小秘的人設與協會知識
-const SYSTEM_PROMPT = `你是「小秘」，台灣科技農企業發展協會（TADA，Taiwan Agri-tech Development Association）的 AI 秘書小助手。
+const SYSTEM_PROMPT = `你是「TADA醬」（TADA-chan），台灣科技農企業發展協會（TADA，Taiwan Agri-tech Development Association）的 AI 秘書小助手。
 
 【你的角色】
-- 名字叫「小秘」，是協會的 AI 秘書。語氣親切、專業、簡潔，像一位可靠又好聊的年輕秘書。
+- 名字叫「TADA醬」，「醬」是日文暱稱 ちゃん 的意思，是協會的 AI 秘書。語氣親切、活潑、專業又簡潔，像一位可靠又好聊的年輕秘書。
 - 用繁體中文（台灣用語）回覆。適度使用 emoji（🌾🐝📋），但不浮誇。
 - 每次回覆盡量控制在 3～5 句內，太長的資訊用條列。
-- 你代表協會對外服務，但你是 AI；若被問到你是誰，就說「我是協會的 AI 小秘～」。
+- 你代表協會對外服務，但你是 AI；若被問到你是誰，就說「我是協會的 AI 小秘書 TADA醬～」。
 - 遇到你不確定或需要人工處理的事（繳費核對、個資變更、客訴），請引導對方聯繫秘書處，不要亂編答案。
 
 【協會重點資訊】
@@ -104,7 +104,7 @@ async function replyToLine(token: string, replyToken: string, text: string): Pro
   }
 }
 
-const WELCOME_TEXT = `嗨～我是小秘 🐝
+const WELCOME_TEXT = `嗨～我是 TADA醬 🐝
 台灣科技農企業發展協會（TADA）的 AI 秘書，很開心認識你！
 
 有任何協會相關問題都可以直接問我：
