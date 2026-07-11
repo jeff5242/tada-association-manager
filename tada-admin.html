@@ -164,6 +164,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <button class="tab" onclick="switchTab('dashboard')">統計總覽</button>
     <button class="tab" onclick="switchTab('members')">會員名冊</button>
     <button class="tab" onclick="switchTab('applications')">入會審核</button>
+    <button class="tab" onclick="switchTab('unanswered')">🐝 TADA醬 待回覆<span id="unans-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
   </div>
   <div class="ai-pill"><div class="ai-dot"></div>AI Agent 協作中</div>
 </div>
@@ -382,6 +383,60 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ TADA醬 待回覆 ══════════ -->
+<div class="page" id="page-unanswered">
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">🐝 TADA醬 未答問題</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="loadUnanswered()">↻ 重新載入</button>
+      <span id="unans-sb-status" style="font-size:11px;"></span>
+    </div>
+  </div>
+
+  <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:16px;">
+    這裡列出會員在 LINE 問了、但 TADA醬（本地 Wiki）還答不出來的問題。
+    你補上的答案可作為知識庫擴充依據；標記「已回覆」代表已在 LINE 私下回覆會員或已處理。
+  </p>
+
+  <div class="stat-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+    <div class="stat-card"><div class="stat-label">待回覆</div><div class="stat-num" style="color:var(--gold);" id="unans-cnt-pending">–</div></div>
+    <div class="stat-card"><div class="stat-label">已回覆</div><div class="stat-num" style="color:#66bb6a;" id="unans-cnt-answered">–</div></div>
+    <div class="stat-card"><div class="stat-label">已忽略</div><div class="stat-num" style="color:var(--gray);" id="unans-cnt-ignored">–</div></div>
+  </div>
+
+  <div class="toolbar">
+    <select class="filter-select" onchange="filterUnansStatus(this.value)">
+      <option value="pending">待回覆</option>
+      <option value="answered">已回覆</option>
+      <option value="ignored">已忽略</option>
+      <option value="">全部</option>
+    </select>
+    <span style="font-size:11px;color:var(--gray);margin-left:auto;">共 <span id="unans-count">0</span> 筆</span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>時間</th><th>會員問題</th><th>狀態</th><th>答覆／備註</th><th>操作</th>
+      </tr></thead>
+      <tbody id="unans-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取問題</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TADA醬 答覆 Modal -->
+<div id="unans-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;color:var(--white);margin-bottom:8px;" id="unans-modal-title">回覆問題</div>
+    <div style="font-size:12px;color:var(--gold-lt);background:rgba(196,146,42,0.08);border-left:2px solid var(--gold);padding:8px 12px;margin-bottom:14px;line-height:1.7;" id="unans-modal-q"></div>
+    <textarea id="unans-answer-input" style="width:100%;min-height:90px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px;font-family:'Noto Sans TC',sans-serif;font-size:13px;resize:vertical;outline:none;" placeholder="輸入答覆內容或處理備註…"></textarea>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeUnansModal()">取消</button>
+      <button class="btn btn-gold" id="unans-modal-confirm-btn">確認</button>
+    </div>
+  </div>
+</div>
+
 <!-- 審核備注 Modal -->
 <div id="app-notes-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:440px;">
@@ -555,6 +610,7 @@ function switchTab(id){
   if(id==='dashboard') renderDash();
   if(id==='members') renderMemberDir();
   if(id==='applications') loadApplications();
+  if(id==='unanswered') loadUnanswered();
 }
 
 // ── 會員名冊 ─────────────────────────────────────────────
@@ -1012,6 +1068,139 @@ async function executeAppAction() {
     alert('操作失敗：' + e.message);
   }
   btn.disabled = false; btn.textContent = '確認';
+}
+
+// ── TADA醬 待回覆 ─────────────────────────────────────────
+let allUnans = [];
+let unansStatusFilter = 'pending';
+let pendingUnans = null; // { id, action }
+
+const UNANS_STATUS_HTML = {
+  pending:  '<span class="status" style="background:rgba(196,146,42,0.15);color:var(--gold);">待回覆</span>',
+  answered: '<span class="status" style="background:rgba(46,125,50,0.2);color:#66bb6a;">✓ 已回覆</span>',
+  ignored:  '<span class="status" style="background:rgba(255,255,255,0.06);color:var(--gray);">已忽略</span>',
+};
+
+async function loadUnanswered() {
+  const btn = document.querySelector('[onclick="loadUnanswered()"]');
+  const status = document.getElementById('unans-sb-status');
+  if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
+  status.textContent = '';
+  try {
+    const res = await fetch(
+      `${SB_URL}/rest/v1/tada_unanswered?order=created_at.desc`,
+      { headers: SB_HEADERS }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    allUnans = await res.json();
+    renderUnans();
+    status.style.color = '#66bb6a';
+    status.textContent = `✓ 已載入 ${allUnans.length} 筆`;
+  } catch (e) {
+    status.style.color = '#ef5350';
+    status.textContent = '載入失敗：' + e.message;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '↻ 重新載入'; }
+}
+
+function filterUnansStatus(s) { unansStatusFilter = s; renderUnans(); }
+
+function renderUnans() {
+  const pendingCount = allUnans.filter(u => u.status === 'pending').length;
+  document.getElementById('unans-cnt-pending').textContent  = pendingCount;
+  document.getElementById('unans-cnt-answered').textContent = allUnans.filter(u => u.status === 'answered').length;
+  document.getElementById('unans-cnt-ignored').textContent  = allUnans.filter(u => u.status === 'ignored').length;
+
+  // 分頁按鈕上的紅點徽章
+  const badge = document.getElementById('unans-badge');
+  if (badge) {
+    if (pendingCount > 0) { badge.style.display = 'inline-block'; badge.textContent = pendingCount; }
+    else badge.style.display = 'none';
+  }
+
+  const data = allUnans.filter(u => !unansStatusFilter || u.status === unansStatusFilter);
+  document.getElementById('unans-count').textContent = data.length;
+
+  if (!data.length) {
+    document.getElementById('unans-tbody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:30px;">目前沒有這類問題 🎉</td></tr>';
+    return;
+  }
+
+  document.getElementById('unans-tbody').innerHTML = data.map(u => {
+    const dt = u.created_at ? new Date(u.created_at).toLocaleString('zh-TW', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '–';
+    const q = escapeHtml(u.question || '');
+    const ans = u.answer ? escapeHtml(u.answer) : (u.admin_notes ? escapeHtml(u.admin_notes) : '–');
+    const actions = buildUnansButtons(u);
+    return `<tr>
+      <td data-label="時間" style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td>
+      <td data-label="會員問題" style="font-size:13px;color:var(--white);max-width:280px;">${q}</td>
+      <td data-label="狀態">${UNANS_STATUS_HTML[u.status] || u.status}</td>
+      <td data-label="答覆" style="font-size:12px;color:var(--gray);max-width:220px;">${ans}</td>
+      <td data-label="操作" style="white-space:nowrap;">${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function buildUnansButtons(u) {
+  const id = u.id;
+  if (u.status === 'pending') {
+    return `<button class="btn btn-sm" style="background:rgba(46,125,50,0.2);color:#66bb6a;border:1px solid rgba(46,125,50,0.3);" onclick="openUnansModal('${id}','answered')">回覆</button>`
+         + `<button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="openUnansModal('${id}','ignored')">忽略</button>`;
+  }
+  return `<button class="btn btn-sm btn-outline" onclick="openUnansModal('${id}','pending')">重新開啟</button>`;
+}
+
+function openUnansModal(id, action) {
+  pendingUnans = { id, action };
+  const u = allUnans.find(x => x.id === id);
+  const labels = { answered: '回覆並標記已處理', ignored: '忽略這則問題', pending: '重新開啟' };
+  document.getElementById('unans-modal-title').textContent = labels[action] || action;
+  document.getElementById('unans-modal-q').textContent = u ? u.question : '';
+  document.getElementById('unans-answer-input').value = (u && u.answer) ? u.answer : '';
+  document.getElementById('unans-modal-confirm-btn').onclick = executeUnansAction;
+  document.getElementById('unans-modal').style.display = 'flex';
+  document.getElementById('unans-answer-input').focus();
+}
+
+function closeUnansModal() {
+  document.getElementById('unans-modal').style.display = 'none';
+  pendingUnans = null;
+}
+
+async function executeUnansAction() {
+  if (!pendingUnans) return;
+  const { id, action } = pendingUnans;
+  const text = document.getElementById('unans-answer-input').value.trim();
+  const btn = document.getElementById('unans-modal-confirm-btn');
+  btn.disabled = true; btn.textContent = '處理中…';
+
+  const payload = { status: action };
+  if (action === 'answered') {
+    payload.answer = text || null;
+    payload.answered_at = new Date().toISOString();
+  } else if (action === 'ignored') {
+    payload.admin_notes = text || null;
+  } else if (action === 'pending') {
+    payload.answered_at = null;
+  }
+
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_unanswered?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    closeUnansModal();
+    await loadUnanswered();
+  } catch (e) {
+    alert('操作失敗：' + e.message);
+  }
+  btn.disabled = false; btn.textContent = '確認';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 </script>
 
