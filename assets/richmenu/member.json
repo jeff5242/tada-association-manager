@@ -6,15 +6,15 @@
   "areas": [
     {
       "bounds": { "x": 0, "y": 0, "width": 833, "height": 843 },
-      "action": { "type": "uri", "uri": "https://liff.line.me/2010670397-AcAucbwI?p=rsvp" }
+      "action": { "type": "uri", "uri": "https://liff.line.me/2010670397-AcAucbwI" }
     },
     {
       "bounds": { "x": 833, "y": 0, "width": 834, "height": 843 },
-      "action": { "type": "uri", "uri": "https://liff.line.me/2010670397-AcAucbwI?p=card" }
+      "action": { "type": "uri", "uri": "https://liff.line.me/2010670397-e09JL6ri" }
     },
     {
       "bounds": { "x": 1667, "y": 0, "width": 833, "height": 843 },
-      "action": { "type": "uri", "uri": "https://liff.line.me/2010670397-AcAucbwI?p=payment" }
+      "action": { "type": "uri", "uri": "https://liff.line.me/2010670397-aJlbduya" }
     },
     {
       "bounds": { "x": 0, "y": 843, "width": 833, "height": 843 },

@@ -4,10 +4,10 @@
 // （避免參數在 LINE 登入 OAuth 轉導過程被去掉）。
 window.TADA_LIFF_IDS = {
   rsvp:    '2010670397-AcAucbwI',   // 端點需設為 https://tada-ai.org.tw/rsvp/
-  card:    '____FILL_CARD____',     // 端點需設為 https://tada-ai.org.tw/card/
-  payment: '____FILL_PAYMENT____',  // 端點需設為 https://tada-ai.org.tw/payment/
-  vote:    '____FILL_VOTE____',     // 端點需設為 https://tada-ai.org.tw/vote/
-  members: '____FILL_MEMBERS____'   // 端點需設為 https://tada-ai.org.tw/members/
+  card:    '2010670397-e09JL6ri',   // 端點需設為 https://tada-ai.org.tw/card/
+  payment: '2010670397-aJlbduya',   // 端點需設為 https://tada-ai.org.tw/payment/
+  vote:    '2010670397-w3ylS0Bp',   // 端點需設為 https://tada-ai.org.tw/vote/
+  members: '2010670397-PiHxP3es'    // 端點需設為 https://tada-ai.org.tw/members/
 };
 
 window.TADA_SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
