@@ -167,6 +167,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <button class="tab" onclick="switchTab('unanswered')">🐝 TADA醬 待回覆<span id="unans-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
     <button class="tab" onclick="switchTab('lineusers')">💬 LINE 使用者</button>
     <button class="tab" onclick="switchTab('rsvp')">📋 出席統計</button>
+    <button class="tab" onclick="switchTab('payments')">🏦 繳費回報<span id="pay-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
+    <button class="tab" onclick="switchTab('votes')">🗳️ 投票結果</button>
   </div>
   <div class="ai-pill"><div class="ai-dot"></div>AI Agent 協作中</div>
 </div>
@@ -426,6 +428,48 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ 繳費回報 ══════════ -->
+<div class="page" id="page-payments">
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">🏦 會費繳費回報</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="loadPayments()">↻ 重新載入</button>
+      <span id="pay-sb-status" style="font-size:11px;"></span>
+    </div>
+  </div>
+  <div class="stat-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+    <div class="stat-card"><div class="stat-label">待確認</div><div class="stat-num" style="color:var(--gold);" id="pay-cnt-pending">–</div></div>
+    <div class="stat-card"><div class="stat-label">已確認</div><div class="stat-num" style="color:#66bb6a;" id="pay-cnt-confirmed">–</div></div>
+    <div class="stat-card"><div class="stat-label">已確認金額</div><div class="stat-num" style="color:#29b6f6;" id="pay-sum">–</div></div>
+  </div>
+  <div class="toolbar">
+    <select class="filter-select" onchange="filterPay(this.value)">
+      <option value="pending">待確認</option>
+      <option value="confirmed">已確認</option>
+      <option value="">全部</option>
+    </select>
+    <span style="font-size:11px;color:var(--gray);margin-left:auto;">共 <span id="pay-count">0</span> 筆</span>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>回報者</th><th>類別</th><th>金額</th><th>後5碼</th><th>狀態</th><th>時間</th><th>操作</th></tr></thead>
+      <tbody id="pay-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════ 投票結果 ══════════ -->
+<div class="page" id="page-votes">
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">🗳️ 投票結果</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="loadVotes()">↻ 重新載入</button>
+      <span id="vote-sb-status" style="font-size:11px;"></span>
+    </div>
+  </div>
+  <div id="vote-result" style="font-size:14px;color:var(--gray);">點選「重新載入」讀取進行中的投票</div>
+</div>
+
 <!-- ══════════ 出席統計 ══════════ -->
 <div class="page" id="page-rsvp">
   <div class="section-header" style="margin-bottom:16px;">
@@ -496,7 +540,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>使用者</th><th>userId</th><th>互動</th><th>最近互動</th><th style="text-align:center;">管理人員</th>
+        <th>使用者</th><th>userId</th><th>互動</th><th style="text-align:center;">會員</th><th style="text-align:center;">管理人員</th>
       </tr></thead>
       <tbody id="lu-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取使用者</td></tr></tbody>
     </table>
@@ -692,6 +736,8 @@ function switchTab(id){
   if(id==='unanswered') loadUnanswered();
   if(id==='lineusers') loadLineUsers();
   if(id==='rsvp') loadRsvp();
+  if(id==='payments') loadPayments();
+  if(id==='votes') loadVotes();
 }
 
 // ── 會員名冊 ─────────────────────────────────────────────
@@ -1338,14 +1384,14 @@ function renderLineUsers() {
       ? `<img src="${escapeHtml(u.picture_url)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">`
       : `<div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">🐝</div>`;
     const uid = escapeHtml(u.user_id);
-    const last = u.last_seen ? new Date(u.last_seen).toLocaleString('zh-TW', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '–';
-    const checked = u.is_admin ? 'checked' : '';
+    const ckAdmin = u.is_admin ? 'checked' : '';
+    const ckMember = u.is_member ? 'checked' : '';
     return `<tr>
       <td data-label="使用者"><div style="display:flex;align-items:center;gap:8px;">${pic}<span style="color:var(--white);">${name}</span></div></td>
       <td data-label="userId"><code onclick="copyUserId('${uid}')" title="點擊複製" style="font-size:10px;color:var(--gray);cursor:pointer;word-break:break-all;">${uid}</code></td>
       <td data-label="互動" style="font-size:12px;color:var(--gray);">${u.message_count ?? 0} 次</td>
-      <td data-label="最近互動" style="font-size:11px;color:var(--gray);white-space:nowrap;">${last}</td>
-      <td data-label="管理人員" style="text-align:center;"><input type="checkbox" ${checked} onchange="toggleAdmin('${uid}', this.checked, this)"></td>
+      <td data-label="會員" style="text-align:center;"><input type="checkbox" ${ckMember} onchange="toggleUserFlag('${uid}','is_member',this.checked,this)"></td>
+      <td data-label="管理人員" style="text-align:center;"><input type="checkbox" ${ckAdmin} onchange="toggleUserFlag('${uid}','is_admin',this.checked,this)"></td>
     </tr>`;
   }).join('');
 }
@@ -1359,21 +1405,21 @@ function copyUserId(uid) {
   });
 }
 
-async function toggleAdmin(userId, isAdmin, el) {
+async function toggleUserFlag(userId, field, value, el) {
   el.disabled = true;
   try {
     const res = await fetch(`${SB_URL}/rest/v1/tada_line_users?user_id=eq.${encodeURIComponent(userId)}`, {
       method: 'PATCH',
       headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ is_admin: isAdmin }),
+      body: JSON.stringify({ [field]: value }),
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const u = allLineUsers.find(x => x.user_id === userId);
-    if (u) u.is_admin = isAdmin;
+    if (u) u[field] = value;
     document.getElementById('lu-cnt-admin').textContent = allLineUsers.filter(x => x.is_admin).length;
   } catch (e) {
     alert('更新失敗：' + e.message);
-    el.checked = !isAdmin; // 還原
+    el.checked = !value; // 還原
   }
   el.disabled = false;
 }
@@ -1456,6 +1502,90 @@ function exportRsvpCSV() {
   a.href = URL.createObjectURL(blob);
   a.download = 'TADA_出席統計.csv';
   a.click();
+}
+
+// ── 繳費回報 ─────────────────────────────────────────────
+let allPay = [], payFilter = 'pending';
+const PAY_TYPE = { personal_new:'個人・新入會', group_new:'團體・新入會', personal_renew:'個人・續約', group_renew:'團體・續約' };
+const PAY_STATUS_HTML = {
+  pending:'<span class="status" style="background:rgba(196,146,42,0.15);color:var(--gold);">待確認</span>',
+  confirmed:'<span class="status" style="background:rgba(46,125,50,0.2);color:#66bb6a;">✓ 已確認</span>',
+  rejected:'<span class="status" style="background:rgba(192,57,43,0.15);color:#ef5350;">駁回</span>',
+};
+
+async function loadPayments(){
+  const btn=document.querySelector('[onclick="loadPayments()"]'), status=document.getElementById('pay-sb-status');
+  if(btn){btn.disabled=true;btn.textContent='載入中…';} status.textContent='';
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/tada_payments?order=created_at.desc`,{headers:SB_HEADERS});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    allPay=await res.json(); renderPay();
+    status.style.color='#66bb6a'; status.textContent=`✓ 已載入 ${allPay.length} 筆`;
+  }catch(e){ status.style.color='#ef5350'; status.textContent='載入失敗：'+e.message; }
+  if(btn){btn.disabled=false;btn.textContent='↻ 重新載入';}
+}
+function filterPay(v){ payFilter=v; renderPay(); }
+function renderPay(){
+  const pending=allPay.filter(p=>p.status==='pending').length;
+  const confirmed=allPay.filter(p=>p.status==='confirmed');
+  document.getElementById('pay-cnt-pending').textContent=pending;
+  document.getElementById('pay-cnt-confirmed').textContent=confirmed.length;
+  document.getElementById('pay-sum').textContent='$'+confirmed.reduce((s,p)=>s+(p.amount||0),0).toLocaleString();
+  const badge=document.getElementById('pay-badge');
+  if(badge){ if(pending>0){badge.style.display='inline-block';badge.textContent=pending;}else badge.style.display='none'; }
+  const data=allPay.filter(p=>!payFilter||p.status===payFilter);
+  document.getElementById('pay-count').textContent=data.length;
+  if(!data.length){ document.getElementById('pay-tbody').innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">無資料</td></tr>'; return; }
+  document.getElementById('pay-tbody').innerHTML=data.map(p=>{
+    const dt=p.created_at?new Date(p.created_at).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'–';
+    const act=p.status==='pending'
+      ? `<button class="btn btn-sm" style="background:rgba(46,125,50,0.2);color:#66bb6a;border:1px solid rgba(46,125,50,0.3);" onclick="confirmPay('${p.id}')">確認收款</button>`
+      : '<span style="font-size:11px;color:var(--gray);">已處理</span>';
+    return `<tr>
+      <td data-label="回報者" style="color:var(--white);">${escapeHtml(p.display_name||'（未取得）')}</td>
+      <td data-label="類別" style="font-size:12px;">${PAY_TYPE[p.member_type]||p.member_type||'–'}</td>
+      <td data-label="金額" style="font-weight:700;color:var(--gold);">$${(p.amount||0).toLocaleString()}</td>
+      <td data-label="後5碼" style="font-family:monospace;">${escapeHtml(p.last5||'–')}</td>
+      <td data-label="狀態">${PAY_STATUS_HTML[p.status]||p.status}</td>
+      <td data-label="時間" style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td>
+      <td data-label="操作">${act}</td>
+    </tr>`;
+  }).join('');
+}
+async function confirmPay(id){
+  if(!confirm('確認已收到這筆款項？')) return;
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/tada_payments?id=eq.${id}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({status:'confirmed',confirmed_at:new Date().toISOString()})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    await loadPayments();
+  }catch(e){ alert('操作失敗：'+e.message); }
+}
+
+// ── 投票結果 ─────────────────────────────────────────────
+async function loadVotes(){
+  const btn=document.querySelector('[onclick="loadVotes()"]'), status=document.getElementById('vote-sb-status');
+  if(btn){btn.disabled=true;btn.textContent='載入中…';} status.textContent='';
+  try{
+    const pr=await fetch(`${SB_URL}/rest/v1/tada_polls?active=eq.true&order=created_at.desc&limit=1`,{headers:SB_HEADERS});
+    const polls=pr.ok?await pr.json():[];
+    if(!polls.length){ document.getElementById('vote-result').innerHTML='<p style="color:var(--gray);font-size:14px;">目前沒有進行中的投票。<br><span style="font-size:12px;">（到 Supabase 把某個 tada_polls 的 active 設為 true 即可開啟）</span></p>'; status.textContent=''; if(btn){btn.disabled=false;btn.textContent='↻ 重新載入';} return; }
+    const poll=polls[0];
+    const vr=await fetch(`${SB_URL}/rest/v1/tada_votes?poll_id=eq.${poll.id}&select=choice,display_name`,{headers:SB_HEADERS});
+    const votes=vr.ok?await vr.json():[];
+    const opts=Array.isArray(poll.options)?poll.options:[];
+    const total=votes.length;
+    const tally=opts.map(o=>({o,n:votes.filter(v=>v.choice===o).length}));
+    document.getElementById('vote-result').innerHTML=`
+      <div class="section-title" style="font-size:16px;margin-bottom:6px;">${escapeHtml(poll.title)}</div>
+      <div style="font-size:12px;color:var(--gray);margin-bottom:18px;">${escapeHtml(poll.description||'')}　｜　總投票數 <b style="color:var(--gold);">${total}</b></div>
+      ${tally.map(t=>{const pct=total?Math.round(t.n/total*100):0;return `
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:5px;"><span style="color:var(--white);font-weight:700;">${escapeHtml(t.o)}</span><span style="color:var(--gold);">${t.n} 票（${pct}%）</span></div>
+          <div style="height:10px;background:var(--surface2);border-radius:5px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--green),var(--gold));"></div></div>
+        </div>`;}).join('')}`;
+    status.style.color='#66bb6a'; status.textContent=`✓ ${total} 票`;
+  }catch(e){ document.getElementById('vote-result').innerHTML='<p style="color:#ef5350;">載入失敗：'+e.message+'</p>'; }
+  if(btn){btn.disabled=false;btn.textContent='↻ 重新載入';}
 }
 </script>
 

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>會員專區｜TADA</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 40px;}
+.top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.wrap{max-width:520px;margin:0 auto;padding:24px 20px;}
+.head{text-align:center;margin-bottom:22px;}
+.kick{font-size:11px;letter-spacing:0.3em;color:var(--gold);font-weight:600;margin-bottom:6px;}
+.title{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;color:var(--green-deep);}
+.greet{font-size:13px;color:var(--green-light);margin-top:8px;}
+.greet b{color:var(--gold);}
+.item{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:12px;text-decoration:none;color:inherit;box-shadow:0 4px 14px rgba(30,51,32,0.04);transition:all .15s;}
+.item:active{transform:scale(0.99);}
+.item .ic{font-size:26px;flex-shrink:0;}
+.item .t{font-size:15px;font-weight:700;color:var(--green-deep);}
+.item .d{font-size:12px;color:var(--green-light);margin-top:2px;}
+.item .arw{margin-left:auto;color:var(--gold);font-size:16px;}
+.state{text-align:center;padding:60px 20px;}
+.state .ic{font-size:56px;margin-bottom:16px;}
+.state .msg{font-size:17px;color:var(--green-deep);font-weight:700;line-height:1.7;}
+.state .sub2{font-size:13px;color:var(--green-light);margin-top:12px;line-height:1.9;}
+.state a.btn{display:inline-block;margin-top:20px;padding:12px 26px;background:var(--green-deep);color:var(--gold-light);border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;}
+.loading{text-align:center;padding:80px 20px;color:var(--green-light);font-size:14px;}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+  <div id="loading" class="loading">驗證會員身分… 🐝</div>
+
+  <!-- 會員內容 -->
+  <div id="member-view" style="display:none;">
+    <div class="head">
+      <div class="kick">Members Only・會員專區</div>
+      <div class="title">會員專屬內容</div>
+      <div class="greet"><b id="mname">會員</b> 您好，以下是專屬資源 🌾</div>
+    </div>
+    <div id="content-list"></div>
+  </div>
+
+  <!-- 非會員 -->
+  <div id="deny-view" class="state" style="display:none;">
+    <div class="ic">🔒</div>
+    <div class="msg">此區為 TADA 會員專屬</div>
+    <div class="sub2">尚未開通會員權限。<br>歡迎加入協會，即可解鎖專屬資源與服務。</div>
+    <a class="btn" href="https://tada-ai.org.tw/join/" target="_blank">🌱 我要入會</a>
+  </div>
+</div>
+
+<script>
+// 會員專屬內容清單（要新增/修改連結，直接改這裡）
+const CONTENT = [
+  { ic:'📄', t:'協會章程與辦法', d:'入會須知、會員權利義務', url:'https://tada-ai.org.tw/' },
+  { ic:'📚', t:'知識中心', d:'AI 農業應用、政府補助懶人包', url:'https://tada-ai.org.tw/platform/' },
+  { ic:'🗂️', t:'歷屆活動與簡報', d:'講座資料、活動花絮', url:'https://tada-ai.org.tw/' },
+  { ic:'🤝', t:'會員名錄', d:'會員企業交流媒合', url:'https://tada-ai.org.tw/platform/' },
+];
+
+async function init(){
+  try{
+    const profile = await window.tadaInitLiff();
+    if(!profile) return;
+
+    const res = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_line_users?user_id=eq.${encodeURIComponent(profile.userId)}&select=is_member,is_admin`, { headers: window.tadaSbHeaders() });
+    const rows = res.ok ? await res.json() : [];
+    const isMember = rows.length && (rows[0].is_member || rows[0].is_admin);
+
+    document.getElementById('loading').style.display='none';
+    if(isMember){
+      document.getElementById('mname').textContent = profile.displayName;
+      document.getElementById('content-list').innerHTML = CONTENT.map(c=>
+        `<a class="item" href="${c.url}" target="_blank"><div class="ic">${c.ic}</div><div><div class="t">${c.t}</div><div class="d">${c.d}</div></div><div class="arw">→</div></a>`
+      ).join('');
+      document.getElementById('member-view').style.display='block';
+    } else {
+      document.getElementById('deny-view').style.display='block';
+    }
+  }catch(e){
+    document.getElementById('loading').textContent = '載入失敗，請從 LINE 官方帳號選單開啟。';
+  }
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>報到掃描｜TADA 工作人員</title>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-light:#5a8a60;--cream:#f8f4ea;}
+body{font-family:'Noto Sans TC',sans-serif;background:#0d160f;color:#fff;min-height:100vh;}
+.gate{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;}
+.gate h1{font-family:'Noto Serif TC',serif;font-size:20px;color:var(--gold-light);}
+.gate input{padding:12px 16px;font-size:16px;border:1px solid #2a3a2d;background:#16221a;color:#fff;border-radius:8px;text-align:center;outline:none;width:220px;}
+.gate button{padding:12px 28px;font-size:15px;font-weight:700;background:var(--green-deep);color:var(--gold-light);border:1px solid var(--gold);border-radius:8px;cursor:pointer;}
+.gate .err{color:#ef5350;font-size:13px;height:16px;}
+.scanner{display:none;min-height:100vh;flex-direction:column;}
+.sc-head{padding:14px 18px;background:var(--green-deep);display:flex;align-items:center;justify-content:space-between;}
+.sc-head .t{font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700;color:var(--gold-light);}
+.sc-head .c{font-size:13px;color:var(--green-light);}
+.sc-head .c b{color:#fff;font-size:18px;}
+.video-wrap{position:relative;flex:1;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+#video{width:100%;height:100%;object-fit:cover;}
+.frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64vw;height:64vw;max-width:300px;max-height:300px;border:3px solid var(--gold-light);border-radius:18px;box-shadow:0 0 0 2000px rgba(0,0,0,0.45);}
+.result{position:absolute;left:0;right:0;bottom:0;padding:22px;text-align:center;transition:all .2s;}
+.result .box{display:inline-block;padding:16px 26px;border-radius:12px;font-size:18px;font-weight:700;backdrop-filter:blur(4px);}
+.result .ok{background:rgba(46,125,50,0.85);color:#fff;}
+.result .dup{background:rgba(184,145,58,0.9);color:#1a1a14;}
+.result .wait{background:rgba(0,0,0,0.5);color:#cfe;font-weight:400;font-size:14px;}
+</style>
+</head>
+<body>
+<div class="gate" id="gate">
+  <h1>🐝 TADA 報到掃描</h1>
+  <input type="password" id="pw" placeholder="工作人員密碼" onkeydown="if(event.key==='Enter')unlock()">
+  <button onclick="unlock()">進入</button>
+  <div class="err" id="gate-err"></div>
+</div>
+
+<div class="scanner" id="scanner">
+  <div class="sc-head">
+    <div class="t">報到掃描</div>
+    <div class="c">已報到 <b id="count">0</b> 人</div>
+  </div>
+  <div class="video-wrap">
+    <video id="video" playsinline></video>
+    <div class="frame"></div>
+    <div class="result"><div class="box wait" id="result-box">請對準 QR Code…</div></div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
+const SB_KEY = 'sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
+const SB_HEADERS = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
+const ADMIN_PW_HASH = '0db45166855d1d262b3bb4399a2c0526c16359f9d3663ca8b96e5bc73c61fde0'; // tada2026
+
+let checkedCount = 0;
+let lastScan = { id: null, at: 0 };
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function unlock(){
+  const pw = document.getElementById('pw').value;
+  if(await sha256(pw) === ADMIN_PW_HASH){
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('scanner').style.display = 'flex';
+    startCamera();
+  } else {
+    document.getElementById('gate-err').textContent = '密碼錯誤';
+  }
+}
+
+function showResult(cls, text){
+  const el = document.getElementById('result-box');
+  el.className = 'box ' + cls;
+  el.textContent = text;
+}
+
+async function startCamera(){
+  const video = document.getElementById('video');
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream; video.setAttribute('playsinline', true); await video.play();
+  } catch(e){ showResult('dup', '無法開啟相機：' + e.message); return; }
+
+  function tick(){
+    if(video.readyState === video.HAVE_ENOUGH_DATA){
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+      if(code && code.data) handleScan(code.data);
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function extractUserId(data){
+  try{ const u = new URL(data); const p = u.searchParams.get('u'); if(p) return p; } catch(e){}
+  return data; // 純 userId
+}
+
+async function handleScan(raw){
+  const userId = extractUserId(raw);
+  const now = Date.now();
+  if(userId === lastScan.id && now - lastScan.at < 3000) return; // 3 秒內同一碼不重複處理
+  lastScan = { id: userId, at: now };
+
+  try{
+    const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?on_conflict=user_id`, {
+      method: 'POST',
+      headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({ user_id: userId, checked_in: true, checked_in_at: new Date().toISOString() }),
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    const r = rows[0] || {};
+    const name = r.display_name || '會員';
+    // 若這次是「本來就已報到」→ 提示重複（用 checked_in_at 判斷不精準，簡化為都顯示成功）
+    showResult('ok', `✓ ${name} 報到成功`);
+    checkedCount++;
+    document.getElementById('count').textContent = checkedCount;
+  } catch(e){
+    showResult('dup', '報到失敗：' + e.message);
+  }
+}
+</script>
+</body>
+</html>

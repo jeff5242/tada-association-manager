@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>出席回覆｜TADA 第六屆會員大會</title>
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="../assets/liff-common.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -119,11 +120,10 @@ textarea{resize:vertical;min-height:60px;}
 </div>
 
 <script>
-// ⚠️ 待填：LINE Console 建立 LIFF app 後取得的 LIFF ID
-const LIFF_ID = '____FILL_LIFF_ID____';
-const SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
-const SB_KEY = 'sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
-const SB_HEADERS = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
+// LIFF ID 與 Supabase 設定集中在 ../assets/liff-common.js
+const LIFF_ID = window.TADA_LIFF_ID;
+const SB_URL = window.TADA_SB_URL;
+const SB_HEADERS = window.tadaSbHeaders();
 
 let profile = null;
 let attending = true;

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>會員投票｜TADA</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 40px;}
+.top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.wrap{max-width:520px;margin:0 auto;padding:24px 20px;}
+.head{text-align:center;margin-bottom:20px;}
+.kick{font-size:11px;letter-spacing:0.3em;color:var(--gold);font-weight:600;margin-bottom:6px;}
+.title{font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--green-deep);line-height:1.4;}
+.desc{font-size:13px;color:var(--green-light);margin-top:10px;line-height:1.8;}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px;box-shadow:0 6px 20px rgba(30,51,32,0.05);}
+.opt{display:block;padding:16px;border:1.5px solid var(--line);border-radius:10px;margin-bottom:12px;cursor:pointer;font-size:16px;font-weight:700;color:var(--green-deep);text-align:center;transition:all .15s;}
+.opt.sel{border-color:var(--green-mid);background:var(--green-mid);color:#fff;}
+.submit{width:100%;padding:15px;font-size:16px;font-weight:700;font-family:inherit;background:var(--green-deep);color:var(--gold-light);border:none;border-radius:8px;cursor:pointer;letter-spacing:0.1em;margin-top:4px;}
+.submit:disabled{opacity:.5;}
+.state{text-align:center;padding:60px 20px;}
+.state .ic{font-size:56px;margin-bottom:16px;}
+.state .msg{font-size:16px;color:var(--green-deep);font-weight:700;line-height:1.7;}
+.state .sub2{font-size:14px;color:var(--green-light);margin-top:10px;}
+.state .sub2 b{color:var(--gold);}
+.loading{text-align:center;padding:80px 20px;color:var(--green-light);font-size:14px;}
+.err{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);color:#c0392b;font-size:13px;padding:12px;border-radius:8px;margin-bottom:14px;}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+  <div id="loading" class="loading">載入投票中… 🐝</div>
+
+  <div id="vote-view" style="display:none;">
+    <div class="head">
+      <div class="kick">TADA 會員投票</div>
+      <div class="title" id="poll-title">—</div>
+      <div class="desc" id="poll-desc"></div>
+    </div>
+    <div id="err-box"></div>
+    <div class="card">
+      <div id="options"></div>
+      <button class="submit" id="submit-btn" onclick="submitVote()">投下這一票</button>
+    </div>
+  </div>
+
+  <div id="none-view" class="state" style="display:none;">
+    <div class="ic">🗳️</div>
+    <div class="msg">目前沒有進行中的投票</div>
+    <div class="sub2">有議案表決時會在這裡開放，敬請留意通知 🌾</div>
+  </div>
+
+  <div id="done-view" class="state" style="display:none;">
+    <div class="ic">✅</div>
+    <div class="msg">您的一票已送出，感謝參與！</div>
+    <div class="sub2" id="done-choice"></div>
+  </div>
+</div>
+
+<script>
+let profile = null, poll = null, selected = null;
+function showErr(m){ document.getElementById('err-box').innerHTML = '<div class="err">'+m+'</div>'; }
+
+async function init(){
+  try{
+    profile = await window.tadaInitLiff();
+    if(!profile) return;
+
+    // 取進行中的投票
+    const pr = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_polls?active=eq.true&order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
+    const polls = pr.ok ? await pr.json() : [];
+    document.getElementById('loading').style.display='none';
+    if(!polls.length){ document.getElementById('none-view').style.display='block'; return; }
+    poll = polls[0];
+
+    // 是否已投過
+    const vr = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_votes?poll_id=eq.${poll.id}&user_id=eq.${encodeURIComponent(profile.userId)}`, { headers: window.tadaSbHeaders() });
+    const votes = vr.ok ? await vr.json() : [];
+    if(votes.length){ showDone(votes[0].choice); return; }
+
+    document.getElementById('poll-title').textContent = poll.title;
+    document.getElementById('poll-desc').textContent = poll.description || '';
+    const opts = Array.isArray(poll.options) ? poll.options : [];
+    document.getElementById('options').innerHTML = opts.map((o,i)=>`<div class="opt" data-v="${encodeURIComponent(o)}" onclick="pick(this)">${o}</div>`).join('');
+    document.getElementById('vote-view').style.display='block';
+  }catch(e){
+    document.getElementById('loading').textContent = '載入失敗，請從 LINE 官方帳號選單開啟。';
+  }
+}
+
+function pick(el){
+  selected = decodeURIComponent(el.dataset.v);
+  document.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function showDone(choice){
+  document.getElementById('vote-view').style.display='none';
+  document.getElementById('done-choice').innerHTML = '您投的是：<b>'+choice+'</b>';
+  document.getElementById('done-view').style.display='block';
+}
+
+async function submitVote(){
+  if(!selected){ showErr('請先選擇一個選項'); return; }
+  const btn = document.getElementById('submit-btn'); btn.disabled=true; btn.textContent='送出中…';
+  try{
+    const res = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_votes`, {
+      method:'POST', headers:{ ...window.tadaSbHeaders(), Prefer:'return=minimal' },
+      body: JSON.stringify({ poll_id: poll.id, user_id: profile.userId, display_name: profile.displayName, choice: selected }),
+    });
+    if(res.status === 409){ showErr('您已經投過票囉～'); btn.disabled=false; btn.textContent='投下這一票'; return; }
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    showDone(selected);
+    setTimeout(()=>{ if(liff.isInClient()) liff.closeWindow(); }, 2600);
+  }catch(e){ showErr('送出失敗：'+e.message); btn.disabled=false; btn.textContent='投下這一票'; }
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>電子會員證｜TADA</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--gold:#b8913a;--gold-light:#d4a853;--gold-pale:#f5ecd4;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 18px;}
+.loading{color:var(--gold-pale);font-size:14px;}
+.card{width:100%;max-width:420px;background:linear-gradient(160deg,#24402a,#16241a);border:1px solid rgba(184,145,58,0.35);border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.5);display:none;}
+.card-top{height:5px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.card-inner{padding:28px 26px 30px;}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+.brand-logo{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(255,255,255,0.04);}
+.brand-name{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:600;color:var(--gold-pale);letter-spacing:0.08em;}
+.brand-sub{font-size:9px;color:var(--green-light);letter-spacing:0.12em;margin-top:1px;}
+.label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.3em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;}
+.name{font-family:'Noto Serif TC',serif;font-size:30px;font-weight:900;color:#fff;letter-spacing:0.04em;margin-bottom:4px;}
+.status-line{font-size:12px;color:var(--green-light);margin-bottom:22px;}
+.status-line .on{color:var(--gold-light);}
+.qr-wrap{background:#fff;border-radius:14px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+#qrcode{width:200px;height:200px;}
+#qrcode img{display:block;}
+.qr-hint{font-size:11px;color:#8a7a55;letter-spacing:0.05em;}
+.checked{margin-top:18px;text-align:center;padding:12px;border-radius:10px;background:rgba(46,125,50,0.18);border:1px solid rgba(102,187,106,0.35);color:#a5d6a7;font-size:14px;font-weight:700;display:none;}
+.foot{text-align:center;margin-top:20px;font-size:10px;color:var(--green-light);letter-spacing:0.1em;line-height:1.8;}
+</style>
+</head>
+<body>
+<div id="loading" class="loading">載入電子會員證… 🐝</div>
+
+<div class="card" id="card">
+  <div class="card-top"></div>
+  <div class="card-inner">
+    <div class="brand">
+      <div class="brand-logo">🌾</div>
+      <div>
+        <div class="brand-name">台灣科技農企業發展協會</div>
+        <div class="brand-sub">TADA MEMBER PASS</div>
+      </div>
+    </div>
+
+    <div class="label">Member</div>
+    <div class="name" id="member-name">—</div>
+    <div class="status-line" id="status-line"></div>
+
+    <div class="qr-wrap">
+      <div id="qrcode"></div>
+      <div class="qr-hint">報到時請出示此 QR 給工作人員掃描</div>
+    </div>
+
+    <div class="checked" id="checked-box">✓ 您已完成報到</div>
+
+    <div class="foot">
+      2026 第六屆會員大會｜9/4（五）臻愛婚宴會館 烏日高鐵店
+    </div>
+  </div>
+</div>
+
+<script>
+async function init(){
+  try{
+    const profile = await window.tadaInitLiff();
+    if(!profile) return; // 導向登入中
+    document.getElementById('member-name').textContent = profile.displayName;
+
+    // QR 內容：報到用連結（現場掃描頁會解析 u 參數）
+    const payload = 'https://tada-ai.org.tw/checkin/?u=' + encodeURIComponent(profile.userId);
+    new QRCode(document.getElementById('qrcode'), { text: payload, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+
+    // 讀取出席/報到狀態
+    const res = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(profile.userId)}`, { headers: window.tadaSbHeaders() });
+    const rows = res.ok ? await res.json() : [];
+    const sl = document.getElementById('status-line');
+    if(rows.length){
+      const r = rows[0];
+      sl.innerHTML = r.attending ? `出席登記：<span class="on">${r.headcount} 位</span>` : '出席狀態：未出席';
+      if(r.checked_in) document.getElementById('checked-box').style.display = 'block';
+    } else {
+      sl.innerHTML = '尚未回覆出席，可從選單「我要報名」登記';
+    }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('card').style.display = 'block';
+  } catch(e){
+    document.getElementById('loading').textContent = '載入失敗，請從 LINE 官方帳號選單開啟。';
+  }
+}
+init();
+</script>
+</body>
+</html>

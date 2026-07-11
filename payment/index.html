@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>匯款回報｜TADA</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 40px;}
+.top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.wrap{max-width:520px;margin:0 auto;padding:24px 20px;}
+.head{text-align:center;margin-bottom:20px;}
+.kick{font-size:11px;letter-spacing:0.3em;color:var(--gold);font-weight:600;margin-bottom:6px;}
+.title{font-family:'Noto Serif TC',serif;font-size:23px;font-weight:900;color:var(--green-deep);}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 6px 20px rgba(30,51,32,0.05);}
+.bank{background:var(--green-deep);color:var(--gold-pale);border-radius:10px;padding:16px 18px;margin-bottom:16px;font-size:13px;line-height:2;}
+.bank .k{color:var(--green-light);display:inline-block;width:52px;}
+.bank b{color:var(--gold-light);letter-spacing:0.05em;}
+.field{margin-bottom:16px;}
+.label{font-size:13px;font-weight:700;color:var(--green-deep);margin-bottom:8px;display:block;}
+select,input[type=text],input[type=number],textarea{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:15px;color:var(--ink);outline:none;background:#fff;}
+select:focus,input:focus,textarea:focus{border-color:var(--gold);}
+textarea{resize:vertical;min-height:56px;}
+.amount-show{font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--gold);}
+.hint{font-size:11px;color:var(--green-light);margin-top:6px;}
+.submit{width:100%;padding:15px;font-size:16px;font-weight:700;font-family:inherit;background:var(--green-deep);color:var(--gold-light);border:none;border-radius:8px;cursor:pointer;letter-spacing:0.1em;}
+.submit:disabled{opacity:.5;}
+.state{text-align:center;padding:60px 20px;}
+.state .ic{font-size:56px;margin-bottom:16px;}
+.state .msg{font-size:16px;color:var(--green-deep);font-weight:700;line-height:1.7;}
+.state .sub2{font-size:13px;color:var(--green-light);margin-top:10px;line-height:1.8;}
+.loading{text-align:center;padding:80px 20px;color:var(--green-light);font-size:14px;}
+.err{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);color:#c0392b;font-size:13px;padding:12px;border-radius:8px;margin-bottom:14px;}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+  <div id="loading" class="loading">載入中… 🐝</div>
+
+  <div id="form-view" style="display:none;">
+    <div class="head">
+      <div class="kick">TADA 會費・匯款回報</div>
+      <div class="title">我已完成匯款</div>
+    </div>
+
+    <div id="err-box"></div>
+
+    <div class="bank">
+      <div><span class="k">銀行</span><b>京城銀行 太保分行</b>（代號 0540641）</div>
+      <div><span class="k">帳號</span><b>064125019127</b></div>
+      <div><span class="k">戶名</span>台灣科技農企業發展協會</div>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label class="label">繳費類別</label>
+        <select id="member-type" onchange="updateAmount()">
+          <option value="personal_new" data-amt="7000">個人會員・新入會（NT$7,000）</option>
+          <option value="group_new" data-amt="30000">團體會員・新入會（NT$30,000）</option>
+          <option value="personal_renew" data-amt="6000">個人會員・續約（NT$6,000）</option>
+          <option value="group_renew" data-amt="20000">團體會員・續約（NT$20,000）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="label">匯款金額</label>
+        <div class="amount-show" id="amount-show">NT$7,000</div>
+        <div class="hint">如與實際金額不同，可於下方備註說明</div>
+      </div>
+      <div class="field">
+        <label class="label">匯款帳號後 5 碼 <span style="color:#c0392b;">*</span></label>
+        <input type="text" id="last5" inputmode="numeric" maxlength="5" placeholder="例如：12345">
+      </div>
+      <div class="field">
+        <label class="label">備註（選填）</label>
+        <textarea id="note" placeholder="匯款人姓名不同、金額差異等說明…"></textarea>
+      </div>
+      <button class="submit" id="submit-btn" onclick="submitPay()">送出回報</button>
+    </div>
+  </div>
+
+  <div id="done-view" class="state" style="display:none;">
+    <div class="ic">✅</div>
+    <div class="msg">匯款回報已送出！</div>
+    <div class="sub2">會務人員核對後會為您確認，感謝您的支持 🌾</div>
+  </div>
+</div>
+
+<script>
+let profile = null;
+function showErr(m){ document.getElementById('err-box').innerHTML = '<div class="err">'+m+'</div>'; }
+
+function updateAmount(){
+  const sel = document.getElementById('member-type');
+  const amt = sel.options[sel.selectedIndex].dataset.amt;
+  document.getElementById('amount-show').textContent = 'NT$' + Number(amt).toLocaleString();
+}
+
+async function init(){
+  try{
+    profile = await window.tadaInitLiff();
+    if(!profile) return;
+    document.getElementById('loading').style.display='none';
+    document.getElementById('form-view').style.display='block';
+  }catch(e){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('form-view').style.display='block';
+    showErr('初始化失敗，請從 LINE 官方帳號選單開啟。');
+  }
+}
+
+async function submitPay(){
+  const last5 = document.getElementById('last5').value.trim();
+  if(!/^\d{5}$/.test(last5)){ showErr('請輸入正確的帳號後 5 碼（5 位數字）'); return; }
+  const sel = document.getElementById('member-type');
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = '送出中…';
+
+  const payload = {
+    user_id: profile ? profile.userId : null,
+    display_name: profile ? profile.displayName : null,
+    member_type: sel.value,
+    amount: Number(sel.options[sel.selectedIndex].dataset.amt),
+    last5: last5,
+    note: document.getElementById('note').value.trim() || null,
+  };
+  try{
+    const res = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_payments`, {
+      method:'POST', headers:{ ...window.tadaSbHeaders(), Prefer:'return=minimal' }, body: JSON.stringify(payload),
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    document.getElementById('form-view').style.display='none';
+    document.getElementById('done-view').style.display='block';
+    setTimeout(()=>{ if(liff.isInClient()) liff.closeWindow(); }, 2600);
+  }catch(e){
+    showErr('送出失敗：'+e.message); btn.disabled=false; btn.textContent='送出回報';
+  }
+}
+init();
+</script>
+</body>
+</html>
