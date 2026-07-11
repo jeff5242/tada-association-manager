@@ -3,6 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+// LIFF 入口轉址：Rich Menu 以 ?p=rsvp 開啟 LIFF，這裡把使用者導到對應功能頁
+// （同時處理 LINE 將 query 包進 liff.state 的情況）
+(function(){
+  try{
+    var s = new URLSearchParams(location.search);
+    var p = s.get('p');
+    if(!p){ var st = s.get('liff.state'); if(st){ p = new URLSearchParams(st.replace(/^\?/,'')).get('p'); } }
+    var ok = { rsvp:1, card:1, payment:1, vote:1, members:1 };
+    if(p && ok[p]) location.replace('/' + p + '/');
+  }catch(e){}
+})();
+</script>
 <title>台灣科技農企業發展協會</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600;900&family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
