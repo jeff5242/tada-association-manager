@@ -1,6 +1,14 @@
-// TADA LIFF 共用設定 —— 所有 LIFF 頁面（rsvp / card / payment / vote / members）共用
-// LIFF app（端點 https://tada-ai.org.tw/）ID
-window.TADA_LIFF_ID = '2010670397-AcAucbwI';
+// TADA LIFF 共用設定
+// 每個功能各自一個 LIFF app，且該 app 的「端點 URL」直接指向該功能頁，
+// 這樣點按鈕開 https://liff.line.me/{id} 就會直接落在該頁，不需傳任何參數
+// （避免參數在 LINE 登入 OAuth 轉導過程被去掉）。
+window.TADA_LIFF_IDS = {
+  rsvp:    '2010670397-AcAucbwI',   // 端點需設為 https://tada-ai.org.tw/rsvp/
+  card:    '____FILL_CARD____',     // 端點需設為 https://tada-ai.org.tw/card/
+  payment: '____FILL_PAYMENT____',  // 端點需設為 https://tada-ai.org.tw/payment/
+  vote:    '____FILL_VOTE____',     // 端點需設為 https://tada-ai.org.tw/vote/
+  members: '____FILL_MEMBERS____'   // 端點需設為 https://tada-ai.org.tw/members/
+};
 
 window.TADA_SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
 window.TADA_SB_KEY = 'sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
@@ -13,9 +21,10 @@ window.tadaSbHeaders = function () {
   };
 };
 
-// 初始化 LIFF 並回傳使用者 profile（未登入會自動導向登入）
-window.tadaInitLiff = async function () {
-  await liff.init({ liffId: window.TADA_LIFF_ID });
+// 初始化 LIFF 並回傳 profile。key = 'rsvp' | 'card' | 'payment' | 'vote' | 'members'
+window.tadaInitLiff = async function (key) {
+  var id = (window.TADA_LIFF_IDS || {})[key];
+  await liff.init({ liffId: id });
   if (!liff.isLoggedIn()) {
     liff.login();
     return null;

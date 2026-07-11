@@ -66,7 +66,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
 <script>
 async function init(){
   try{
-    const profile = await window.tadaInitLiff();
+    const profile = await window.tadaInitLiff('card');
     if(!profile) return; // 導向登入中
     document.getElementById('member-name').textContent = profile.displayName;
 

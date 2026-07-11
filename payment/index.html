@@ -102,7 +102,7 @@ function updateAmount(){
 
 async function init(){
   try{
-    profile = await window.tadaInitLiff();
+    profile = await window.tadaInitLiff('payment');
     if(!profile) return;
     document.getElementById('loading').style.display='none';
     document.getElementById('form-view').style.display='block';

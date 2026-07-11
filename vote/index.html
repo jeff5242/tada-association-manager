@@ -68,7 +68,7 @@ function showErr(m){ document.getElementById('err-box').innerHTML = '<div class=
 
 async function init(){
   try{
-    profile = await window.tadaInitLiff();
+    profile = await window.tadaInitLiff('vote');
     if(!profile) return;
 
     // 取進行中的投票

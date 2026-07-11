@@ -67,7 +67,7 @@ const CONTENT = [
 
 async function init(){
   try{
-    const profile = await window.tadaInitLiff();
+    const profile = await window.tadaInitLiff('members');
     if(!profile) return;
 
     const res = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_line_users?user_id=eq.${encodeURIComponent(profile.userId)}&select=is_member,is_admin`, { headers: window.tadaSbHeaders() });
