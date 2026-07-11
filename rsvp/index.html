@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>出席回覆｜TADA 第六屆會員大會</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 40px;}
+.top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.wrap{max-width:520px;margin:0 auto;padding:24px 20px;}
+.head{text-align:center;margin-bottom:22px;}
+.kick{font-size:11px;letter-spacing:0.3em;color:var(--gold);font-weight:600;margin-bottom:6px;}
+.title{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;color:var(--green-deep);line-height:1.35;}
+.sub{font-size:12px;color:var(--green-light);margin-top:8px;line-height:1.7;}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 6px 20px rgba(30,51,32,0.05);}
+.greet{font-size:14px;color:var(--ink);margin-bottom:18px;}
+.greet b{color:var(--gold);}
+.field{margin-bottom:18px;}
+.label{font-size:13px;font-weight:700;color:var(--green-deep);margin-bottom:9px;display:block;}
+.seg{display:flex;gap:10px;}
+.seg button{flex:1;padding:13px;font-size:15px;font-family:inherit;font-weight:700;border:1.5px solid var(--line);background:#fff;color:var(--green-light);border-radius:8px;cursor:pointer;transition:all .15s;}
+.seg button.on-yes{border-color:var(--green-mid);background:var(--green-mid);color:#fff;}
+.seg button.on-no{border-color:#c0392b;background:#c0392b;color:#fff;}
+.stepper{display:flex;align-items:center;gap:0;border:1.5px solid var(--line);border-radius:8px;width:fit-content;overflow:hidden;}
+.stepper button{width:46px;height:46px;font-size:22px;background:var(--cream);border:none;color:var(--green-deep);cursor:pointer;font-family:inherit;}
+.stepper button:active{background:var(--line);}
+.stepper input{width:60px;height:46px;text-align:center;border:none;border-left:1px solid var(--line);border-right:1px solid var(--line);font-size:17px;font-weight:700;color:var(--ink);font-family:inherit;}
+.hint{font-size:11px;color:var(--green-light);margin-top:6px;}
+input[type=text],textarea{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;color:var(--ink);outline:none;background:#fff;}
+input[type=text]:focus,textarea:focus{border-color:var(--gold);}
+textarea{resize:vertical;min-height:60px;}
+.submit{width:100%;padding:15px;font-size:16px;font-weight:700;font-family:inherit;background:var(--green-deep);color:var(--gold-light);border:none;border-radius:8px;cursor:pointer;letter-spacing:0.1em;transition:opacity .15s;}
+.submit:active{opacity:.85;}
+.submit:disabled{opacity:.5;}
+.attend-fields.hide{display:none;}
+.state{text-align:center;padding:60px 20px;}
+.state .ic{font-size:56px;margin-bottom:16px;}
+.state .msg{font-size:16px;color:var(--green-deep);font-weight:700;line-height:1.7;}
+.state .sub2{font-size:13px;color:var(--green-light);margin-top:10px;line-height:1.8;}
+.loading{text-align:center;padding:80px 20px;color:var(--green-light);font-size:14px;}
+.err{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);color:#c0392b;font-size:13px;padding:12px;border-radius:8px;margin-bottom:14px;line-height:1.6;}
+.badge-edit{display:inline-block;font-size:11px;background:rgba(184,145,58,0.12);color:var(--gold);padding:3px 10px;border-radius:10px;margin-left:6px;}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+
+  <div id="loading" class="loading">載入中… 🐝</div>
+
+  <!-- 表單 -->
+  <div id="form-view" style="display:none;">
+    <div class="head">
+      <div class="kick">第六屆會員大會・出席回覆</div>
+      <div class="title">智耕傳承 農業新世代</div>
+      <div class="sub">2026 年 9 月 4 日（五）｜臻愛婚宴會館 烏日高鐵店</div>
+    </div>
+
+    <div id="err-box"></div>
+
+    <div class="card">
+      <div class="greet"><b id="member-name">您</b> 您好，<span id="edit-badge"></span>請回覆是否出席：</div>
+
+      <div class="field">
+        <label class="label">是否出席</label>
+        <div class="seg">
+          <button type="button" id="btn-yes" onclick="setAttend(true)">✓ 會出席</button>
+          <button type="button" id="btn-no" onclick="setAttend(false)">✕ 無法出席</button>
+        </div>
+      </div>
+
+      <div class="attend-fields" id="attend-fields">
+        <div class="field">
+          <label class="label">出席人數（含本人與眷屬）</label>
+          <div class="stepper">
+            <button type="button" onclick="step('headcount',-1)">−</button>
+            <input type="number" id="headcount" value="1" min="1" max="20" readonly>
+            <button type="button" onclick="step('headcount',1)">＋</button>
+          </div>
+          <div class="hint">歡迎攜帶家族第二代共同出席 👨‍👩‍👧</div>
+        </div>
+
+        <div class="field">
+          <label class="label">素食份數</label>
+          <div class="stepper">
+            <button type="button" onclick="step('vegetarian',-1)">−</button>
+            <input type="number" id="vegetarian" value="0" min="0" max="20" readonly>
+            <button type="button" onclick="step('vegetarian',1)">＋</button>
+          </div>
+          <div class="hint">出席者中需要素食的份數</div>
+        </div>
+
+        <div class="field">
+          <label class="label">同行眷屬／二代姓名（選填）</label>
+          <input type="text" id="companions" placeholder="例如：陳大明、陳小華">
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">備註（選填）</label>
+        <textarea id="note" placeholder="想告訴協會的話…"></textarea>
+      </div>
+
+      <button class="submit" id="submit-btn" onclick="submitRsvp()">送出回覆</button>
+    </div>
+  </div>
+
+  <!-- 成功 -->
+  <div id="done-view" class="state" style="display:none;">
+    <div class="ic" id="done-ic">🎉</div>
+    <div class="msg" id="done-msg"></div>
+    <div class="sub2" id="done-sub"></div>
+  </div>
+
+</div>
+
+<script>
+// ⚠️ 待填：LINE Console 建立 LIFF app 後取得的 LIFF ID
+const LIFF_ID = '____FILL_LIFF_ID____';
+const SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
+const SB_KEY = 'sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
+const SB_HEADERS = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
+
+let profile = null;
+let attending = true;
+
+function showErr(msg){ document.getElementById('err-box').innerHTML = '<div class="err">'+msg+'</div>'; }
+
+function setAttend(v){
+  attending = v;
+  document.getElementById('btn-yes').className = v ? 'on-yes' : '';
+  document.getElementById('btn-no').className = v ? '' : 'on-no';
+  document.getElementById('attend-fields').classList.toggle('hide', !v);
+}
+
+function step(id, d){
+  const el = document.getElementById(id);
+  const min = +el.min, max = +el.max;
+  el.value = Math.max(min, Math.min(max, (+el.value) + d));
+  // 出席人數不可小於素食份數的下限提示（不強制）
+}
+
+async function init(){
+  try{
+    await liff.init({ liffId: LIFF_ID });
+    if(!liff.isLoggedIn()){ liff.login(); return; }
+    profile = await liff.getProfile();
+    document.getElementById('member-name').textContent = profile.displayName;
+
+    // 讀取既有回覆（若有）→ 預填
+    const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(profile.userId)}`, { headers: SB_HEADERS });
+    const rows = res.ok ? await res.json() : [];
+    if(rows.length){
+      const r = rows[0];
+      setAttend(r.attending);
+      document.getElementById('headcount').value = r.headcount ?? 1;
+      document.getElementById('vegetarian').value = r.vegetarian ?? 0;
+      document.getElementById('companions').value = r.companions ?? '';
+      document.getElementById('note').value = r.note ?? '';
+      document.getElementById('edit-badge').innerHTML = '<span class="badge-edit">您已回覆過，可修改</span>';
+    } else {
+      setAttend(true);
+    }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('form-view').style.display = 'block';
+  } catch(e){
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('form-view').style.display = 'block';
+    showErr('初始化失敗：' + (e.message || e) + '<br>請從 LINE 官方帳號的選單開啟此頁面。');
+  }
+}
+
+async function submitRsvp(){
+  if(!profile){ showErr('尚未取得您的 LINE 身分，請重新從選單開啟。'); return; }
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = '送出中…';
+
+  const payload = {
+    user_id: profile.userId,
+    display_name: profile.displayName,
+    attending: attending,
+    headcount: attending ? (+document.getElementById('headcount').value || 1) : 0,
+    vegetarian: attending ? (+document.getElementById('vegetarian').value || 0) : 0,
+    companions: document.getElementById('companions').value.trim() || null,
+    note: document.getElementById('note').value.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  try{
+    const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?on_conflict=user_id`, {
+      method: 'POST',
+      headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(payload),
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()));
+
+    document.getElementById('form-view').style.display = 'none';
+    const done = document.getElementById('done-view');
+    if(attending){
+      document.getElementById('done-ic').textContent = '🎉';
+      document.getElementById('done-msg').textContent = '出席回覆已送出，感謝您！';
+      document.getElementById('done-sub').innerHTML = `我們已收到 <b>${payload.headcount}</b> 位出席登記${payload.vegetarian?`（含 ${payload.vegetarian} 份素食）`:''}。<br>9/4 大會現場見 🌾`;
+    } else {
+      document.getElementById('done-ic').textContent = '🙏';
+      document.getElementById('done-msg').textContent = '已收到您的回覆';
+      document.getElementById('done-sub').innerHTML = '很遺憾這次無法與您相聚，期待下次再會 🌱';
+    }
+    done.style.display = 'block';
+    setTimeout(() => { if(liff.isInClient()) liff.closeWindow(); }, 2600);
+  } catch(e){
+    showErr('送出失敗：' + (e.message || e));
+    btn.disabled = false; btn.textContent = '送出回覆';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

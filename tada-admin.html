@@ -166,6 +166,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <button class="tab" onclick="switchTab('applications')">入會審核</button>
     <button class="tab" onclick="switchTab('unanswered')">🐝 TADA醬 待回覆<span id="unans-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
     <button class="tab" onclick="switchTab('lineusers')">💬 LINE 使用者</button>
+    <button class="tab" onclick="switchTab('rsvp')">📋 出席統計</button>
   </div>
   <div class="ai-pill"><div class="ai-dot"></div>AI Agent 協作中</div>
 </div>
@@ -425,6 +426,43 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ 出席統計 ══════════ -->
+<div class="page" id="page-rsvp">
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">📋 9/4 大會出席統計</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="loadRsvp()">↻ 重新載入</button>
+      <button class="btn btn-outline btn-sm" onclick="exportRsvpCSV()">匯出 CSV</button>
+      <span id="rsvp-sb-status" style="font-size:11px;"></span>
+    </div>
+  </div>
+
+  <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+    <div class="stat-card"><div class="stat-label">出席總人數</div><div class="stat-num" style="color:var(--gold);" id="rsvp-headcount">–</div></div>
+    <div class="stat-card"><div class="stat-label">出席回覆</div><div class="stat-num" style="color:#66bb6a;" id="rsvp-yes">–</div></div>
+    <div class="stat-card"><div class="stat-label">無法出席</div><div class="stat-num" style="color:#ef5350;" id="rsvp-no">–</div></div>
+    <div class="stat-card"><div class="stat-label">素食份數</div><div class="stat-num" style="color:#29b6f6;" id="rsvp-veg">–</div></div>
+  </div>
+
+  <div class="toolbar">
+    <select class="filter-select" onchange="filterRsvp(this.value)">
+      <option value="yes">出席</option>
+      <option value="no">無法出席</option>
+      <option value="">全部</option>
+    </select>
+    <span style="font-size:11px;color:var(--gray);margin-left:auto;">共 <span id="rsvp-count">0</span> 筆回覆</span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>回覆者</th><th>出席</th><th>人數</th><th>素食</th><th>同行/備註</th><th>回覆時間</th>
+      </tr></thead>
+      <tbody id="rsvp-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取回覆</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ══════════ LINE 使用者 ══════════ -->
 <div class="page" id="page-lineusers">
   <div class="section-header" style="margin-bottom:16px;">
@@ -653,6 +691,7 @@ function switchTab(id){
   if(id==='applications') loadApplications();
   if(id==='unanswered') loadUnanswered();
   if(id==='lineusers') loadLineUsers();
+  if(id==='rsvp') loadRsvp();
 }
 
 // ── 會員名冊 ─────────────────────────────────────────────
@@ -1337,6 +1376,86 @@ async function toggleAdmin(userId, isAdmin, el) {
     el.checked = !isAdmin; // 還原
   }
   el.disabled = false;
+}
+
+// ── 出席統計（RSVP）─────────────────────────────────────
+let allRsvp = [];
+let rsvpFilter = 'yes';
+
+async function loadRsvp() {
+  const btn = document.querySelector('[onclick="loadRsvp()"]');
+  const status = document.getElementById('rsvp-sb-status');
+  if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
+  status.textContent = '';
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?order=updated_at.desc`, { headers: SB_HEADERS });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    allRsvp = await res.json();
+    renderRsvp();
+    status.style.color = '#66bb6a';
+    status.textContent = `✓ 已載入 ${allRsvp.length} 筆`;
+  } catch (e) {
+    status.style.color = '#ef5350';
+    status.textContent = '載入失敗：' + e.message;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '↻ 重新載入'; }
+}
+
+function filterRsvp(v) { rsvpFilter = v; renderRsvp(); }
+
+function renderRsvp() {
+  const yes = allRsvp.filter(r => r.attending);
+  const totalHead = yes.reduce((s, r) => s + (r.headcount || 0), 0);
+  const totalVeg = yes.reduce((s, r) => s + (r.vegetarian || 0), 0);
+  document.getElementById('rsvp-headcount').textContent = totalHead;
+  document.getElementById('rsvp-yes').textContent = yes.length;
+  document.getElementById('rsvp-no').textContent = allRsvp.filter(r => !r.attending).length;
+  document.getElementById('rsvp-veg').textContent = totalVeg;
+
+  const data = allRsvp.filter(r => {
+    if (rsvpFilter === 'yes') return r.attending;
+    if (rsvpFilter === 'no') return !r.attending;
+    return true;
+  });
+  document.getElementById('rsvp-count').textContent = data.length;
+
+  if (!data.length) {
+    document.getElementById('rsvp-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:30px;">尚無回覆</td></tr>';
+    return;
+  }
+
+  document.getElementById('rsvp-tbody').innerHTML = data.map(r => {
+    const dt = r.updated_at ? new Date(r.updated_at).toLocaleString('zh-TW', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '–';
+    const att = r.attending
+      ? '<span class="status" style="background:rgba(46,125,50,0.2);color:#66bb6a;">✓ 出席</span>'
+      : '<span class="status" style="background:rgba(192,57,43,0.15);color:#ef5350;">✕ 不克</span>';
+    const extra = [r.companions, r.note].filter(Boolean).map(escapeHtml).join('｜') || '–';
+    return `<tr>
+      <td data-label="回覆者" style="color:var(--white);">${escapeHtml(r.display_name || '（未取得）')}</td>
+      <td data-label="出席">${att}</td>
+      <td data-label="人數" style="font-weight:700;color:var(--gold);">${r.attending ? (r.headcount ?? 0) : '–'}</td>
+      <td data-label="素食" style="color:var(--gray);">${r.attending ? (r.vegetarian ?? 0) : '–'}</td>
+      <td data-label="同行/備註" style="font-size:12px;color:var(--gray);max-width:200px;">${extra}</td>
+      <td data-label="回覆時間" style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td>
+    </tr>`;
+  }).join('');
+}
+
+function exportRsvpCSV() {
+  if (!allRsvp.length) { alert('尚無資料可匯出'); return; }
+  const rows = [['姓名','出席','人數','素食份數','同行眷屬','備註','回覆時間']];
+  allRsvp.forEach(r => rows.push([
+    r.display_name || '', r.attending ? '出席' : '不克出席',
+    r.attending ? (r.headcount ?? 0) : 0, r.attending ? (r.vegetarian ?? 0) : 0,
+    r.companions || '', r.note || '',
+    r.updated_at ? new Date(r.updated_at).toLocaleString('zh-TW') : '',
+  ]));
+  const csv = '﻿' + rows.map(row => row.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'TADA_出席統計.csv';
+  a.click();
 }
 </script>
 
