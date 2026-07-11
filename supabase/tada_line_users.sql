@@ -17,6 +17,8 @@ CREATE INDEX IF NOT EXISTS idx_line_users_last_seen ON tada_line_users (last_see
 CREATE INDEX IF NOT EXISTS idx_line_users_is_admin ON tada_line_users (is_admin) WHERE is_admin = TRUE;
 
 -- 累計互動次數用的原子遞增函式（webhook upsert 時呼叫，避免競態）
+-- 以 SECURITY INVOKER（預設）執行：僅 webhook 用的 service_role 可寫入，
+-- 公開的 anon 金鑰呼叫會被 RLS 擋下（回 401），避免外人灌假資料。
 CREATE OR REPLACE FUNCTION upsert_line_user(
   p_user_id      TEXT,
   p_display_name TEXT,
