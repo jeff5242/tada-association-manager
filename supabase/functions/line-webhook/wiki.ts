@@ -8,7 +8,7 @@
 //   keywords → 精準比對用（使用者可能打的詞）
 //   suggest  → 這則要不要出現在「你是不是想問」按鈕；label 是按鈕文字，text 是按下去送出的字（須含某個 keyword）
 
-import { AGENDA_FLEX, PAYMENT_FLEX } from './flex.ts';
+import { AGENDA_FLEX, PAYMENT_FLEX, CONTACT_FLEX, FEE_FLEX } from './flex.ts';
 
 export interface WikiEntry {
   id: string;
@@ -142,6 +142,7 @@ export const WIKI: WikiEntry[] = [
       '團體會員：入會費 NT$10,000 ＋ 常年會費 NT$20,000 ＝ 共 NT$30,000',
     keywords: ['會費', '會員費', '多少錢', '費用', '入會費', '常年會費', '年費', '幾錢', '價格'],
     suggest: { label: '💰 會費說明', text: '會費' },
+    flex: FEE_FLEX,
   },
   {
     id: 'renew',
@@ -177,6 +178,7 @@ export const WIKI: WikiEntry[] = [
       '有任何我回答不了的問題，也歡迎直接聯繫他們～',
     keywords: ['電話', '聯絡', '聯繫', '秘書處', 'email', '信箱', '找誰', '窗口', '客服'],
     suggest: { label: '📞 聯絡方式', text: '聯絡' },
+    flex: CONTACT_FLEX,
   },
   {
     id: 'website',

@@ -135,3 +135,147 @@ export const PAYMENT_FLEX = {
     ],
   },
 };
+
+// 聯絡我們卡片（含撥號 / 寄信按鈕）
+export const CONTACT_FLEX = {
+  type: 'bubble',
+  header: {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: C.green,
+    paddingAll: '18px',
+    contents: [
+      { type: 'text', text: '聯絡我們 CONTACT', color: C.goldLt, size: 'sm', weight: 'bold' },
+      { type: 'text', text: '協會秘書處', color: '#FFFFFF', size: 'lg', weight: 'bold', margin: 'sm' },
+    ],
+  },
+  body: {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: C.cream,
+    paddingAll: '18px',
+    spacing: 'md',
+    contents: [
+      {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'xs',
+        contents: [
+          { type: 'text', text: '電話', color: C.gray, size: 'xs' },
+          { type: 'text', text: '0988-558246（雅琳、馨元）', color: C.ink, size: 'md', weight: 'bold' },
+        ],
+      },
+      {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'xs',
+        contents: [
+          { type: 'text', text: 'Email', color: C.gray, size: 'xs' },
+          { type: 'text', text: 'tada201107@gmail.com', color: C.ink, size: 'sm', weight: 'bold' },
+        ],
+      },
+    ],
+  },
+  footer: {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: C.cream,
+    paddingAll: '12px',
+    spacing: 'sm',
+    contents: [
+      {
+        type: 'button',
+        style: 'primary',
+        height: 'sm',
+        color: C.green,
+        action: { type: 'uri', label: '📞 撥打電話', uri: 'tel:0988558246' },
+      },
+      {
+        type: 'button',
+        style: 'secondary',
+        height: 'sm',
+        action: { type: 'uri', label: '📧 寄送 Email', uri: 'mailto:tada201107@gmail.com' },
+      },
+    ],
+  },
+};
+
+// 會費明細單列
+function feeLine(label: string, val: string) {
+  return {
+    type: 'box',
+    layout: 'baseline',
+    contents: [
+      { type: 'text', text: label, color: C.gray, size: 'sm', flex: 5 },
+      { type: 'text', text: val, color: C.ink, size: 'sm', align: 'end', flex: 4 },
+    ],
+  };
+}
+
+// 會費方案區塊
+function feePlan(title: string, join: string, annual: string, total: string) {
+  return {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: '#FFFFFF',
+    cornerRadius: '8px',
+    paddingAll: '14px',
+    spacing: 'sm',
+    borderColor: C.line,
+    borderWidth: '1px',
+    contents: [
+      { type: 'text', text: title, color: C.green, size: 'md', weight: 'bold' },
+      feeLine('入會費', join),
+      feeLine('常年會費・三年', annual),
+      { type: 'separator', color: C.line },
+      {
+        type: 'box',
+        layout: 'baseline',
+        contents: [
+          { type: 'text', text: '合計', color: C.green, size: 'sm', weight: 'bold', flex: 3 },
+          { type: 'text', text: total, color: C.gold, size: 'lg', weight: 'bold', align: 'end', flex: 5 },
+        ],
+      },
+    ],
+  };
+}
+
+// 會費說明卡片
+export const FEE_FLEX = {
+  type: 'bubble',
+  header: {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: C.green,
+    paddingAll: '18px',
+    contents: [
+      { type: 'text', text: '會費說明 FEES', color: C.goldLt, size: 'sm', weight: 'bold' },
+      { type: 'text', text: '常年會費・三年一次繳清', color: C.pale, size: 'xs', margin: 'sm' },
+    ],
+  },
+  body: {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: C.cream,
+    paddingAll: '16px',
+    spacing: 'md',
+    contents: [
+      feePlan('個人會員', 'NT$1,000', 'NT$6,000', 'NT$7,000'),
+      feePlan('團體會員', 'NT$10,000', 'NT$20,000', 'NT$30,000'),
+    ],
+  },
+  footer: {
+    type: 'box',
+    layout: 'vertical',
+    backgroundColor: C.cream,
+    paddingAll: '12px',
+    contents: [
+      {
+        type: 'button',
+        style: 'primary',
+        color: C.green,
+        action: { type: 'uri', label: '🌱 我要入會', uri: 'https://tada-ai.org.tw/join/' },
+      },
+    ],
+  },
+};
