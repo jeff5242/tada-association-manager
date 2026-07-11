@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--green-deep:#1e3320;--green-mid:#2d5235;--gold:#b8913a;--gold-light:#d4a853;--cream:#f8f4ea;--ink:#1a1a14;--green-light:#5a8a60;}
+html,body{width:2500px;height:1686px;overflow:hidden;}
+.grid{width:2500px;height:1686px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:8px;background:var(--green-deep);}
+.cell{background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;position:relative;overflow:hidden;}
+/* 頂部金色細條 */
+.cell::before{content:'';position:absolute;top:0;left:0;right:0;height:10px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+/* 淡斜紋底 */
+.cell::after{content:'';position:absolute;inset:0;opacity:0.035;background-image:repeating-linear-gradient(45deg,var(--green-deep) 0,var(--green-deep) 2px,transparent 2px,transparent 22px);pointer-events:none;}
+.ic{font-size:190px;line-height:1;}
+.tw{font-family:'Noto Serif TC',serif;font-size:88px;font-weight:900;color:var(--green-deep);letter-spacing:8px;}
+.en{font-family:'Noto Sans TC',sans-serif;font-size:30px;font-weight:500;letter-spacing:18px;color:var(--gold);text-indent:18px;}
+.line{width:70px;height:4px;background:var(--gold);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="cell"><div class="ic">🌾</div><div class="tw">活動資訊</div><div class="line"></div><div class="en">EVENT</div></div>
+  <div class="cell"><div class="ic">📝</div><div class="tw">我要入會</div><div class="line"></div><div class="en">JOIN US</div></div>
+  <div class="cell"><div class="ic">💰</div><div class="tw">會費說明</div><div class="line"></div><div class="en">FEES</div></div>
+  <div class="cell"><div class="ic">📍</div><div class="tw">交通地點</div><div class="line"></div><div class="en">VENUE</div></div>
+  <div class="cell"><div class="ic">✉️</div><div class="tw">電子邀請卡</div><div class="line"></div><div class="en">INVITATION</div></div>
+  <div class="cell"><div class="ic">📞</div><div class="tw">聯絡秘書處</div><div class="line"></div><div class="en">CONTACT</div></div>
+</div>
+</body>
+</html>

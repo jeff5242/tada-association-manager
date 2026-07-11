@@ -1,0 +1,32 @@
+{
+  "size": { "width": 2500, "height": 1686 },
+  "selected": true,
+  "name": "TADA 會員選單 v1",
+  "chatBarText": "☰ TADA 選單",
+  "areas": [
+    {
+      "bounds": { "x": 0, "y": 0, "width": 833, "height": 843 },
+      "action": { "type": "message", "text": "活動議程" }
+    },
+    {
+      "bounds": { "x": 833, "y": 0, "width": 834, "height": 843 },
+      "action": { "type": "uri", "uri": "https://tada-ai.org.tw/join/" }
+    },
+    {
+      "bounds": { "x": 1667, "y": 0, "width": 833, "height": 843 },
+      "action": { "type": "message", "text": "會費多少" }
+    },
+    {
+      "bounds": { "x": 0, "y": 843, "width": 833, "height": 843 },
+      "action": { "type": "message", "text": "地點在哪" }
+    },
+    {
+      "bounds": { "x": 833, "y": 843, "width": 834, "height": 843 },
+      "action": { "type": "uri", "uri": "https://tada-ai.org.tw/invitation/" }
+    },
+    {
+      "bounds": { "x": 1667, "y": 843, "width": 833, "height": 843 },
+      "action": { "type": "message", "text": "聯絡方式" }
+    }
+  ]
+}
