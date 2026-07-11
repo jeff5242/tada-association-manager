@@ -173,6 +173,53 @@ async function logUnanswered(question: string, lineUserId: string | undefined): 
   }
 }
 
+interface LineProfile {
+  displayName?: string;
+  pictureUrl?: string;
+}
+
+// 取得 LINE 使用者的公開個人資料（顯示名稱、頭像）
+async function getLineProfile(token: string, userId: string): Promise<LineProfile> {
+  const res = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`LINE Profile API ${res.status}`);
+  return await res.json();
+}
+
+// 記錄／更新互動過的 LINE 使用者（顯示名稱 + userId + 互動次數），用 RPC 原子遞增
+async function recordLineUser(token: string, userId: string): Promise<void> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceKey) return;
+
+  let profile: LineProfile = {};
+  try {
+    profile = await getLineProfile(token, userId);
+  } catch (error: unknown) {
+    console.error('getLineProfile error:', getErrorMessage(error)); // 抓不到名稱仍記錄 userId
+  }
+
+  const res = await fetch(`${supabaseUrl}/rest/v1/rpc/upsert_line_user`, {
+    method: 'POST',
+    headers: {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify({
+      p_user_id: userId,
+      p_display_name: profile.displayName ?? null,
+      p_picture_url: profile.pictureUrl ?? null,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Record line user ${res.status}: ${await res.text()}`);
+  }
+}
+
 // 通知會務人員（若有設定 ADMIN_LINE_USER_ID 才會 push）
 async function notifyAdmin(token: string, question: string): Promise<void> {
   const adminId = Deno.env.get('ADMIN_LINE_USER_ID');
@@ -249,6 +296,14 @@ Deno.serve(async (req) => {
   await Promise.all(
     events.map(async (event) => {
       try {
+        // 記錄互動過的使用者（名稱 + userId），失敗不影響回覆
+        const userId = event.source?.userId;
+        if (userId) {
+          recordLineUser(accessToken, userId).catch((error: unknown) =>
+            console.error('recordLineUser error:', getErrorMessage(error)),
+          );
+        }
+
         if (event.type === 'follow' && event.replyToken) {
           await replyToLine(accessToken, event.replyToken, WELCOME_TEXT);
           return;
@@ -259,7 +314,7 @@ Deno.serve(async (req) => {
             accessToken,
             event.replyToken,
             event.message.text ?? '',
-            event.source?.userId,
+            userId,
           );
         }
       } catch (error: unknown) {
