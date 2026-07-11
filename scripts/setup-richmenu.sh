@@ -61,7 +61,7 @@ echo "   ✓ 圖片已上傳"
 
 # ── 3. 設為所有使用者的預設選單 ─────────────────────────────
 echo "③ 設為預設選單（全體會員）…"
-DEF=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/user/all/richmenu/$RICH_MENU_ID" -H "$AUTH")
+DEF=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API/user/all/richmenu/$RICH_MENU_ID" -H "$AUTH" -H "Content-Length: 0")
 if [[ "$DEF" != "200" ]]; then
   echo "❌ 設定預設失敗（HTTP $DEF）"; exit 1
 fi
