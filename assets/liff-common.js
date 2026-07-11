@@ -1,6 +1,6 @@
 // TADA LIFF 共用設定 —— 所有 LIFF 頁面（rsvp / card / payment / vote / members）共用
-// ⚠️ 待填：LINE Console 建立「一個」LIFF app（端點設為 https://tada-ai.org.tw/）後，把 LIFF ID 填在這裡
-window.TADA_LIFF_ID = '____FILL_LIFF_ID____';
+// LIFF app（端點 https://tada-ai.org.tw/）ID
+window.TADA_LIFF_ID = '2010670397-AcAucbwI';
 
 window.TADA_SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
 window.TADA_SB_KEY = 'sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
