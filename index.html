@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>
 // LIFF 入口轉址：Rich Menu 以 ?p=rsvp 開啟 LIFF，這裡把使用者導到對應功能頁
-// （同時處理 LINE 將 query 包進 liff.state 的情況）
+// LINE 常把 query 包進 liff.state，故用 regex 從整段（含 search 與 liff.state）找出 p
 (function(){
   try{
-    var s = new URLSearchParams(location.search);
-    var p = s.get('p');
-    if(!p){ var st = s.get('liff.state'); if(st){ p = new URLSearchParams(st.replace(/^\?/,'')).get('p'); } }
     var ok = { rsvp:1, card:1, payment:1, vote:1, members:1 };
+    function grab(str){ var m = /(?:^|[?&])p=([^&#]+)/.exec(str || ''); return m ? decodeURIComponent(m[1]) : null; }
+    var s = new URLSearchParams(location.search);
+    var p = grab(location.search) || grab(s.get('liff.state')) || grab(decodeURIComponent(s.get('liff.state') || ''));
     if(p && ok[p]) location.replace('/' + p + '/');
   }catch(e){}
 })();
