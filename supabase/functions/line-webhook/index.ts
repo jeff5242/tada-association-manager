@@ -143,6 +143,22 @@ async function replyToLine(
   }
 }
 
+// 回覆 Flex Message 卡片
+async function replyFlex(token: string, replyToken: string, altText: string, contents: unknown): Promise<void> {
+  const res = await fetch(LINE_REPLY_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ replyToken, messages: [{ type: 'flex', altText, contents }] }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`LINE Reply(Flex) API ${res.status}: ${await res.text()}`);
+  }
+}
+
 // 主動推播（通知會務人員用）
 async function pushToLine(token: string, to: string, text: string): Promise<void> {
   const res = await fetch(LINE_PUSH_ENDPOINT, {
@@ -247,10 +263,14 @@ async function handleTextMessage(
   userText: string,
   userId: string | undefined,
 ): Promise<void> {
-  // ① 本地 Wiki（零 token）
+  // ① 本地 Wiki（零 token）；有 flex 版型就送精緻卡片，否則純文字
   const hit = matchWiki(userText);
   if (hit) {
-    await replyToLine(accessToken, replyToken, hit.entry.answer);
+    if (hit.entry.flex) {
+      await replyFlex(accessToken, replyToken, hit.entry.question, hit.entry.flex);
+    } else {
+      await replyToLine(accessToken, replyToken, hit.entry.answer);
+    }
     return;
   }
 

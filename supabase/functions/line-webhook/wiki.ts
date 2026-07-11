@@ -8,12 +8,15 @@
 //   keywords → 精準比對用（使用者可能打的詞）
 //   suggest  → 這則要不要出現在「你是不是想問」按鈕；label 是按鈕文字，text 是按下去送出的字（須含某個 keyword）
 
+import { AGENDA_FLEX, PAYMENT_FLEX } from './flex.ts';
+
 export interface WikiEntry {
   id: string;
   question: string; // 代表問題（給維護者看的）
-  answer: string; // TADA醬 的回答
+  answer: string; // TADA醬 的回答（純文字備援；有 flex 時改送卡片）
   keywords: string[]; // 精準比對關鍵字
   suggest?: { label: string; text: string }; // Quick Reply 推薦按鈕（省略＝不推薦，如打招呼）
+  flex?: unknown; // 有值時，命中改回覆 Flex Message 卡片
 }
 
 export const WIKI: WikiEntry[] = [
@@ -93,6 +96,7 @@ export const WIKI: WikiEntry[] = [
       '18:30 豐收晚宴（20:30 賦歸）',
     keywords: ['議程', '流程', '行程', '安排', '節目', '幾點做'],
     suggest: { label: '📋 活動議程', text: '活動議程' },
+    flex: AGENDA_FLEX,
   },
   {
     id: 'speaker',
@@ -161,6 +165,7 @@ export const WIKI: WikiEntry[] = [
       '⚠️ 匯款後請來電告知帳號後 5 碼：📞 0988-558246（雅琳、馨元）',
     keywords: ['匯款', '銀行', '帳號', '轉帳', '繳費', '匯錢', '付款', '戶名', '匯費'],
     suggest: { label: '🏦 匯款帳號', text: '匯款' },
+    flex: PAYMENT_FLEX,
   },
   {
     id: 'contact',
