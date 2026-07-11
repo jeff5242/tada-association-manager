@@ -204,11 +204,11 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
            ondragleave="this.classList.remove('dragging')"
            ondrop="handleDrop(event)">
         <div class="ocr-icon">📇</div>
-        <div class="ocr-title">點此上傳或拍照名片</div>
+        <div class="ocr-title">點此拍照或從相簿選擇名片</div>
         <div class="ocr-hint">支援 JPG / PNG｜AI 自動辨識並填入欄位</div>
         <img id="card-preview" class="ocr-preview hidden" alt="名片預覽">
       </div>
-      <input type="file" id="card-input" accept="image/*" capture="environment" class="hidden" onchange="previewCard(this)">
+      <input type="file" id="card-input" accept="image/*" class="hidden" onchange="previewCard(this)">
       <div style="text-align:center;">
         <button type="button" class="ocr-btn" id="ocr-btn" onclick="runOCR()" disabled>🤖 AI 辨識名片</button>
       </div>
