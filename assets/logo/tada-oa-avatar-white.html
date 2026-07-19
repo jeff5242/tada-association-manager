@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:1000px;height:1000px;overflow:hidden;}
+.canvas{width:1000px;height:1000px;background:#ffffff;display:flex;align-items:center;justify-content:center;position:relative;}
+.ring{position:absolute;inset:26px;border-radius:50%;border:5px solid #c9a24a;}
+.inner{display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.mark{width:600px;height:470px;}
+.name{font-family:'Noto Serif TC',serif;font-size:96px;font-weight:900;color:#1e3320;letter-spacing:16px;text-indent:16px;margin-top:10px;}
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="ring"></div>
+  <div class="inner">
+    <svg class="mark" viewBox="0 0 54 40" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="20" cy="18" rx="14" ry="10" fill="#6ab04c" transform="rotate(-30 20 18)"/>
+      <ellipse cx="34" cy="18" rx="14" ry="10" fill="#6ab04c" transform="rotate(30 34 18)"/>
+      <ellipse cx="18" cy="32" rx="11" ry="8" fill="#2e86c1" transform="rotate(20 18 32)"/>
+      <ellipse cx="36" cy="32" rx="11" ry="8" fill="#2e86c1" transform="rotate(-20 36 32)"/>
+      <ellipse cx="27" cy="25" rx="4" ry="12" fill="#1a5276"/>
+    </svg>
+    <div class="name">TADA</div>
+  </div>
+</div>
+</body>
+</html>
