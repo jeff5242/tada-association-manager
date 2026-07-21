@@ -41,10 +41,9 @@ function infoRow(label: string, value: string) {
 const AGENDA_ITEMS: [string, string][] = [
   ['15:00', '開放入場・報到'],
   ['15:30', '會務討論・理監事改選'],
-  ['16:10', '大師講座：AI × 精準農業'],
-  ['16:50', '政府補助說明（中衛）'],
-  ['17:10', 'Q&A 綜合討論'],
-  ['17:30', '理事長交接典禮'],
+  ['16:30', '政府補助說明（中衛）'],
+  ['17:00', '大師講座｜李紅曦 代理院長'],
+  ['17:40', '理事長交接典禮'],
 ];
 
 // 活動議程卡片
@@ -76,7 +75,7 @@ export const AGENDA_FLEX = {
         spacing: 'md',
         margin: 'md',
         contents: [
-          { type: 'text', text: '18:30', color: C.goldLt, size: 'sm', weight: 'bold', flex: 2 },
+          { type: 'text', text: '18:00', color: C.goldLt, size: 'sm', weight: 'bold', flex: 2 },
           { type: 'text', text: '豐收晚宴　20:30 賦歸', color: C.green, size: 'sm', weight: 'bold', flex: 6, wrap: true },
         ],
       },
