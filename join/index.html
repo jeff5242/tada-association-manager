@@ -253,7 +253,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
     <div class="form-section">
       <div class="form-section-title">聯絡資料</div>
       <div class="field"><label>戶籍地址 <span class="req">*</span></label><input type="text" name="addr_domicile" id="p-addr" required placeholder="請輸入戶籍地址"></div>
-      <div class="field"><label>通訊地址</label><input type="text" name="addr_mail" placeholder="如與戶籍相同請留空"></div>
+      <div class="field"><label>通訊地址</label><input type="text" name="addr_mail" id="p-addr-mail" placeholder="如與戶籍相同請留空"></div>
       <div class="field-row">
         <div class="field"><label>公司電話</label><input type="tel" name="tel_office" id="p-tel-office" placeholder="02-XXXX-XXXX"></div>
         <div class="field"><label>手機 <span class="req">*</span></label><input type="tel" name="tel_mobile" id="p-tel-mobile" required placeholder="09XX-XXX-XXX"></div>
@@ -457,7 +457,10 @@ async function runOCR() {
     if (data.tel_mobile) document.getElementById('p-tel-mobile').value = data.tel_mobile;
     if (data.tel_office) document.getElementById('p-tel-office').value = data.tel_office;
     if (data.email)      document.getElementById('p-email').value = data.email;
-    if (data.addr)       document.getElementById('p-addr').value = data.addr;
+    if (data.addr) {
+      document.getElementById('p-addr').value = data.addr;       // 戶籍地址
+      document.getElementById('p-addr-mail').value = data.addr;  // 通訊地址（同步帶入，可自行修改）
+    }
     if (data.expertise)  document.getElementById('p-expertise').value = data.expertise;
     status.textContent = '✅ 辨識完成！請確認欄位並修正。';
     status.style.color = 'var(--moss)';
