@@ -92,6 +92,9 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
 .submit-btn{width:100%;padding:13px;background:var(--fern);color:white;font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;letter-spacing:.12em;border:none;cursor:pointer;transition:background .2s;}
 .submit-btn:hover{background:var(--forest);}
 .submit-btn:disabled{background:var(--gray);cursor:not-allowed;}
+.submit-alt{width:100%;padding:11px;margin-top:10px;background:transparent;color:var(--moss);font-family:'Noto Sans TC',sans-serif;font-size:12.5px;letter-spacing:.05em;border:1px solid var(--border);cursor:pointer;transition:all .2s;}
+.submit-alt:hover{border-color:var(--moss);color:var(--fern);}
+.submit-alt:disabled{color:var(--gray);cursor:not-allowed;}
 .submit-note{font-size:11px;color:var(--gray);text-align:center;margin-top:8px;line-height:1.8;}
 
 /* success */
@@ -137,17 +140,17 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
   <!-- 費用卡（新申請個人）-->
   <div class="fee-row" id="fee-personal">
     <div class="fee-card"><div class="fee-label">入會費</div><div class="fee-amount">NT$1,000</div><div class="fee-note">入會時繳納</div></div>
-    <div class="fee-card"><div class="fee-label">常年會費</div><div class="fee-amount">NT$6,000</div><div class="fee-note">三年，一次繳清</div></div>
+    <div class="fee-card"><div class="fee-label">3年會費</div><div class="fee-amount">NT$6,000</div><div class="fee-note">一次繳清</div></div>
   </div>
   <!-- 費用卡（新申請團體）-->
   <div class="fee-row hidden" id="fee-group">
     <div class="fee-card"><div class="fee-label">入會費</div><div class="fee-amount">NT$10,000</div><div class="fee-note">入會時繳納</div></div>
-    <div class="fee-card"><div class="fee-label">常年會費</div><div class="fee-amount">NT$20,000</div><div class="fee-note">三年，一次繳清</div></div>
+    <div class="fee-card"><div class="fee-label">3年會費</div><div class="fee-amount">NT$20,000</div><div class="fee-note">一次繳清</div></div>
   </div>
   <!-- 費用卡（續約）-->
   <div class="fee-row hidden" id="fee-renew">
-    <div class="fee-card"><div class="fee-label">續約會費（個人）</div><div class="fee-amount">NT$6,000</div><div class="fee-note">三年，一次繳清</div></div>
-    <div class="fee-card"><div class="fee-label">續約會費（團體）</div><div class="fee-amount">NT$20,000</div><div class="fee-note">三年，一次繳清</div></div>
+    <div class="fee-card"><div class="fee-label">續約會費（個人）</div><div class="fee-amount">NT$6,000</div><div class="fee-note">一次繳清</div></div>
+    <div class="fee-card"><div class="fee-label">續約會費（團體）</div><div class="fee-amount">NT$20,000</div><div class="fee-note">一次繳清</div></div>
   </div>
 </div>
 
@@ -271,11 +274,12 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
       <div class="bank-row"><span class="bank-key">銀行</span><span class="bank-val">京城銀行 太保分行（代號 0540641）</span></div>
       <div class="bank-row"><span class="bank-key">帳號</span><span class="bank-val">064125019127</span></div>
       <div class="bank-row"><span class="bank-key">戶名</span><span class="bank-val">台灣科技農企業發展協會</span></div>
-      <div class="bank-row"><span class="bank-key">金額</span><span class="bank-val">入會費 NT$1,000 ＋ 常年會費 NT$6,000 ＝ <strong>NT$7,000</strong></span></div>
+      <div class="bank-row"><span class="bank-key">金額</span><span class="bank-val">入會費 NT$1,000 ＋ 3年會費 NT$6,000 ＝ <strong>NT$7,000</strong></span></div>
       <div class="bank-note">匯款後請來電告知帳號後 5 碼<br>📞 0988-558246（雅琳、馨元）　📧 tada201107@gmail.com</div>
     </div>
     <button type="submit" class="submit-btn" id="submit-personal">送出入會申請</button>
-    <p class="submit-note">送出後，協會秘書處將於 3–5 個工作天內與您聯繫確認。</p>
+    <button type="button" class="submit-alt" onclick="submitPartial(this)">📝 資料一時填不齊？先送出，由秘書處協助填寫</button>
+    <p class="submit-note">送出後，協會秘書處將於 3–5 個工作天內與您聯繫確認。<br>「先送出」僅需姓名＋一個聯絡方式（手機或 Email），其餘由秘書處協助補齊。</p>
     <div class="success-box" id="success-personal">
       <div class="success-icon">✅</div>
       <div class="success-title">申請已送出！</div>
@@ -330,11 +334,12 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
       <div class="bank-row"><span class="bank-key">銀行</span><span class="bank-val">京城銀行 太保分行（代號 0540641）</span></div>
       <div class="bank-row"><span class="bank-key">帳號</span><span class="bank-val">064125019127</span></div>
       <div class="bank-row"><span class="bank-key">戶名</span><span class="bank-val">台灣科技農企業發展協會</span></div>
-      <div class="bank-row"><span class="bank-key">金額</span><span class="bank-val">入會費 NT$10,000 ＋ 常年會費 NT$20,000 ＝ <strong>NT$30,000</strong></span></div>
+      <div class="bank-row"><span class="bank-key">金額</span><span class="bank-val">入會費 NT$10,000 ＋ 3年會費 NT$20,000 ＝ <strong>NT$30,000</strong></span></div>
       <div class="bank-note">匯款後請來電告知帳號後 5 碼<br>📞 0988-558246（雅琳、馨元）　📧 tada201107@gmail.com</div>
     </div>
     <button type="submit" class="submit-btn" id="submit-group">送出入會申請</button>
-    <p class="submit-note">送出後，協會秘書處將於 3–5 個工作天內與您聯繫確認。</p>
+    <button type="button" class="submit-alt" onclick="submitPartial(this)">📝 資料一時填不齊？先送出，由秘書處協助填寫</button>
+    <p class="submit-note">送出後，協會秘書處將於 3–5 個工作天內與您聯繫確認。<br>「先送出」僅需團體名稱＋一個聯絡方式（電話或 Email），其餘由秘書處協助補齊。</p>
     <div class="success-box" id="success-group">
       <div class="success-icon">✅</div>
       <div class="success-title">申請已送出！</div>
@@ -381,16 +386,40 @@ function switchType(type) {
 function previewCard(input) {
   const file = input.files[0];
   if (!file) return;
-  cardMediaType = file.type || 'image/jpeg';
+  const status = document.getElementById('ocr-status');
+  status.style.color = '';
+  status.textContent = '壓縮圖片中…';
   const reader = new FileReader();
   reader.onload = (e) => {
-    const dataUrl = e.target.result;
-    cardBase64 = dataUrl.split(',')[1];
-    const preview = document.getElementById('card-preview');
-    preview.src = dataUrl;
-    preview.classList.remove('hidden');
-    document.getElementById('ocr-btn').disabled = false;
-    document.getElementById('ocr-status').textContent = '名片已載入，點「AI 辨識名片」開始辨識';
+    const img = new Image();
+    img.onload = () => {
+      // 縮到長邊最多 1600px，轉 JPEG（大幅縮小 payload，並把 HEIC 正規化為 JPEG）
+      const MAX = 1600;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const jpeg = canvas.toDataURL('image/jpeg', 0.85);
+      cardMediaType = 'image/jpeg';
+      cardBase64 = jpeg.split(',')[1];
+      const preview = document.getElementById('card-preview');
+      preview.src = jpeg;
+      preview.classList.remove('hidden');
+      document.getElementById('ocr-btn').disabled = false;
+      status.textContent = '名片已載入，點「AI 辨識名片」開始辨識';
+    };
+    img.onerror = () => {
+      status.style.color = 'var(--red)';
+      status.textContent = '圖片載入失敗，請改用 JPG／PNG 或重新拍照';
+    };
+    img.src = e.target.result;
+  };
+  reader.onerror = () => {
+    status.style.color = 'var(--red)';
+    status.textContent = '讀取檔案失敗，請重新選擇';
   };
   reader.readAsDataURL(file);
 }
@@ -565,6 +594,53 @@ async function submitForm(e, type) {
     alert('送出失敗，請稍後再試或來電 0988-558246\n' + err.message);
     btn.disabled = false;
     btn.textContent = '送出入會申請';
+  }
+}
+
+// ── 先送出待補件（辨識/填寫不順時，僅收基本聯絡資料，其餘由秘書處協助）──
+async function submitPartial(btn) {
+  const form = btn.closest('form');
+  const type = form.id === 'form-group' ? 'group' : 'personal';
+  const fd = new FormData(form);
+  const get = (k) => (fd.get(k) || '').toString().trim();
+
+  const name = type === 'group' ? get('org_name') : get('name');
+  const contact = type === 'group'
+    ? (get('org_tel') || get('contact_email') || get('contact_tel'))
+    : (get('tel_mobile') || get('email'));
+
+  if (!name || !contact) {
+    alert('「先送出」至少需要：\n・' + (type === 'group' ? '團體名稱' : '姓名') +
+      '\n・一個聯絡方式（' + (type === 'group' ? '電話或 Email' : '手機或 Email') + '）\n\n方便秘書處與您聯繫、協助補齊資料 🙏');
+    return;
+  }
+
+  if (!confirm('確定先送出目前已填的資料嗎？\n未填欄位將由秘書處與您聯繫後協助補齊。')) return;
+
+  btn.disabled = true;
+  btn.textContent = '送出中…';
+
+  const payload = { type, is_renewal: false, admin_notes: '⚠️ 會員自行先送出，資料待秘書處協助補齊' };
+  for (const [k, v] of fd.entries()) if (v) payload[k] = v;
+  if (type === 'group') Object.assign(payload, collectRepData());
+
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_applications`, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    form.querySelector('.success-box').classList.add('show');
+    form.reset();
+    btn.textContent = '已送出，秘書處將與您聯繫';
+  } catch (err) {
+    alert('送出失敗，請稍後再試或來電 0988-558246\n' + err.message);
+    btn.disabled = false;
+    btn.textContent = '📝 資料一時填不齊？先送出，由秘書處協助填寫';
   }
 }
 

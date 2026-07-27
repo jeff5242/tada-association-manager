@@ -225,7 +225,7 @@ function feePlan(title: string, join: string, annual: string, total: string) {
     contents: [
       { type: 'text', text: title, color: C.green, size: 'md', weight: 'bold' },
       feeLine('入會費', join),
-      feeLine('常年會費・三年', annual),
+      feeLine('3年會費', annual),
       { type: 'separator', color: C.line },
       {
         type: 'box',
@@ -249,7 +249,7 @@ export const FEE_FLEX = {
     paddingAll: '18px',
     contents: [
       { type: 'text', text: '會費說明 FEES', color: C.goldLt, size: 'sm', weight: 'bold' },
-      { type: 'text', text: '常年會費・三年一次繳清', color: C.pale, size: 'xs', margin: 'sm' },
+      { type: 'text', text: '3年會費・一次繳清', color: C.pale, size: 'xs', margin: 'sm' },
     ],
   },
   body: {
