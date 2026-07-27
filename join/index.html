@@ -246,7 +246,11 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
         </select>
       </div>
       <div class="field"><label>經歷</label><textarea name="experience" id="p-experience" placeholder="請簡述過往工作經歷"></textarea></div>
-      <div class="field"><label>現職 <span class="req">*</span></label><input type="text" name="job" id="p-job" required placeholder="公司名稱／職稱"></div>
+      <div class="field-row">
+        <div class="field"><label>公司名稱 <span class="req">*</span></label><input type="text" name="org_name" id="p-org" required placeholder="公司／機構名稱"></div>
+        <div class="field"><label>公司統編</label><input type="text" name="license_no" id="p-taxid" placeholder="8 碼統編（選填）" maxlength="8" inputmode="numeric"></div>
+      </div>
+      <div class="field"><label>現職 <span class="req">*</span></label><input type="text" name="job" id="p-job" required placeholder="職稱／擔任職務"></div>
       <div class="field"><label>專業領域</label><input type="text" name="expertise" id="p-expertise" placeholder="例：精準農業、農產加工…"></div>
     </div>
 
@@ -453,6 +457,8 @@ async function runOCR() {
     if (data.error) throw new Error(data.error);
     // 填入欄位
     if (data.name)       document.getElementById('p-name').value = data.name;
+    if (data.org_name)   document.getElementById('p-org').value = data.org_name;
+    if (data.tax_id)     document.getElementById('p-taxid').value = data.tax_id;
     if (data.job)        document.getElementById('p-job').value = data.job;
     if (data.tel_mobile) document.getElementById('p-tel-mobile').value = data.tel_mobile;
     if (data.tel_office) document.getElementById('p-tel-office').value = data.tel_office;
