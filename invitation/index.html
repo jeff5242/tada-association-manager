@@ -36,11 +36,11 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
 .info-value .sub{font-size:11px;font-weight:400;color:var(--green-light);font-family:'Noto Sans TC',sans-serif;display:block;margin-top:2px;}
 .info-value .sub2{font-size:10px;font-weight:400;color:rgba(90,138,96,0.7);font-family:'Noto Sans TC',sans-serif;display:block;margin-top:1px;}
 .pillars{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0;}
-.pillar{background:var(--green-deep);padding:12px 14px;position:relative;}
-.pillar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--gold);}
-.pillar-icon{font-size:18px;margin-bottom:5px;}
-.pillar-title{font-family:'Noto Serif TC',serif;font-size:12px;font-weight:700;color:white;letter-spacing:0.08em;margin-bottom:3px;}
-.pillar-desc{font-size:10px;color:rgba(255,255,255,0.5);line-height:1.6;}
+.pillar{background:var(--green-deep);padding:16px 14px;position:relative;overflow:hidden;}
+.pillar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--gold);z-index:2;}
+.pillar-bg{position:absolute;inset:0;width:100%;height:100%;opacity:0.13;pointer-events:none;}
+.pillar-title{font-family:'Noto Serif TC',serif;font-size:13px;font-weight:700;color:white;letter-spacing:0.08em;margin-bottom:3px;position:relative;z-index:1;}
+.pillar-desc{font-size:10px;color:rgba(255,255,255,0.55);line-height:1.6;position:relative;z-index:1;}
 .program-section{margin:22px 0;}
 .program-heading{font-family:'Noto Serif TC',serif;font-size:13px;letter-spacing:0.2em;color:var(--gold);font-weight:600;text-align:center;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(184,145,58,0.25);}
 .program-item{display:flex;align-items:baseline;gap:12px;padding:10px 0;border-bottom:1px dashed rgba(184,145,58,0.18);}
@@ -65,7 +65,7 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
 .footer{border-top:1px solid rgba(184,145,58,0.25);padding-top:14px;text-align:center;}
 .footer-text{font-size:10px;color:var(--green-light);letter-spacing:0.12em;line-height:2.2;}
 .footer-text span{color:var(--gold);}
-.join-cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px 16px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:var(--green-deep);font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;letter-spacing:0.08em;text-decoration:none;box-shadow:0 6px 18px rgba(184,145,58,0.35);transition:transform .2s,box-shadow .2s;}
+.join-cta{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px 16px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:var(--green-deep);font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;letter-spacing:0.14em;text-decoration:none;white-space:nowrap;box-shadow:0 6px 18px rgba(184,145,58,0.35);transition:transform .2s,box-shadow .2s;}
 .join-cta:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(184,145,58,0.5);}
 .join-cta .arw{font-size:16px;font-weight:400;}
 .join-cta-top{margin:2px 0 20px;}
@@ -92,7 +92,7 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
       </div>
       <div class="org">
         <div class="org-name">台灣科技農企業發展協會</div>
-        <div class="org-sub">Agricultural Technology Development Association</div>
+        <div class="org-sub">Taiwan Advanced Agribusiness Development Association</div>
       </div>
     </div>
 
@@ -128,16 +128,30 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
       </div>
     </div>
 
-    <a href="../join/" target="_blank" class="join-cta join-cta-top">🌱 我要加入 TADA　入會申請 <span class="arw">→</span></a>
+    <a href="../join/" target="_blank" class="join-cta join-cta-top">我要加入 TADA <span class="arw">→</span></a>
 
     <div class="pillars">
       <div class="pillar">
-        <div class="pillar-icon">🤖</div>
+        <svg class="pillar-bg" viewBox="0 0 220 130" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <text x="110" y="52" text-anchor="middle" font-family="'Arial Black',Arial,sans-serif" font-size="30" font-weight="900" fill="#fff" letter-spacing="1">NVIDIA</text>
+          <g fill="#fff" transform="translate(64,96)">
+            <path d="M0,-19 L2.6,-4 L0,0 L-2.6,-4 Z"/><path d="M0,19 L2.6,4 L0,0 L-2.6,4 Z"/>
+            <path d="M-19,0 L-4,-2.6 L0,0 L-4,2.6 Z"/><path d="M19,0 L4,-2.6 L0,0 L4,2.6 Z"/>
+            <path d="M-13,-13 L-3,-4.5 L0,0 L-4.5,-3 Z"/><path d="M13,13 L3,4.5 L0,0 L4.5,3 Z"/>
+            <path d="M13,-13 L4.5,-3 L0,0 L3,-4.5 Z"/><path d="M-13,13 L-4.5,3 L0,0 L-3,4.5 Z"/>
+          </g>
+          <text x="122" y="105" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="27" fill="#fff">Claude</text>
+        </svg>
         <div class="pillar-title">AI 賦能</div>
         <div class="pillar-desc">讓每位會員企業<br>親身體驗 AI 的力量</div>
       </div>
       <div class="pillar">
-        <div class="pillar-icon">🌱</div>
+        <svg class="pillar-bg" viewBox="0 0 220 130" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <g fill="#fff">
+            <ellipse cx="150" cy="50" rx="54" ry="46"/><rect x="144" y="86" width="12" height="46"/>
+            <ellipse cx="64" cy="82" rx="30" ry="26"/><rect x="60" y="104" width="8" height="28"/>
+          </g>
+        </svg>
         <div class="pillar-title">二代傳承</div>
         <div class="pillar-desc">從接班到領班<br>共創農業新世代</div>
       </div>
@@ -221,7 +235,7 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
     <div class="divider"></div>
 
     <!-- 入會申請入口 -->
-    <a href="../join/" target="_blank" class="join-cta join-cta-bottom">🌱 我要加入 TADA　入會申請 <span class="arw">→</span></a>
+    <a href="../join/" target="_blank" class="join-cta join-cta-bottom">我要加入 TADA <span class="arw">→</span></a>
 
     <div class="footer">
       <div class="footer-text">
