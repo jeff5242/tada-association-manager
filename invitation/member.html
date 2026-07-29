@@ -71,6 +71,9 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
 .join-cta .arw{font-size:16px;font-weight:400;}
 .join-cta-top{margin:2px 0 20px;}
 .join-cta-bottom{margin:2px 0 16px;}
+.join-cta-stack{flex-direction:column;gap:3px;padding:13px 16px;}
+.join-cta-stack .cta-main{font-size:15px;font-weight:700;letter-spacing:0.06em;}
+.join-cta-stack .cta-sub{font-size:11px;font-weight:400;letter-spacing:0.03em;opacity:0.82;font-family:'Noto Sans TC',sans-serif;}
 .bottom-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
 </style>
 </head>
@@ -129,7 +132,10 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
       </div>
     </div>
 
-    <a href="../join/" target="_blank" class="join-cta join-cta-top">🌱 推薦好友加入 TADA　入會申請 <span class="arw">→</span></a>
+    <a href="../join/" target="_blank" class="join-cta join-cta-top join-cta-stack">
+      <span class="cta-main">🌱 會員續約 ・ 推薦好友入會</span>
+      <span class="cta-sub">續繳會費 與 新朋友加入，皆由此辦理 →</span>
+    </a>
 
     <div class="pillars">
       <div class="pillar">
@@ -239,8 +245,11 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
 
     <div class="divider"></div>
 
-    <!-- 入會申請入口 -->
-    <a href="../join/" target="_blank" class="join-cta join-cta-bottom">🌱 推薦好友加入 TADA　入會申請 <span class="arw">→</span></a>
+    <!-- 入會申請／續約入口 -->
+    <a href="../join/" target="_blank" class="join-cta join-cta-bottom join-cta-stack">
+      <span class="cta-main">🌱 會員續約 ・ 推薦好友入會</span>
+      <span class="cta-sub">續繳會費 與 新朋友加入，皆由此辦理 →</span>
+    </a>
 
     <div class="footer">
       <div class="footer-text">
