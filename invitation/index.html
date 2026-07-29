@@ -65,6 +65,11 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
 .footer{border-top:1px solid rgba(184,145,58,0.25);padding-top:14px;text-align:center;}
 .footer-text{font-size:10px;color:var(--green-light);letter-spacing:0.12em;line-height:2.2;}
 .footer-text span{color:var(--gold);}
+.join-cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px 16px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:var(--green-deep);font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;letter-spacing:0.08em;text-decoration:none;box-shadow:0 6px 18px rgba(184,145,58,0.35);transition:transform .2s,box-shadow .2s;}
+.join-cta:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(184,145,58,0.5);}
+.join-cta .arw{font-size:16px;font-weight:400;}
+.join-cta-top{margin:2px 0 20px;}
+.join-cta-bottom{margin:2px 0 16px;}
 .bottom-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
 </style>
 </head>
@@ -122,6 +127,8 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
         </div>
       </div>
     </div>
+
+    <a href="../join/" target="_blank" class="join-cta join-cta-top">🌱 我要加入 TADA　入會申請 <span class="arw">→</span></a>
 
     <div class="pillars">
       <div class="pillar">
@@ -214,11 +221,7 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
     <div class="divider"></div>
 
     <!-- 入會申請入口 -->
-    <div style="text-align:center;margin:0 0 16px;">
-      <a href="../join/" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:9px 22px;background:rgba(30,51,32,0.07);border:1px solid rgba(184,145,58,0.3);color:#5a8a60;font-size:11px;font-family:'Noto Sans TC',sans-serif;letter-spacing:0.18em;text-decoration:none;transition:all .2s;" onmouseover="this.style.borderColor='#b8913a';this.style.color='#b8913a';" onmouseout="this.style.borderColor='rgba(184,145,58,0.3)';this.style.color='#5a8a60';">
-        🌱&nbsp;&nbsp;我要加入 TADA｜入會申請
-      </a>
-    </div>
+    <a href="../join/" target="_blank" class="join-cta join-cta-bottom">🌱 我要加入 TADA　入會申請 <span class="arw">→</span></a>
 
     <div class="footer">
       <div class="footer-text">
