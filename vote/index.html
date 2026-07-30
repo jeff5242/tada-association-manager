@@ -3,122 +3,207 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>會員投票｜TADA</title>
+<title>理監事選舉投票｜TADA</title>
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="../assets/liff-common.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;--red:#c0392b;}
 body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 40px;}
 .top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
-.wrap{max-width:520px;margin:0 auto;padding:24px 20px;}
-.head{text-align:center;margin-bottom:20px;}
+.wrap{max-width:520px;margin:0 auto;padding:22px 18px;}
+.head{text-align:center;margin-bottom:18px;}
 .kick{font-size:11px;letter-spacing:0.3em;color:var(--gold);font-weight:600;margin-bottom:6px;}
-.title{font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--green-deep);line-height:1.4;}
-.desc{font-size:13px;color:var(--green-light);margin-top:10px;line-height:1.8;}
-.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px;box-shadow:0 6px 20px rgba(30,51,32,0.05);}
-.opt{display:block;padding:16px;border:1.5px solid var(--line);border-radius:10px;margin-bottom:12px;cursor:pointer;font-size:16px;font-weight:700;color:var(--green-deep);text-align:center;transition:all .15s;}
-.opt.sel{border-color:var(--green-mid);background:var(--green-mid);color:#fff;}
-.submit{width:100%;padding:15px;font-size:16px;font-weight:700;font-family:inherit;background:var(--green-deep);color:var(--gold-light);border:none;border-radius:8px;cursor:pointer;letter-spacing:0.1em;margin-top:4px;}
+.title{font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--green-deep);line-height:1.35;}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px;box-shadow:0 6px 20px rgba(30,51,32,0.05);}
+.label{font-size:13px;font-weight:700;color:var(--green-deep);margin-bottom:8px;display:block;}
+input[type=text]{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:15px;color:var(--ink);outline:none;background:#fff;}
+input[type=text]:focus{border-color:var(--gold);}
+.hint{font-size:11px;color:var(--green-light);margin-top:6px;}
+.sec-title{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0 10px;}
+.sec-title b{font-family:'Noto Serif TC',serif;font-size:16px;color:var(--green-deep);}
+.counter{font-size:13px;color:var(--gold);font-weight:700;}
+.counter.full{color:var(--red);}
+.opt{display:flex;align-items:center;gap:11px;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;margin-bottom:9px;cursor:pointer;transition:all .12s;background:#fff;}
+.opt.sel{border-color:var(--green-mid);background:rgba(45,82,53,0.06);}
+.opt .box{width:22px;height:22px;border:2px solid var(--line);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;}
+.opt.sel .box{background:var(--green-mid);border-color:var(--green-mid);}
+.opt .nm{font-size:15px;font-weight:700;color:var(--green-deep);}
+.opt .co{font-size:12px;color:var(--green-light);margin-top:1px;}
+.opt.disabled{opacity:.45;}
+.submit{width:100%;padding:15px;font-size:16px;font-weight:700;font-family:inherit;background:var(--green-deep);color:var(--gold-light);border:none;border-radius:8px;cursor:pointer;letter-spacing:0.1em;}
 .submit:disabled{opacity:.5;}
 .state{text-align:center;padding:60px 20px;}
-.state .ic{font-size:56px;margin-bottom:16px;}
-.state .msg{font-size:16px;color:var(--green-deep);font-weight:700;line-height:1.7;}
-.state .sub2{font-size:14px;color:var(--green-light);margin-top:10px;}
-.state .sub2 b{color:var(--gold);}
+.state .ic{font-size:54px;margin-bottom:14px;}
+.state .msg{font-size:17px;color:var(--green-deep);font-weight:700;line-height:1.7;}
+.state .sub2{font-size:13px;color:var(--green-light);margin-top:10px;line-height:1.9;}
 .loading{text-align:center;padding:80px 20px;color:var(--green-light);font-size:14px;}
-.err{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);color:#c0392b;font-size:13px;padding:12px;border-radius:8px;margin-bottom:14px;}
+.err{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);color:var(--red);font-size:13px;padding:12px;border-radius:8px;margin-bottom:14px;line-height:1.6;}
 </style>
 </head>
 <body>
 <div class="top-bar"></div>
 <div class="wrap">
-  <div id="loading" class="loading">載入投票中… 🐝</div>
+  <div id="loading" class="loading">載入選舉資料… 🐝</div>
 
-  <div id="vote-view" style="display:none;">
+  <!-- 資格驗證 -->
+  <div id="verify-view" style="display:none;">
     <div class="head">
-      <div class="kick">TADA 會員投票</div>
-      <div class="title" id="poll-title">—</div>
-      <div class="desc" id="poll-desc"></div>
+      <div class="kick">TADA 理監事選舉</div>
+      <div class="title" id="v-title">第六屆理監事改選</div>
     </div>
-    <div id="err-box"></div>
+    <div id="verify-err"></div>
     <div class="card">
-      <div id="options"></div>
-      <button class="submit" id="submit-btn" onclick="submitVote()">投下這一票</button>
+      <div class="label">請輸入身分驗證</div>
+      <div style="margin-bottom:12px;"><input type="text" id="in-name" placeholder="您的姓名"></div>
+      <div><input type="text" id="in-code" inputmode="numeric" maxlength="4" placeholder="手機末四碼"></div>
+      <div class="hint">系統將比對有效會員名冊，確認您的投票資格。</div>
+      <button class="submit" id="verify-btn" style="margin-top:16px;" onclick="verifyVoter()">確認資格</button>
     </div>
   </div>
 
-  <div id="none-view" class="state" style="display:none;">
-    <div class="ic">🗳️</div>
-    <div class="msg">目前沒有進行中的投票</div>
-    <div class="sub2">有議案表決時會在這裡開放，敬請留意通知 🌾</div>
+  <!-- 投票 -->
+  <div id="ballot-view" style="display:none;">
+    <div class="head">
+      <div class="kick">TADA 理監事選舉</div>
+      <div class="title">圈選您支持的候選人</div>
+    </div>
+    <div id="ballot-err"></div>
+
+    <div class="card">
+      <div class="sec-title"><b>理事票</b><span class="counter" id="d-count">已選 0 / 5</span></div>
+      <div id="director-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title"><b>監事票</b><span class="counter" id="s-count">已選 0 / 1</span></div>
+      <div id="supervisor-list"></div>
+    </div>
+
+    <button class="submit" id="submit-btn" onclick="castBallot()">送出選票</button>
+    <div class="hint" style="text-align:center;margin-top:8px;">送出後無法更改，請確認後再送出。</div>
   </div>
 
+  <!-- 狀態頁 -->
   <div id="done-view" class="state" style="display:none;">
-    <div class="ic">✅</div>
-    <div class="msg">您的一票已送出，感謝參與！</div>
-    <div class="sub2" id="done-choice"></div>
+    <div class="ic" id="done-ic">🗳️</div>
+    <div class="msg" id="done-msg"></div>
+    <div class="sub2" id="done-sub"></div>
   </div>
 </div>
 
 <script>
-let profile = null, poll = null, selected = null;
-function showErr(m){ document.getElementById('err-box').innerHTML = '<div class="err">'+m+'</div>'; }
+let profile = null, election = null, voterId = null;
+let directors = [], supervisors = [];
+const pick = { director: 5, supervisor: 1 };
+const chosen = { director: new Set(), supervisor: new Set() };
+
+function showErr(id, m){ document.getElementById(id).innerHTML = m ? '<div class="err">'+m+'</div>' : ''; }
+function statePage(ic, msg, sub){
+  ['verify-view','ballot-view','loading'].forEach(x=>document.getElementById(x).style.display='none');
+  document.getElementById('done-ic').textContent = ic;
+  document.getElementById('done-msg').textContent = msg;
+  document.getElementById('done-sub').innerHTML = sub || '';
+  document.getElementById('done-view').style.display = 'block';
+}
+
+async function rpc(fn, body){
+  const res = await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`, {
+    method:'POST', headers:{ ...window.tadaSbHeaders(), 'Content-Type':'application/json' }, body: JSON.stringify(body),
+  });
+  if(!res.ok) throw new Error('HTTP '+res.status+' '+(await res.text()));
+  return res.json();
+}
 
 async function init(){
   try{
     profile = await window.tadaInitLiff('vote');
     if(!profile) return;
-
-    // 取進行中的投票
-    const pr = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_polls?active=eq.true&order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
-    const polls = pr.ok ? await pr.json() : [];
+    // 取進行中的選舉
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_elections?status=eq.open&order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
+    const list = r.ok ? await r.json() : [];
     document.getElementById('loading').style.display='none';
-    if(!polls.length){ document.getElementById('none-view').style.display='block'; return; }
-    poll = polls[0];
-
-    // 是否已投過
-    const vr = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_votes?poll_id=eq.${poll.id}&user_id=eq.${encodeURIComponent(profile.userId)}`, { headers: window.tadaSbHeaders() });
-    const votes = vr.ok ? await vr.json() : [];
-    if(votes.length){ showDone(votes[0].choice); return; }
-
-    document.getElementById('poll-title').textContent = poll.title;
-    document.getElementById('poll-desc').textContent = poll.description || '';
-    const opts = Array.isArray(poll.options) ? poll.options : [];
-    document.getElementById('options').innerHTML = opts.map((o,i)=>`<div class="opt" data-v="${encodeURIComponent(o)}" onclick="pick(this)">${o}</div>`).join('');
-    document.getElementById('vote-view').style.display='block';
+    if(!list.length){ statePage('🗳️','目前沒有進行中的投票','投票開放後即可於此圈選，敬請留意現場宣布。'); return; }
+    election = list[0];
+    pick.director = election.director_pick; pick.supervisor = election.supervisor_pick;
+    document.getElementById('v-title').textContent = election.title;
+    document.getElementById('d-count').textContent = `已選 0 / ${pick.director}`;
+    document.getElementById('s-count').textContent = `已選 0 / ${pick.supervisor}`;
+    document.getElementById('verify-view').style.display='block';
   }catch(e){
     document.getElementById('loading').textContent = '載入失敗，請從 LINE 官方帳號選單開啟。';
   }
 }
 
-function pick(el){
-  selected = decodeURIComponent(el.dataset.v);
-  document.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
-  el.classList.add('sel');
+async function verifyVoter(){
+  const name = document.getElementById('in-name').value.trim();
+  const code = document.getElementById('in-code').value.trim();
+  if(!name || !/^\d{4}$/.test(code)){ showErr('verify-err','請輸入姓名與正確的手機末四碼（4 位數字）'); return; }
+  const btn = document.getElementById('verify-btn'); btn.disabled=true; btn.textContent='比對中…';
+  try{
+    const rows = await rpc('election_check_voter', { p_election: election.id, p_name: name, p_code: code });
+    if(!rows.length){ showErr('verify-err','查無您的投票資格，請確認姓名與末四碼，或洽現場工作人員。'); btn.disabled=false; btn.textContent='確認資格'; return; }
+    if(rows[0].has_voted){ statePage('✅','您已完成投票','感謝您的參與，一位會員僅能投票一次。'); return; }
+    voterId = rows[0].voter_id;
+    await loadCandidates();
+    document.getElementById('verify-view').style.display='none';
+    document.getElementById('ballot-view').style.display='block';
+  }catch(e){ showErr('verify-err','系統錯誤：'+e.message); btn.disabled=false; btn.textContent='確認資格'; }
 }
 
-function showDone(choice){
-  document.getElementById('vote-view').style.display='none';
-  document.getElementById('done-choice').innerHTML = '您投的是：<b>'+choice+'</b>';
-  document.getElementById('done-view').style.display='block';
+async function loadCandidates(){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_candidates?election_id=eq.${election.id}&order=sort`, { headers: window.tadaSbHeaders() });
+  const all = r.ok ? await r.json() : [];
+  directors = all.filter(c=>c.category==='director');
+  supervisors = all.filter(c=>c.category==='supervisor');
+  renderList('director', directors, 'director-list');
+  renderList('supervisor', supervisors, 'supervisor-list');
 }
 
-async function submitVote(){
-  if(!selected){ showErr('請先選擇一個選項'); return; }
+function renderList(cat, arr, elId){
+  document.getElementById(elId).innerHTML = arr.map(c=>`
+    <div class="opt" data-cat="${cat}" data-id="${c.id}" onclick="toggle('${cat}','${c.id}')">
+      <div class="box">✓</div>
+      <div><div class="nm">${escapeHtml(c.name)}</div>${c.company?`<div class="co">${escapeHtml(c.company)}</div>`:''}</div>
+    </div>`).join('');
+}
+
+function toggle(cat, id){
+  const set = chosen[cat];
+  if(set.has(id)) set.delete(id);
+  else { if(set.size >= pick[cat]) return; set.add(id); }
+  document.querySelectorAll(`.opt[data-cat="${cat}"]`).forEach(el=>{
+    const sel = set.has(el.dataset.id);
+    el.classList.toggle('sel', sel);
+    el.classList.toggle('disabled', !sel && set.size >= pick[cat]);
+  });
+  const cEl = document.getElementById(cat==='director'?'d-count':'s-count');
+  cEl.textContent = `已選 ${set.size} / ${pick[cat]}`;
+  cEl.classList.toggle('full', set.size >= pick[cat]);
+}
+
+async function castBallot(){
+  if(chosen.director.size === 0 && chosen.supervisor.size === 0){
+    if(!confirm('您尚未圈選任何候選人，確定投空白票？')) return;
+  }
   const btn = document.getElementById('submit-btn'); btn.disabled=true; btn.textContent='送出中…';
   try{
-    const res = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_votes`, {
-      method:'POST', headers:{ ...window.tadaSbHeaders(), Prefer:'return=minimal' },
-      body: JSON.stringify({ poll_id: poll.id, user_id: profile.userId, display_name: profile.displayName, choice: selected }),
+    const result = await rpc('election_cast_ballot', {
+      p_voter: voterId, p_user_id: profile.userId,
+      p_directors: [...chosen.director], p_supervisors: [...chosen.supervisor],
     });
-    if(res.status === 409){ showErr('您已經投過票囉～'); btn.disabled=false; btn.textContent='投下這一票'; return; }
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    showDone(selected);
-    setTimeout(()=>{ if(liff.isInClient()) liff.closeWindow(); }, 2600);
-  }catch(e){ showErr('送出失敗：'+e.message); btn.disabled=false; btn.textContent='投下這一票'; }
+    const code = Array.isArray(result) ? result[0] : result;
+    if(code === 'ok'){
+      statePage('🎉','投票完成，感謝您！', `理事 ${chosen.director.size} 位、監事 ${chosen.supervisor.size} 位已送出。<br>開票結果將於現場宣布。`);
+      setTimeout(()=>{ if(liff.isInClient()) liff.closeWindow(); }, 3000);
+    } else if(code === 'already_voted'){ statePage('✅','您已完成投票','一位會員僅能投票一次。');
+    } else if(code === 'not_open'){ showErr('ballot-err','投票已截止。'); btn.disabled=false; btn.textContent='送出選票';
+    } else { showErr('ballot-err','送出失敗（'+code+'），請洽工作人員。'); btn.disabled=false; btn.textContent='送出選票'; }
+  }catch(e){ showErr('ballot-err','送出失敗：'+e.message); btn.disabled=false; btn.textContent='送出選票'; }
 }
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 init();
 </script>
 </body>
