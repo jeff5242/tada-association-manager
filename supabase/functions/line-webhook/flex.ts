@@ -39,13 +39,12 @@ function infoRow(label: string, value: string) {
 }
 
 const AGENDA_ITEMS: [string, string][] = [
-  ['15:30', '會員報到・領票投票'],
-  ['16:00', '會務報告與理監事改選'],
-  ['16:40', '貴賓報到'],
+  ['15:00', '會員報到・領選票投票'],
+  ['15:30', '會務報告與理監事改選'],
+  ['16:30', '貴賓報到'],
   ['16:50', '大師講座：傳承與創新（李紅曦）'],
   ['17:25', '政策宣導：中衛輔導計劃簡介'],
-  ['17:40', 'Q&A・休息交流'],
-  ['17:50', '理事長交接典禮'],
+  ['17:50', '豐收晚宴（21:00 賦歸）'],
 ];
 
 // 活動議程卡片
@@ -77,8 +76,8 @@ export const AGENDA_FLEX = {
         spacing: 'md',
         margin: 'md',
         contents: [
-          { type: 'text', text: '18:30', color: C.goldLt, size: 'sm', weight: 'bold', flex: 2 },
-          { type: 'text', text: '豐收晚宴　21:00 賦歸', color: C.green, size: 'sm', weight: 'bold', flex: 6, wrap: true },
+          { type: 'text', text: '18:00', color: C.goldLt, size: 'sm', weight: 'bold', flex: 2 },
+          { type: 'text', text: '理事長交接典禮（晚宴席間舉行）', color: C.green, size: 'sm', weight: 'bold', flex: 6, wrap: true },
         ],
       },
     ],
