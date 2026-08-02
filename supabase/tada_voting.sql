@@ -342,3 +342,38 @@ DROP POLICY IF EXISTS v_consent_ins ON tada_v_consent;
 DROP POLICY IF EXISTS v_consent_sel ON tada_v_consent;
 CREATE POLICY v_consent_ins ON tada_v_consent FOR INSERT WITH CHECK (true);
 CREATE POLICY v_consent_sel ON tada_v_consent FOR SELECT USING (true);
+
+-- ============================================================================
+-- 代理出席委託書（不克出席會員委託他人代表出席；每人僅能受一委託）
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS tada_v_proxy (
+  id             UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  election_id    UUID NOT NULL,
+  principal_name TEXT NOT NULL, principal_no TEXT,
+  delegate_name  TEXT NOT NULL, delegate_no  TEXT,
+  meeting        TEXT, agreed BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE tada_v_proxy ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS v_proxy_sel ON tada_v_proxy;
+CREATE POLICY v_proxy_sel ON tada_v_proxy FOR SELECT USING (true);
+
+CREATE OR REPLACE FUNCTION proxy_submit(p_election UUID, p_principal_name TEXT, p_principal_no TEXT, p_delegate_name TEXT, p_delegate_no TEXT)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_meeting TEXT; cnt INT;
+BEGIN
+  SELECT title INTO v_meeting FROM tada_v_election WHERE id=p_election;
+  IF v_meeting IS NULL THEN RETURN json_build_object('ok',false,'error','election_not_found'); END IF;
+  IF COALESCE(TRIM(p_principal_name),'')='' OR COALESCE(TRIM(p_delegate_name),'')='' THEN
+    RETURN json_build_object('ok',false,'error','missing_name'); END IF;
+  SELECT count(*) INTO cnt FROM tada_v_proxy WHERE election_id=p_election
+     AND (principal_name=p_principal_name OR (COALESCE(p_principal_no,'')<>'' AND principal_no=p_principal_no));
+  IF cnt>0 THEN RETURN json_build_object('ok',false,'error','already_delegated'); END IF;
+  SELECT count(*) INTO cnt FROM tada_v_proxy WHERE election_id=p_election
+     AND (delegate_name=p_delegate_name OR (COALESCE(p_delegate_no,'')<>'' AND delegate_no=p_delegate_no));
+  IF cnt>0 THEN RETURN json_build_object('ok',false,'error','delegate_taken'); END IF;
+  INSERT INTO tada_v_proxy (election_id,principal_name,principal_no,delegate_name,delegate_no,meeting)
+    VALUES (p_election,p_principal_name,NULLIF(p_principal_no,''),p_delegate_name,NULLIF(p_delegate_no,''),v_meeting);
+  RETURN json_build_object('ok',true,'meeting',v_meeting);
+END $$;
+GRANT EXECUTE ON FUNCTION proxy_submit(UUID,TEXT,TEXT,TEXT,TEXT) TO anon;

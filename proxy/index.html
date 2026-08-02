@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>代理出席委託書｜TADA</title>
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;--red:#c0392b;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 40px;}
+.top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.wrap{max-width:500px;margin:0 auto;padding:24px 18px;}
+.head{text-align:center;margin-bottom:18px;}
+.kick{font-size:11px;letter-spacing:0.3em;color:var(--gold);font-weight:600;margin-bottom:6px;}
+.title{font-family:'Noto Serif TC',serif;font-size:23px;font-weight:900;color:var(--green-deep);}
+.sub{font-size:13px;color:var(--green-light);margin-top:6px;}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 6px 20px rgba(30,51,32,0.05);}
+.stmt{background:var(--cream);border:1px dashed var(--line);border-radius:8px;padding:16px;font-size:15px;line-height:2;color:var(--green-deep);margin-bottom:18px;font-family:'Noto Serif TC',serif;}
+.stmt b{color:var(--gold);}
+.grp{font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.1em;margin:4px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px;}
+label.lb{font-size:13px;font-weight:700;color:var(--green-deep);margin-bottom:7px;display:block;}
+input[type=text]{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:15px;color:var(--ink);outline:none;background:#fff;margin-bottom:14px;}
+input:focus{border-color:var(--gold);}
+.agree{display:flex;align-items:flex-start;gap:10px;padding:14px;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;background:#fff;margin-bottom:16px;}
+.agree.on{border-color:var(--green-mid);background:rgba(45,82,53,0.06);}
+.agree .bx{width:24px;height:24px;border:2px solid var(--line);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;}
+.agree.on .bx{background:var(--green-mid);border-color:var(--green-mid);}
+.agree .tx{font-size:13px;color:var(--green-deep);font-weight:700;line-height:1.6;}
+.submit{width:100%;padding:16px;font-size:17px;font-weight:700;font-family:inherit;background:var(--green-deep);color:var(--gold-light);border:none;border-radius:8px;cursor:pointer;letter-spacing:0.1em;}
+.submit:disabled{opacity:.5;}
+.note{font-size:11px;color:var(--green-light);margin-top:10px;line-height:1.8;}
+.err{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);color:var(--red);font-size:13px;padding:12px;border-radius:8px;margin-bottom:14px;line-height:1.6;}
+.state{text-align:center;padding:60px 22px;}
+.state .ic{font-size:56px;margin-bottom:16px;}
+.state .msg{font-size:19px;color:var(--green-deep);font-weight:700;line-height:1.7;}
+.state .sub2{font-size:13px;color:var(--green-light);margin-top:12px;line-height:1.9;}
+.loading{text-align:center;padding:80px 20px;color:var(--green-light);font-size:14px;}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+  <div id="loading" class="loading">載入中… 🐝</div>
+
+  <div id="form-view" style="display:none;">
+    <div class="head">
+      <div class="kick">TADA 會員大會</div>
+      <div class="title">代理出席委託書</div>
+      <div class="sub" id="e-sub">—</div>
+    </div>
+    <div id="form-err"></div>
+    <div class="card">
+      <div class="stmt">本人因故不克出席　<b id="s-meeting">本會會員大會</b>，茲委託　<b id="s-delegate">＿＿＿</b>　代表本人出席，履行本人權利義務。</div>
+
+      <div class="grp">委託人（本人）</div>
+      <label class="lb">姓名</label>
+      <input type="text" id="p-name" placeholder="您的姓名">
+      <label class="lb">會員編號（選填）</label>
+      <input type="text" id="p-no" inputmode="numeric" placeholder="例如 10001">
+
+      <div class="grp">受委託人（代表出席者）</div>
+      <label class="lb">姓名</label>
+      <input type="text" id="d-name" placeholder="受委託人姓名" oninput="updateStmt()">
+      <label class="lb">會員編號（選填）</label>
+      <input type="text" id="d-no" inputmode="numeric" placeholder="例如 10002">
+
+      <div class="agree" id="agree" onclick="toggleAgree()">
+        <div class="bx" id="agree-bx">✓</div>
+        <div class="tx">本人確認委託上述受委託人代表出席並行使權利。</div>
+      </div>
+
+      <button class="submit" id="submit-btn" onclick="submitProxy()">送出委託書</button>
+      <div class="note">注意：依人民團體選舉罷免辦法，<b>每一會員僅能受一位會員之委託</b>代表出席。夥伴／團體會員之代表人如無法出席，可由同公司他人代表，不需填本委託書。</div>
+    </div>
+  </div>
+
+  <div id="done-view" class="state" style="display:none;">
+    <div class="ic" id="done-ic">🤝</div>
+    <div class="msg" id="done-msg">委託書已送出，感謝您！</div>
+    <div class="sub2" id="done-sub"></div>
+  </div>
+</div>
+
+<script>
+let election = null, agreed = false;
+function showErr(m){ document.getElementById('form-err').innerHTML = m ? '<div class="err">'+m+'</div>' : ''; }
+function statePage(ic,msg,sub){
+  document.getElementById('form-view').style.display='none';
+  document.getElementById('done-ic').textContent=ic;
+  document.getElementById('done-msg').textContent=msg;
+  document.getElementById('done-sub').innerHTML=sub||'';
+  document.getElementById('done-view').style.display='block';
+}
+async function rpc(fn, body){
+  const res = await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`, { method:'POST', headers: window.tadaSbHeaders(), body: JSON.stringify(body) });
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  return res.json();
+}
+async function init(){
+  try{
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election?order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
+    const list = r.ok ? await r.json() : [];
+    document.getElementById('loading').style.display='none';
+    if(!list.length){ statePage('📋','目前沒有會員大會場次','委託書將於大會開放時提供。'); return; }
+    election = list[0];
+    document.getElementById('e-sub').textContent = election.title;
+    document.getElementById('s-meeting').textContent = election.title;
+    document.getElementById('form-view').style.display='block';
+  }catch(e){ document.getElementById('loading').textContent='載入失敗，請稍後再試或洽秘書處。'; }
+}
+function updateStmt(){
+  const d = document.getElementById('d-name').value.trim();
+  document.getElementById('s-delegate').textContent = d || '＿＿＿';
+}
+function toggleAgree(){ agreed=!agreed; document.getElementById('agree').classList.toggle('on', agreed); }
+async function submitProxy(){
+  const pn=document.getElementById('p-name').value.trim(), pno=document.getElementById('p-no').value.trim();
+  const dn=document.getElementById('d-name').value.trim(), dno=document.getElementById('d-no').value.trim();
+  if(!pn){ showErr('請輸入委託人（本人）姓名'); return; }
+  if(!dn){ showErr('請輸入受委託人姓名'); return; }
+  if(!agreed){ showErr('請勾選確認委託'); return; }
+  const btn=document.getElementById('submit-btn'); btn.disabled=true; btn.textContent='送出中…';
+  try{
+    const r = await rpc('proxy_submit', { p_election: election.id, p_principal_name: pn, p_principal_no: pno, p_delegate_name: dn, p_delegate_no: dno });
+    if(r.ok){
+      statePage('🤝','委託書已送出，感謝您！', `委託人：${pn}<br>受委託人：${dn}<br>${election.title}<br><span style="font-size:12px;">${new Date().toLocaleString('zh-TW',{hour12:false})}</span>`);
+    } else if(r.error==='delegate_taken'){ showErr('此受委託人已受其他會員委託。依規定每人僅能受一位會員委託，請改委託他人。'); btn.disabled=false; btn.textContent='送出委託書';
+    } else if(r.error==='already_delegated'){ showErr('您已送出過委託書，如需更改請洽秘書處。'); btn.disabled=false; btn.textContent='送出委託書';
+    } else if(r.error==='missing_name'){ showErr('請完整填寫委託人與受委託人姓名'); btn.disabled=false; btn.textContent='送出委託書';
+    } else { showErr('送出失敗（'+r.error+'），請洽秘書處。'); btn.disabled=false; btn.textContent='送出委託書'; }
+  }catch(e){ showErr('送出失敗：'+e.message); btn.disabled=false; btn.textContent='送出委託書'; }
+}
+init();
+</script>
+</body>
+</html>
