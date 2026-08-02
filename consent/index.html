@@ -131,12 +131,14 @@ async function submitConsent(){
   const btn = document.getElementById('submit-btn'); btn.disabled=true; btn.textContent='送出中…';
   try{
     const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_consent`, {
-      method:'POST', headers:{ ...window.tadaSbHeaders(), 'Prefer':'return=minimal' },
+      method:'POST', headers:{ ...window.tadaSbHeaders(), 'Prefer':'return=representation' },
       body: JSON.stringify({ election_id: election.id, position: pos, name, member_no: no||null, company: co||null, agreed: true }),
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
+    const rec = (await r.json())[0] || {};
     document.getElementById('form-view').style.display='none';
-    document.getElementById('done-sub').innerHTML = `${name}　${POS_LABEL[pos]}<br>${election.title}<br><span style="font-size:12px;">${new Date().toLocaleString('zh-TW',{hour12:false})}</span>`;
+    const printLink = rec.id ? `<br><a href="/print/?doc=consent&id=${rec.id}" target="_blank" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#1e3320;color:#d4a853;border-radius:8px;text-decoration:none;font-weight:700;">🖨️ 列印願任書 / 存 PDF</a>` : '';
+    document.getElementById('done-sub').innerHTML = `${name}　${POS_LABEL[pos]}<br>${election.title}<br><span style="font-size:12px;">${new Date().toLocaleString('zh-TW',{hour12:false})}</span>${printLink}`;
     document.getElementById('done-view').style.display='block';
   }catch(e){ showErr('送出失敗：'+e.message); btn.disabled=false; btn.textContent='送出願任書'; }
 }

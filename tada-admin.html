@@ -549,8 +549,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <button class="btn btn-outline btn-sm" onclick="renderConsent()">↻ 重新載入</button>
         <span id="consent-count" style="font-size:12px;color:var(--gray);align-self:center;"></span>
       </div>
-      <div class="tbl-wrap"><table><thead><tr><th>姓名</th><th>職位</th><th>會員編號</th><th>公司</th><th>簽署時間</th></tr></thead>
-        <tbody id="consent-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無願任書</td></tr></tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th>姓名</th><th>職位</th><th>會員編號</th><th>公司</th><th>簽署時間</th><th>列印</th></tr></thead>
+        <tbody id="consent-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">尚無願任書</td></tr></tbody></table></div>
     </div>
 
     <div id="el-cat-proxy" style="display:none;">
@@ -562,8 +562,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <button class="btn btn-outline btn-sm" onclick="renderProxy()">↻ 重新載入</button>
         <span id="proxy-count" style="font-size:12px;color:var(--gray);align-self:center;"></span>
       </div>
-      <div class="tbl-wrap"><table><thead><tr><th>委託人</th><th></th><th>受委託人（代表出席）</th><th>時間</th></tr></thead>
-        <tbody id="proxy-tbody"><tr><td colspan="4" style="text-align:center;color:var(--gray);padding:20px;">尚無委託書</td></tr></tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th>委託人</th><th></th><th>受委託人（代表出席）</th><th>時間</th><th>列印</th></tr></thead>
+        <tbody id="proxy-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無委託書</td></tr></tbody></table></div>
     </div>
   </div>
 </div>
@@ -1775,15 +1775,16 @@ function switchElCat(cat,btn){
 }
 
 async function renderProxy(){
-  const r=await sbEl(`tada_v_proxy?election_id=eq.${election.id}&order=created_at.desc&select=principal_name,principal_no,delegate_name,delegate_no,created_at`); const arr=r.ok?await r.json():[];
+  const r=await sbEl(`tada_v_proxy?election_id=eq.${election.id}&order=created_at.desc&select=id,principal_name,principal_no,delegate_name,delegate_no,created_at`); const arr=r.ok?await r.json():[];
   document.getElementById('proxy-count').textContent=`已委託 ${arr.length} 件`;
   const tb=document.getElementById('proxy-tbody');
-  if(!arr.length){ tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--gray);padding:20px;">尚無委託書</td></tr>'; return; }
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無委託書</td></tr>'; return; }
   tb.innerHTML=arr.map(p=>`<tr>
     <td class="name-cell">${escapeHtml(p.principal_name)}${p.principal_no?'<span style="color:var(--gray);font-size:11px;"> #'+escapeHtml(p.principal_no)+'</span>':''}</td>
     <td>→</td>
     <td class="name-cell">${escapeHtml(p.delegate_name)}${p.delegate_no?'<span style="color:var(--gray);font-size:11px;"> #'+escapeHtml(p.delegate_no)+'</span>':''}</td>
-    <td style="font-size:11px;color:var(--gray);">${new Date(p.created_at).toLocaleString('zh-TW',{hour12:false})}</td></tr>`).join('');
+    <td style="font-size:11px;color:var(--gray);">${new Date(p.created_at).toLocaleString('zh-TW',{hour12:false})}</td>
+    <td><a class="btn btn-outline btn-sm" href="/print/?doc=proxy&id=${p.id}" target="_blank">🖨️ PDF</a></td></tr>`).join('');
 }
 
 const POS_LB = { director:'理事', supervisor:'監事', executive:'常務理事' };
@@ -1791,12 +1792,13 @@ async function renderConsent(){
   const r=await sbEl(`tada_v_consent?election_id=eq.${election.id}&order=created_at.desc&select=id,position,name,member_no,company,created_at`); const arr=r.ok?await r.json():[];
   document.getElementById('consent-count').textContent=`已簽署 ${arr.length} 份`;
   const tb=document.getElementById('consent-tbody');
-  if(!arr.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無願任書</td></tr>'; return; }
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">尚無願任書</td></tr>'; return; }
   tb.innerHTML=arr.map(c=>`<tr><td class="name-cell">${escapeHtml(c.name)}</td>
     <td>${POS_LB[c.position]||c.position}</td>
     <td style="font-family:monospace;font-size:12px;color:var(--gray);">${escapeHtml(c.member_no||'–')}</td>
     <td style="font-size:12px;color:var(--gray);">${escapeHtml(c.company||'–')}</td>
-    <td style="font-size:11px;color:var(--gray);">${new Date(c.created_at).toLocaleString('zh-TW',{hour12:false})}</td></tr>`).join('');
+    <td style="font-size:11px;color:var(--gray);">${new Date(c.created_at).toLocaleString('zh-TW',{hour12:false})}</td>
+    <td><a class="btn btn-outline btn-sm" href="/print/?doc=consent&id=${c.id}" target="_blank">🖨️ PDF</a></td></tr>`).join('');
 }
 
 function votesFor(id){ const c=elResults.find(x=>x.id===id); return c?Number(c.votes):0; }

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文件列印｜TADA</title>
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Serif TC',serif;background:#e8e8e0;color:#111;padding:20px 0;}
+.toolbar{max-width:794px;margin:0 auto 16px;display:flex;gap:10px;justify-content:center;}
+.btn{padding:12px 26px;font-family:'Noto Sans TC',sans-serif;font-size:15px;font-weight:700;border:none;border-radius:8px;cursor:pointer;}
+.btn.print{background:#1e3320;color:#d4a853;}
+.btn.back{background:#fff;color:#1e3320;border:1px solid #ccc;}
+/* A4 紙 */
+.sheet{width:794px;min-height:1123px;margin:0 auto;background:#fff;padding:110px 96px;box-shadow:0 4px 24px rgba(0,0,0,.15);}
+.doc-title{text-align:center;font-size:40px;font-weight:900;letter-spacing:24px;text-indent:24px;margin-bottom:70px;}
+.body-txt{font-size:22px;line-height:3;text-align:justify;}
+.body-txt .fill{display:inline-block;min-width:150px;border-bottom:1.5px solid #111;text-align:center;font-weight:700;padding:0 10px;}
+.sign-block{margin-top:70px;font-size:21px;line-height:3.2;}
+.sign-block .fill{display:inline-block;min-width:180px;border-bottom:1.5px solid #111;text-align:center;font-weight:700;padding:0 10px;}
+.to{font-size:21px;margin:40px 0 10px;}
+.org{font-size:22px;font-weight:700;letter-spacing:4px;}
+.date{margin-top:56px;font-size:20px;text-align:center;letter-spacing:3px;}
+.notes{margin-top:70px;font-size:15px;line-height:2.2;font-family:'Noto Sans TC',sans-serif;color:#333;border-top:1px solid #ccc;padding-top:18px;}
+.notes b{color:#000;}
+.loading,.err{max-width:794px;margin:60px auto;text-align:center;font-family:'Noto Sans TC',sans-serif;color:#555;}
+@media print{
+  body{background:#fff;padding:0;}
+  .toolbar{display:none;}
+  .sheet{box-shadow:none;width:100%;min-height:auto;margin:0;padding:24mm 22mm;}
+  @page{size:A4;margin:0;}
+}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button class="btn print" onclick="window.print()">🖨️ 列印 / 存為 PDF</button>
+  <button class="btn back" onclick="history.length>1?history.back():window.close()">← 返回</button>
+</div>
+<div id="loading" class="loading">載入文件…</div>
+<div id="sheet" class="sheet" style="display:none;"></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const DOC = params.get('doc'), ID = params.get('id');
+const ORG = '台灣科技農企業發展協會';
+
+function rocDate(iso){
+  const d = iso ? new Date(iso) : new Date();
+  return `中華民國 ${d.getFullYear()-1911} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日`;
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+async function fetchRow(table, id){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/${table}?id=eq.${id}&limit=1`, { headers: window.tadaSbHeaders() });
+  const a = r.ok ? await r.json() : [];
+  return a[0] || null;
+}
+
+async function render(){
+  if(!DOC || !ID){ fail('缺少文件參數。'); return; }
+  try{
+    if(DOC==='consent'){
+      const c = await fetchRow('tada_v_consent', ID);
+      if(!c){ fail('查無此願任書。'); return; }
+      const pos = {director:'理事',supervisor:'監事',executive:'常務理事'}[c.position]||c.position;
+      const e = await fetchRow('tada_v_election', c.election_id);
+      const meeting = e ? e.title : '';
+      sheet(`
+        <div class="doc-title">願 任 書</div>
+        <div class="body-txt">本人　<span class="fill">${esc(c.name)}</span>　當選　${esc(ORG)}<br>
+          ${esc(meeting)}　<span class="fill">${esc(pos)}</span>，茲同意擔任本職。</div>
+        <div class="sign-block">願任人：<span class="fill">${esc(c.name)}</span>　　（簽章）</div>
+        <div class="date">${rocDate(c.created_at)}</div>
+      `);
+    } else if(DOC==='proxy'){
+      const p = await fetchRow('tada_v_proxy', ID);
+      if(!p){ fail('查無此委託書。'); return; }
+      sheet(`
+        <div class="doc-title">代理出席委託書</div>
+        <div class="body-txt">本人因故不克出席本會　<span class="fill">${esc(p.meeting||'')}</span>。<br>
+          委　<span class="fill">${esc(p.delegate_name)}</span>　代表本人出席，履行本人權利義務。</div>
+        <div class="to">此致</div>
+        <div class="org">${esc(ORG)}</div>
+        <div class="sign-block">
+          委託人：<span class="fill">${esc(p.principal_name)}</span>　（簽章）<br>
+          受委託人：<span class="fill">${esc(p.delegate_name)}</span>　（簽章）
+        </div>
+        <div class="date">${rocDate(p.created_at)}</div>
+        <div class="notes">
+          注意事項：<br>
+          一、依內政部人民團體選舉罷免辦法，<b>每一會員僅能受一位會員（會員代表）之委託代表出席</b>。<br>
+          二、夥伴會員及團體會員之代表人無法出席，可由同公司他人代表出席，不需填製委託書，但需出示證明文件。<br>
+          三、請持本委託書於開會時向大會報到處報到。
+        </div>
+      `);
+    } else { fail('未知的文件類型。'); }
+  }catch(e){ fail('載入失敗：'+e.message); }
+}
+function sheet(html){
+  document.getElementById('loading').style.display='none';
+  const s = document.getElementById('sheet'); s.innerHTML = html; s.style.display='block';
+}
+function fail(m){ document.getElementById('loading').className='err'; document.getElementById('loading').textContent=m; }
+render();
+</script>
+</body>
+</html>

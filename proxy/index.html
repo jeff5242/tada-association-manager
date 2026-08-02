@@ -125,7 +125,8 @@ async function submitProxy(){
   try{
     const r = await rpc('proxy_submit', { p_election: election.id, p_principal_name: pn, p_principal_no: pno, p_delegate_name: dn, p_delegate_no: dno });
     if(r.ok){
-      statePage('🤝','委託書已送出，感謝您！', `委託人：${pn}<br>受委託人：${dn}<br>${election.title}<br><span style="font-size:12px;">${new Date().toLocaleString('zh-TW',{hour12:false})}</span>`);
+      const printLink = r.id ? `<br><a href="/print/?doc=proxy&id=${r.id}" target="_blank" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#1e3320;color:#d4a853;border-radius:8px;text-decoration:none;font-weight:700;">🖨️ 列印委託書 / 存 PDF</a>` : '';
+      statePage('🤝','委託書已送出，感謝您！', `委託人：${pn}<br>受委託人：${dn}<br>${election.title}<br><span style="font-size:12px;">${new Date().toLocaleString('zh-TW',{hour12:false})}</span>${printLink}`);
     } else if(r.error==='delegate_taken'){ showErr('此受委託人已受其他會員委託。依規定每人僅能受一位會員委託，請改委託他人。'); btn.disabled=false; btn.textContent='送出委託書';
     } else if(r.error==='already_delegated'){ showErr('您已送出過委託書，如需更改請洽秘書處。'); btn.disabled=false; btn.textContent='送出委託書';
     } else if(r.error==='missing_name'){ showErr('請完整填寫委託人與受委託人姓名'); btn.disabled=false; btn.textContent='送出委託書';
