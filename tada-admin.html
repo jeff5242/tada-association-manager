@@ -170,6 +170,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <button class="tab" onclick="switchTab('payments')">🏦 繳費回報<span id="pay-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
     <button class="tab" onclick="switchTab('votes')">🗳️ 投票結果</button>
     <button class="tab" onclick="switchTab('election')">🏛️ 理監事選舉</button>
+    <button class="tab" onclick="switchTab('docs')">📁 文件區</button>
   </div>
   <div class="ai-pill"><div class="ai-dot"></div>AI Agent 協作中</div>
 </div>
@@ -471,8 +472,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 
   <div id="el-none" style="display:none;">
     <div style="background:var(--surface);border:1px solid var(--border);padding:24px;text-align:center;">
-      <p style="color:var(--gray);font-size:13px;margin-bottom:14px;">尚未建立選舉。點下方建立第六屆理監事改選（理事 11+3、監事 3+1，圈選上限 5／1）。</p>
-      <button class="btn btn-gold" onclick="createElection()">＋ 建立選舉</button>
+      <p style="color:var(--gray);font-size:13px;margin-bottom:14px;line-height:1.9;">尚未建立選舉。<br>建立第六屆理監事改選（理事 11 席＋候補 3、圈選 11；監事 3 席＋候補 1、圈選 3；常務理事 3 席由當選理事互選）。</p>
+      <button class="btn btn-gold" onclick="createElection()">＋ 建立第六屆選舉</button>
     </div>
   </div>
 
@@ -481,20 +482,22 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);padding:14px 16px;margin-bottom:16px;">
       <span style="font-family:'Noto Serif TC',serif;font-size:15px;color:var(--white);" id="el-title">—</span>
       <span id="el-badge" class="status"></span>
-      <div style="margin-left:auto;display:flex;gap:8px;">
-        <button class="btn btn-sm" id="el-open-btn" style="background:rgba(46,125,50,0.2);color:#66bb6a;border:1px solid rgba(46,125,50,0.3);" onclick="setElectionStatus('open')">▶ 開始投票</button>
-        <button class="btn btn-sm" id="el-close-btn" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="setElectionStatus('closed')">■ 截止並開票</button>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm" id="el-checkin-btn" style="background:rgba(196,146,42,0.15);color:var(--gold);border:1px solid rgba(196,146,42,0.3);" onclick="setElectionStatus('checkin')">① 開放報到</button>
+        <button class="btn btn-sm" id="el-open-btn" style="background:rgba(46,125,50,0.2);color:#66bb6a;border:1px solid rgba(46,125,50,0.3);" onclick="setElectionStatus('open')">② 開始投票</button>
+        <button class="btn btn-sm" id="el-close-btn" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="setElectionStatus('closed')">③ 截止並開票</button>
       </div>
     </div>
 
     <!-- 進度 + 連結 -->
-    <div class="stat-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:8px;">
-      <div class="stat-card"><div class="stat-label">有效會員</div><div class="stat-num" id="el-total">–</div></div>
+    <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:8px;">
+      <div class="stat-card"><div class="stat-label">應到會員</div><div class="stat-num" id="el-total">–</div></div>
+      <div class="stat-card"><div class="stat-label">已報到領票</div><div class="stat-num" style="color:var(--gold);" id="el-checked">–</div></div>
       <div class="stat-card"><div class="stat-label">已投票</div><div class="stat-num" style="color:#66bb6a;" id="el-voted">–</div></div>
       <div class="stat-card"><div class="stat-label">投票率</div><div class="stat-num" style="color:var(--gold);" id="el-rate">–</div></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
-      <a class="btn btn-outline btn-sm" href="https://liff.line.me/2010670397-w3ylS0Bp" target="_blank">🔗 會員投票連結</a>
+      <a class="btn btn-outline btn-sm" href="/checkin/" target="_blank">🎫 報到領票台（iPad）</a>
       <a class="btn btn-outline btn-sm" href="/election-live/" target="_blank">📺 開票投影畫面</a>
       <button class="btn btn-outline btn-sm" onclick="loadElection()">↻ 更新進度／結果</button>
     </div>
@@ -503,33 +506,53 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="sub-tabs" style="margin-bottom:16px;">
       <button class="sub-tab active" onclick="switchElCat('director',this)">理事候選人</button>
       <button class="sub-tab" onclick="switchElCat('supervisor',this)">監事候選人</button>
-      <button class="sub-tab" onclick="switchElCat('roster',this)">有效會員名冊</button>
+      <button class="sub-tab" onclick="switchElCat('executive',this)">常務理事</button>
+      <button class="sub-tab" onclick="switchElCat('roster',this)">會員名冊</button>
     </div>
 
     <div id="el-cat-cand">
       <div class="toolbar" style="gap:8px;">
+        <input class="search-input" type="text" id="cand-no" placeholder="票號" style="width:70px;">
         <input class="search-input" type="text" id="cand-name" placeholder="候選人姓名" style="flex:1;">
         <input class="search-input" type="text" id="cand-co" placeholder="公司（選填）" style="flex:1;">
         <button class="btn btn-gold btn-sm" onclick="addCandidate()">＋ 新增</button>
       </div>
-      <div class="tbl-wrap"><table><thead><tr><th>#</th><th>姓名</th><th>公司</th><th>得票</th><th>操作</th></tr></thead>
+      <p id="el-cat-hint" style="font-size:12px;color:var(--gray);margin:4px 2px 10px;line-height:1.7;"></p>
+      <div class="tbl-wrap"><table><thead><tr><th>票號</th><th>姓名</th><th>公司</th><th>得票</th><th>操作</th></tr></thead>
         <tbody id="cand-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr></tbody></table></div>
     </div>
 
     <div id="el-cat-roster" style="display:none;">
       <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:10px;">
-        貼上有效會員名冊，每行一位：<code style="color:var(--gold-lt);">姓名,手機末四碼</code>（逗號分隔）。例如：<br>
-        <code style="color:var(--gray);">陳大明,1234</code>　可一次貼多行。
+        貼上有效會員名冊，每行一位：<code style="color:var(--gold-lt);">會員編號,姓名</code>；團體會員可加代表：<code style="color:var(--gold-lt);">會員編號,團體名稱,代表姓名</code>。<br>
+        例如：<code style="color:var(--gray);">10001,王小明</code>　或　<code style="color:var(--gray);">20001,某某企業,林大華</code>（可一次貼多行；同編號會更新）
       </p>
-      <textarea id="roster-input" style="width:100%;min-height:120px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px;font-family:monospace;font-size:13px;" placeholder="陳大明,1234&#10;林淑芬,5678"></textarea>
-      <div style="display:flex;gap:8px;margin:10px 0;">
+      <textarea id="roster-input" style="width:100%;min-height:120px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px;font-family:monospace;font-size:13px;" placeholder="10001,王小明&#10;20001,某某企業,林大華"></textarea>
+      <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;">
         <button class="btn btn-gold btn-sm" onclick="importRoster()">匯入名冊</button>
+        <button class="btn btn-outline btn-sm" onclick="resetCheckins()">↺ 重設全部報到（測試用）</button>
         <span id="roster-count" style="font-size:12px;color:var(--gray);align-self:center;"></span>
       </div>
-      <div class="tbl-wrap"><table><thead><tr><th>姓名</th><th>末四碼</th><th>已投票</th><th>操作</th></tr></thead>
-        <tbody id="roster-tbody"><tr><td colspan="4" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr></tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th>編號</th><th>姓名</th><th>類型</th><th>報到</th><th>操作</th></tr></thead>
+        <tbody id="roster-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr></tbody></table></div>
     </div>
   </div>
+</div>
+
+<!-- ══════════ 文件區 ══════════ -->
+<div class="page" id="page-docs">
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">📁 文件區</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="loadDocs()">↻ 重新載入</button>
+      <span id="docs-status" style="font-size:11px;"></span>
+    </div>
+  </div>
+  <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:16px;">
+    協會表單與歷屆資料的私有備份，供秘書處與後續人員取用。檔案存於 Supabase 私有空間，
+    下載連結為即時簽章、120 秒有效，<b style="color:var(--gold-lt);">不會公開於網站</b>。
+  </p>
+  <div id="docs-list" style="font-size:14px;color:var(--gray);">載入中…</div>
 </div>
 
 <!-- ══════════ 投票結果 ══════════ -->
@@ -813,6 +836,7 @@ function switchTab(id){
   if(id==='payments') loadPayments();
   if(id==='votes') loadVotes();
   if(id==='election') loadElection();
+  if(id==='docs') loadDocs();
 }
 
 // ── 會員名冊 ─────────────────────────────────────────────
@@ -1663,47 +1687,49 @@ async function loadVotes(){
   if(btn){btn.disabled=false;btn.textContent='↻ 重新載入';}
 }
 
-// ── 理監事選舉 ─────────────────────────────────────────────
+// ── 理監事選舉（O2O 匿名投票）─────────────────────────────
 let election = null, elCat = 'director', elResults = [];
 const EL_STATUS = { draft:'<span class="status" style="background:rgba(255,255,255,0.08);color:var(--gray);">未開始</span>',
+  checkin:'<span class="status" style="background:rgba(196,146,42,0.15);color:var(--gold);">🎫 報到中</span>',
   open:'<span class="status" style="background:rgba(46,125,50,0.2);color:#66bb6a;">● 投票中</span>',
   closed:'<span class="status" style="background:rgba(196,146,42,0.15);color:var(--gold);">✓ 已截止</span>' };
 
 async function sbEl(path, opts){ return fetch(`${SB_URL}/rest/v1/${path}`, { headers:SB_HEADERS, ...opts }); }
-async function rpcEl(fn, body){ const r=await sbEl(`rpc/${fn}`,{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=representation'},body:JSON.stringify(body)}); return r.ok?r.json():[]; }
+async function rpcEl(fn, body){ const r=await sbEl(`rpc/${fn}`,{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=representation'},body:JSON.stringify(body)}); return r.ok?r.json():null; }
 
 async function loadElection(){
   const status=document.getElementById('el-status'); status.textContent='';
   try{
-    const r=await sbEl('tada_elections?order=created_at.desc&limit=1'); const list=r.ok?await r.json():[];
+    const r=await sbEl('tada_v_election?order=created_at.desc&limit=1'); const list=r.ok?await r.json():[];
     if(!list.length){ document.getElementById('el-none').style.display='block'; document.getElementById('el-main').style.display='none'; return; }
     election=list[0];
     document.getElementById('el-none').style.display='none'; document.getElementById('el-main').style.display='block';
     document.getElementById('el-title').textContent=election.title;
     document.getElementById('el-badge').innerHTML=EL_STATUS[election.status]||election.status;
     // 進度
-    const prog=(await rpcEl('election_progress',{p_election:election.id}))[0]||{total:0,voted:0};
-    const total=Number(prog.total),voted=Number(prog.voted);
+    const prog=await rpcEl('vote_progress',{p_election:election.id})||{};
+    const total=Number(prog.total_members||0),checked=Number(prog.checked_in||0),cast=Number(prog.ballots_cast||0);
     document.getElementById('el-total').textContent=total;
-    document.getElementById('el-voted').textContent=voted;
-    document.getElementById('el-rate').textContent=(total?Math.round(voted/total*100):0)+'%';
+    document.getElementById('el-checked').textContent=checked;
+    document.getElementById('el-voted').textContent=cast;
+    document.getElementById('el-rate').textContent=(checked?Math.round(cast/checked*100):0)+'%';
     // 得票
-    elResults=await rpcEl('election_results',{p_election:election.id});
+    const res=await rpcEl('vote_results',{p_election:election.id}); elResults=(res&&res.candidates)||[];
     renderCandidates(); renderRoster();
     status.style.color='#66bb6a'; status.textContent='✓ 已載入';
   }catch(e){ status.style.color='#ef5350'; status.textContent='載入失敗：'+e.message; }
 }
 
 async function createElection(){
-  const r=await sbEl('tada_elections',{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=representation'},
-    body:JSON.stringify({title:'第六屆理監事改選',director_seats:11,director_reserve:3,director_pick:5,supervisor_seats:3,supervisor_reserve:1,supervisor_pick:1})});
+  const r=await sbEl('tada_v_election',{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=representation'},
+    body:JSON.stringify({title:'第六屆理監事改選',status:'draft',director_seats:11,director_reserve:3,director_pick:11,supervisor_seats:3,supervisor_reserve:1,supervisor_pick:3,executive_seats:3,executive_pick:3,member_ballot:['director','supervisor']})});
   if(r.ok) loadElection(); else alert('建立失敗：'+await r.text());
 }
 
 async function setElectionStatus(s){
-  const msg=s==='open'?'確定開始投票？會員即可開始圈選。':'確定截止投票？截止後開票結果將公布，且無法再投。';
+  const msg={checkin:'開放報到？報到台即可開始核發選票。',open:'開始投票？會員掃 QR 即可圈選。',closed:'截止投票並開票？截止後無法再投票。'}[s];
   if(!confirm(msg)) return;
-  const r=await sbEl(`tada_elections?id=eq.${election.id}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({status:s})});
+  const r=await sbEl(`tada_v_election?id=eq.${election.id}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({status:s})});
   if(r.ok) loadElection(); else alert('操作失敗：'+await r.text());
 }
 
@@ -1715,51 +1741,102 @@ function switchElCat(cat,btn){
   if(!isRoster){ elCat=cat; renderCandidates(); }
 }
 
-function votesFor(id){ const c=elResults.find(x=>x.candidate_id===id); return c?Number(c.votes):0; }
+function votesFor(id){ const c=elResults.find(x=>x.id===id); return c?Number(c.votes):0; }
 
 async function renderCandidates(){
-  const r=await sbEl(`tada_candidates?election_id=eq.${election.id}&category=eq.${elCat}&order=sort`); const arr=r.ok?await r.json():[];
+  const hint=document.getElementById('el-cat-hint');
+  hint.textContent = elCat==='executive'
+    ? '常務理事由當選理事於第二階段互選產生，通常不在會員票上；此處僅供第二階段登錄使用。' : '';
+  const r=await sbEl(`tada_v_candidates?election_id=eq.${election.id}&position=eq.${elCat}&order=sort,no`); const arr=r.ok?await r.json():[];
   const tb=document.getElementById('cand-tbody');
   if(!arr.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr>'; return; }
-  tb.innerHTML=arr.map((c,i)=>`<tr>
-    <td>${i+1}</td><td class="name-cell">${escapeHtml(c.name)}</td>
+  tb.innerHTML=arr.map((c)=>`<tr>
+    <td>${c.no??'–'}</td><td class="name-cell">${escapeHtml(c.name)}</td>
     <td style="color:var(--gray);font-size:12px;">${escapeHtml(c.company||'–')}</td>
     <td style="font-weight:700;color:var(--gold);">${votesFor(c.id)}</td>
     <td><button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="delCandidate('${c.id}')">刪除</button></td></tr>`).join('');
 }
 
 async function addCandidate(){
-  const name=document.getElementById('cand-name').value.trim(), co=document.getElementById('cand-co').value.trim();
+  const no=document.getElementById('cand-no').value.trim(), name=document.getElementById('cand-name').value.trim(), co=document.getElementById('cand-co').value.trim();
   if(!name){ alert('請輸入候選人姓名'); return; }
-  const r=await sbEl('tada_candidates',{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=minimal'},
-    body:JSON.stringify({election_id:election.id,category:elCat,name,company:co||null,sort:Date.now()%100000})});
-  if(r.ok){ document.getElementById('cand-name').value='';document.getElementById('cand-co').value=''; renderCandidates(); } else alert('新增失敗：'+await r.text());
+  const body={election_id:election.id,position:elCat,name,company:co||null,sort:no?Number(no):(Date.now()%100000)};
+  if(no) body.no=Number(no);
+  const r=await sbEl('tada_v_candidates',{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify(body)});
+  if(r.ok){ ['cand-no','cand-name','cand-co'].forEach(id=>document.getElementById(id).value=''); renderCandidates(); } else alert('新增失敗：'+await r.text());
 }
 async function delCandidate(id){ if(!confirm('刪除此候選人？')) return;
-  const r=await sbEl(`tada_candidates?id=eq.${id}`,{method:'DELETE',headers:SB_HEADERS}); if(r.ok) renderCandidates(); else alert('刪除失敗'); }
+  const r=await sbEl(`tada_v_candidates?id=eq.${id}`,{method:'DELETE',headers:SB_HEADERS}); if(r.ok) renderCandidates(); else alert('刪除失敗'); }
 
 async function renderRoster(){
-  const r=await sbEl(`tada_election_voters?election_id=eq.${election.id}&order=member_name&select=id,member_name,verify_code,has_voted`); const arr=r.ok?await r.json():[];
-  document.getElementById('roster-count').textContent=`名冊共 ${arr.length} 人`;
+  const r=await sbEl(`tada_v_members?election_id=eq.${election.id}&order=member_no&select=id,member_no,name,member_type,rep,is_checked_in`); const arr=r.ok?await r.json():[];
+  document.getElementById('roster-count').textContent=`名冊共 ${arr.length} 人（已報到 ${arr.filter(m=>m.is_checked_in).length}）`;
   const tb=document.getElementById('roster-tbody');
-  if(!arr.length){ tb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr>'; return; }
-  tb.innerHTML=arr.map(v=>`<tr><td class="name-cell">${escapeHtml(v.member_name)}</td>
-    <td style="font-family:monospace;">${escapeHtml(v.verify_code)}</td>
-    <td>${v.has_voted?'<span style="color:#66bb6a;">✓ 已投</span>':'<span style="color:var(--gray);">—</span>'}</td>
-    <td><button class="btn btn-sm btn-outline" onclick="delVoter('${v.id}')">移除</button></td></tr>`).join('');
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr>'; return; }
+  tb.innerHTML=arr.map(v=>`<tr><td style="font-family:monospace;font-size:12px;">${escapeHtml(v.member_no)}</td>
+    <td class="name-cell">${escapeHtml(v.name)}${v.rep?'<span style="color:var(--gray);font-size:11px;"> / '+escapeHtml(v.rep)+'</span>':''}</td>
+    <td style="font-size:11px;color:var(--gray);">${v.member_type==='group'?'團體':'個人'}</td>
+    <td>${v.is_checked_in?'<span style="color:#66bb6a;">✓ 已領</span>':'<span style="color:var(--gray);">—</span>'}</td>
+    <td><button class="btn btn-sm btn-outline" onclick="delMember('${v.id}')">移除</button></td></tr>`).join('');
 }
 
 async function importRoster(){
   const lines=document.getElementById('roster-input').value.split('\n').map(l=>l.trim()).filter(Boolean);
   const rows=[]; const bad=[];
-  lines.forEach(l=>{ const p=l.split(/[,，\t]/).map(x=>x.trim()); if(p[0]&&/^\d{3,4}$/.test(p[1]||'')) rows.push({election_id:election.id,member_name:p[0],verify_code:p[1]}); else bad.push(l); });
-  if(!rows.length){ alert('沒有可匯入的資料，格式須為「姓名,末四碼」'); return; }
-  const r=await sbEl('tada_election_voters',{method:'POST',headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});
-  if(r.ok){ document.getElementById('roster-input').value=bad.join('\n'); renderRoster(); alert(`已匯入 ${rows.length} 人`+(bad.length?`，${bad.length} 行格式錯誤保留於框中`:'')); }
+  lines.forEach(l=>{ const p=l.split(/[,，\t]/).map(x=>x.trim());
+    if(p[0]&&p[1]){ const row={election_id:election.id,member_no:p[0],name:p[1],member_type:p[2]?'group':'personal'}; if(p[2]) row.rep=p[2]; rows.push(row); }
+    else bad.push(l); });
+  if(!rows.length){ alert('沒有可匯入的資料，格式須為「會員編號,姓名」'); return; }
+  const r=await sbEl('tada_v_members?on_conflict=election_id,member_no',{method:'POST',headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(rows)});
+  if(r.ok){ document.getElementById('roster-input').value=bad.join('\n'); renderRoster(); alert(`已匯入／更新 ${rows.length} 人`+(bad.length?`，${bad.length} 行格式錯誤保留於框中`:'')); }
   else alert('匯入失敗：'+await r.text());
 }
-async function delVoter(id){ if(!confirm('從名冊移除此會員？')) return;
-  const r=await sbEl(`tada_election_voters?id=eq.${id}`,{method:'DELETE',headers:SB_HEADERS}); if(r.ok) renderRoster(); else alert('移除失敗'); }
+async function delMember(id){ if(!confirm('從名冊移除此會員？')) return;
+  const r=await sbEl(`tada_v_members?id=eq.${id}`,{method:'DELETE',headers:SB_HEADERS}); if(r.ok) renderRoster(); else alert('移除失敗'); }
+
+async function resetCheckins(){
+  if(!confirm('將全部會員報到狀態重設為「未報到」？（僅重設報到旗標，不影響已投出的票；測試用）')) return;
+  const r=await sbEl(`tada_v_members?election_id=eq.${election.id}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({is_checked_in:false,check_in_time:null})});
+  if(r.ok){ loadElection(); alert('已重設報到狀態'); } else alert('重設失敗：'+await r.text());
+}
+
+// ── 文件區（私有 Storage，經 docs edge function 簽章下載）──────
+const DOC_CAT_ICON = { '選舉':'🗳️', '入會':'📝', '會費':'💰' };
+function fmtSize(n){ n=Number(n||0); return n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB'; }
+async function docsFn(body){
+  const r=await fetch(`${SB_URL}/functions/v1/docs`,{method:'POST',headers:SB_HEADERS,
+    body:JSON.stringify({...body, pw_hash: sessionStorage.getItem('tada_admin_pwhash')||''})});
+  return r.ok?r.json():{error:'HTTP '+r.status};
+}
+async function loadDocs(){
+  const st=document.getElementById('docs-status'), box=document.getElementById('docs-list');
+  st.textContent=''; box.innerHTML='載入中…';
+  const res=await docsFn({action:'list'});
+  if(res.error){ box.innerHTML='<span style="color:#ef5350;">載入失敗：'+escapeHtml(res.error)+'</span>'; return; }
+  const docs=res.docs||[];
+  if(!docs.length){ box.innerHTML='<span style="color:var(--gray);">尚無文件</span>'; return; }
+  const cats={}; docs.forEach(d=>{ (cats[d.category]=cats[d.category]||[]).push(d); });
+  box.innerHTML=Object.keys(cats).map(cat=>`
+    <div style="margin-bottom:22px;">
+      <div style="font-family:'Noto Serif TC',serif;font-size:15px;color:var(--white);margin-bottom:10px;">${DOC_CAT_ICON[cat]||'📄'} ${escapeHtml(cat)}</div>
+      <div class="tbl-wrap"><table><thead><tr><th>文件</th><th>格式</th><th>大小</th><th>操作</th></tr></thead><tbody>
+      ${cats[cat].map(d=>`<tr>
+        <td class="name-cell">${escapeHtml(d.title)}</td>
+        <td style="text-transform:uppercase;color:var(--gray);font-size:12px;">${escapeHtml(d.ext||'')}</td>
+        <td style="color:var(--gray);font-size:12px;">${fmtSize(d.size)}</td>
+        <td><button class="btn btn-gold btn-sm" onclick="downloadDoc('${encodeURIComponent(d.path)}',this)">⬇ 下載</button></td>
+      </tr>`).join('')}
+      </tbody></table></div>
+    </div>`).join('');
+  st.style.color='#66bb6a'; st.textContent='✓ 共 '+docs.length+' 份';
+}
+async function downloadDoc(pathEnc, btn){
+  const path=decodeURIComponent(pathEnc);
+  const old=btn.textContent; btn.disabled=true; btn.textContent='取得連結…';
+  const res=await docsFn({action:'url', path});
+  btn.disabled=false; btn.textContent=old;
+  if(res.url){ window.open(res.url,'_blank'); } else alert('下載失敗：'+(res.error||res.detail||'未知錯誤'));
+}
 </script>
 
 </div><!-- /#main-app -->
@@ -1778,6 +1855,7 @@ async function checkPw(){
   const hash = await sha256(val);
   if(hash === ADMIN_PW_HASH){
     sessionStorage.setItem('tada_admin_auth','1');
+    sessionStorage.setItem('tada_admin_pwhash', hash);
     showApp();
   } else {
     document.getElementById('pw-error').textContent = '密碼錯誤，請重試';

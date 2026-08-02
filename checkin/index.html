@@ -2,136 +2,191 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>報到掃描｜TADA 工作人員</title>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>報到領票｜TADA 理監事選舉</title>
+<script src="../assets/liff-common.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-light:#5a8a60;--cream:#f8f4ea;}
-body{font-family:'Noto Sans TC',sans-serif;background:#0d160f;color:#fff;min-height:100vh;}
-.gate{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;}
-.gate h1{font-family:'Noto Serif TC',serif;font-size:20px;color:var(--gold-light);}
-.gate input{padding:12px 16px;font-size:16px;border:1px solid #2a3a2d;background:#16221a;color:#fff;border-radius:8px;text-align:center;outline:none;width:220px;}
-.gate button{padding:12px 28px;font-size:15px;font-weight:700;background:var(--green-deep);color:var(--gold-light);border:1px solid var(--gold);border-radius:8px;cursor:pointer;}
-.gate .err{color:#ef5350;font-size:13px;height:16px;}
-.scanner{display:none;min-height:100vh;flex-direction:column;}
-.sc-head{padding:14px 18px;background:var(--green-deep);display:flex;align-items:center;justify-content:space-between;}
-.sc-head .t{font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700;color:var(--gold-light);}
-.sc-head .c{font-size:13px;color:var(--green-light);}
-.sc-head .c b{color:#fff;font-size:18px;}
-.video-wrap{position:relative;flex:1;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;}
-#video{width:100%;height:100%;object-fit:cover;}
-.frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64vw;height:64vw;max-width:300px;max-height:300px;border:3px solid var(--gold-light);border-radius:18px;box-shadow:0 0 0 2000px rgba(0,0,0,0.45);}
-.result{position:absolute;left:0;right:0;bottom:0;padding:22px;text-align:center;transition:all .2s;}
-.result .box{display:inline-block;padding:16px 26px;border-radius:12px;font-size:18px;font-weight:700;backdrop-filter:blur(4px);}
-.result .ok{background:rgba(46,125,50,0.85);color:#fff;}
-.result .dup{background:rgba(184,145,58,0.9);color:#1a1a14;}
-.result .wait{background:rgba(0,0,0,0.5);color:#cfe;font-weight:400;font-size:14px;}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;--red:#c0392b;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;}
+.top-bar{height:5px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.wrap{max-width:620px;margin:0 auto;padding:26px 20px 60px;}
+.head{text-align:center;margin-bottom:18px;}
+.kick{font-size:12px;letter-spacing:0.3em;color:var(--gold);font-weight:600;margin-bottom:6px;}
+.title{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;color:var(--green-deep);line-height:1.35;}
+.sub{font-size:13px;color:var(--green-light);margin-top:6px;}
+.stat{display:flex;gap:10px;justify-content:center;margin:16px 0 22px;flex-wrap:wrap;}
+.stat .box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 16px;text-align:center;min-width:96px;}
+.stat .n{font-size:24px;font-weight:900;color:var(--green-deep);font-family:'Noto Serif TC',serif;}
+.stat .l{font-size:11px;color:var(--green-light);margin-top:2px;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:22px;box-shadow:0 6px 20px rgba(30,51,32,0.05);}
+.label{font-size:14px;font-weight:700;color:var(--green-deep);margin-bottom:10px;display:block;}
+input[type=text]{width:100%;padding:16px;border:2px solid var(--line);border-radius:10px;font-family:inherit;font-size:22px;letter-spacing:0.05em;color:var(--ink);outline:none;text-align:center;}
+input[type=text]:focus{border-color:var(--gold);}
+.btn{width:100%;padding:17px;font-size:18px;font-weight:700;font-family:inherit;background:var(--green-deep);color:var(--gold-light);border:none;border-radius:10px;cursor:pointer;letter-spacing:0.12em;margin-top:14px;}
+.btn:disabled{opacity:.5;}
+.btn.ghost{background:#fff;color:var(--green-deep);border:2px solid var(--line);}
+.err{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);color:var(--red);font-size:14px;padding:13px;border-radius:9px;margin-bottom:14px;line-height:1.6;text-align:center;}
+.warnbar{background:rgba(184,145,58,0.12);border:1px solid rgba(184,145,58,.4);color:#7a5c17;font-size:12px;padding:10px 14px;border-radius:9px;margin-bottom:16px;line-height:1.6;text-align:center;}
+/* 領票單 */
+#receipt-wrap{display:none;}
+.receipt{width:302px;margin:0 auto;background:#fff;border:1px dashed #999;border-radius:6px;padding:20px 18px 22px;text-align:center;color:#000;}
+.receipt .rk{font-size:11px;letter-spacing:0.25em;color:#555;}
+.receipt .rt{font-family:'Noto Serif TC',serif;font-size:18px;font-weight:900;margin:4px 0 2px;}
+.receipt .rd{font-size:11px;color:#555;margin-bottom:12px;}
+.receipt .qr{display:flex;justify-content:center;margin:6px 0 12px;}
+.receipt .qr img,.receipt .qr canvas{width:190px!important;height:190px!important;}
+.receipt .rname{font-size:20px;font-weight:900;}
+.receipt .rno{font-size:12px;color:#555;margin-top:2px;letter-spacing:.05em;}
+.receipt .rtip{font-size:11px;color:#333;margin-top:12px;line-height:1.7;border-top:1px dashed #bbb;padding-top:10px;}
+.result-name{text-align:center;font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--green-deep);margin:4px 0 16px;}
+.loading{text-align:center;padding:70px 20px;color:var(--green-light);}
+@media print{
+  body{background:#fff;}
+  .top-bar,.head,.stat,#form-card,.actions,.warnbar{display:none!important;}
+  .wrap{padding:0;}
+  #receipt-wrap{display:block!important;}
+  .receipt{border:none;width:100%;}
+}
 </style>
 </head>
 <body>
-<div class="gate" id="gate">
-  <h1>🐝 TADA 報到掃描</h1>
-  <input type="password" id="pw" placeholder="工作人員密碼" onkeydown="if(event.key==='Enter')unlock()">
-  <button onclick="unlock()">進入</button>
-  <div class="err" id="gate-err"></div>
-</div>
+<div class="top-bar"></div>
+<div class="wrap">
+  <div id="loading" class="loading">載入選舉場次…</div>
 
-<div class="scanner" id="scanner">
-  <div class="sc-head">
-    <div class="t">報到掃描</div>
-    <div class="c">已報到 <b id="count">0</b> 人</div>
+  <div id="main" style="display:none;">
+    <div class="head">
+      <div class="kick">TADA 選舉報到處</div>
+      <div class="title" id="e-title">理監事改選</div>
+      <div class="sub">輸入會員編號 → 系統核發匿名選票 → 列印 QR 領票單</div>
+    </div>
+
+    <div class="stat">
+      <div class="box"><div class="n" id="s-checked">0</div><div class="l">已報到領票</div></div>
+      <div class="box"><div class="n" id="s-total">0</div><div class="l">應到會員</div></div>
+      <div class="box"><div class="n" id="s-cast">0</div><div class="l">已投票</div></div>
+    </div>
+
+    <div class="card" id="form-card">
+      <div id="form-err"></div>
+      <label class="label">會員編號</label>
+      <input type="text" id="in-no" inputmode="numeric" placeholder="例如 10001" autocomplete="off">
+      <button class="btn" id="go-btn" onclick="doCheckin()">報到並核發選票</button>
+    </div>
   </div>
-  <div class="video-wrap">
-    <video id="video" playsinline></video>
-    <div class="frame"></div>
-    <div class="result"><div class="box wait" id="result-box">請對準 QR Code…</div></div>
+
+  <!-- 領票單（列印用） -->
+  <div id="receipt-wrap">
+    <div class="result-name" id="rz-hint"></div>
+    <div class="receipt">
+      <div class="rk">TADA 理監事選舉</div>
+      <div class="rt" id="rz-title">選票領票單</div>
+      <div class="rd" id="rz-date"></div>
+      <div class="qr" id="rz-qr"></div>
+      <div class="rname" id="rz-name"></div>
+      <div class="rno" id="rz-no"></div>
+      <div class="rtip">請以手機掃描上方 QR Code 進入投票。<br>本票為匿名選票，恕不重發，請妥善保管。</div>
+    </div>
+    <div class="actions" style="max-width:340px;margin:18px auto 0;">
+      <button class="btn" onclick="window.print()">🖨️ 列印領票單</button>
+      <button class="btn ghost" onclick="nextMember()">✓ 完成，下一位</button>
+    </div>
   </div>
 </div>
 
 <script>
-const SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
-const SB_KEY = 'sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
-const SB_HEADERS = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
-const ADMIN_PW_HASH = '0db45166855d1d262b3bb4399a2c0526c16359f9d3663ca8b96e5bc73c61fde0'; // tada2026
+// 投票頁基底（掃 QR 後開啟的網址）
+const VOTE_BASE = location.origin + '/vote/';
+let election = null;
 
-let checkedCount = 0;
-let lastScan = { id: null, at: 0 };
+function showErr(m){ document.getElementById('form-err').innerHTML = m ? '<div class="err">'+m+'</div>' : ''; }
 
-async function sha256(str){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+async function rpc(fn, body){
+  const res = await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`, {
+    method:'POST', headers: window.tadaSbHeaders(), body: JSON.stringify(body),
+  });
+  if(!res.ok) throw new Error('HTTP '+res.status+' '+(await res.text()));
+  return res.json();
 }
 
-async function unlock(){
-  const pw = document.getElementById('pw').value;
-  if(await sha256(pw) === ADMIN_PW_HASH){
-    document.getElementById('gate').style.display = 'none';
-    document.getElementById('scanner').style.display = 'flex';
-    startCamera();
-  } else {
-    document.getElementById('gate-err').textContent = '密碼錯誤';
+async function loadElection(){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election?status=in.(checkin,open)&order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
+  const list = r.ok ? await r.json() : [];
+  document.getElementById('loading').style.display='none';
+  if(!list.length){
+    document.getElementById('loading').style.display='block';
+    document.getElementById('loading').textContent = '目前沒有開放報到的選舉場次。請至後臺將場次狀態切換為「報到中」或「投票中」。';
+    return;
   }
+  election = list[0];
+  document.getElementById('e-title').textContent = election.title;
+  document.getElementById('main').style.display='block';
+  document.getElementById('in-no').focus();
+  refreshStat();
+  setInterval(refreshStat, 8000);
 }
 
-function showResult(cls, text){
-  const el = document.getElementById('result-box');
-  el.className = 'box ' + cls;
-  el.textContent = text;
-}
-
-async function startCamera(){
-  const video = document.getElementById('video');
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+async function refreshStat(){
   try{
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    video.srcObject = stream; video.setAttribute('playsinline', true); await video.play();
-  } catch(e){ showResult('dup', '無法開啟相機：' + e.message); return; }
+    const p = await rpc('vote_progress', { p_election: election.id });
+    document.getElementById('s-checked').textContent = p.checked_in;
+    document.getElementById('s-total').textContent = p.total_members;
+    document.getElementById('s-cast').textContent = p.ballots_cast;
+  }catch(e){}
+}
 
-  function tick(){
-    if(video.readyState === video.HAVE_ENOUGH_DATA){
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-      if(code && code.data) handleScan(code.data);
+async function doCheckin(){
+  const no = document.getElementById('in-no').value.trim();
+  if(!no){ showErr('請輸入會員編號'); return; }
+  const btn = document.getElementById('go-btn'); btn.disabled=true; btn.textContent='核發中…';
+  try{
+    const res = await rpc('vote_checkin', { p_election: election.id, p_member_no: no });
+    if(!res.ok){
+      const map = {
+        member_not_found:'查無此會員編號，請確認後重試。',
+        already_checked_in:'⚠️ 此會員已完成報到領票'+(res.name?('（'+res.name+'）'):'')+'，不可重複領票。',
+        not_open:'目前非報到／投票時間。',
+        election_not_found:'找不到選舉場次。',
+      };
+      showErr(map[res.error] || ('報到失敗：'+res.error));
+      btn.disabled=false; btn.textContent='報到並核發選票'; return;
     }
-    requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-}
-
-function extractUserId(data){
-  try{ const u = new URL(data); const p = u.searchParams.get('u'); if(p) return p; } catch(e){}
-  return data; // 純 userId
-}
-
-async function handleScan(raw){
-  const userId = extractUserId(raw);
-  const now = Date.now();
-  if(userId === lastScan.id && now - lastScan.at < 3000) return; // 3 秒內同一碼不重複處理
-  lastScan = { id: userId, at: now };
-
-  try{
-    const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?on_conflict=user_id`, {
-      method: 'POST',
-      headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates,return=representation' },
-      body: JSON.stringify({ user_id: userId, checked_in: true, checked_in_at: new Date().toISOString() }),
-    });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const rows = await res.json();
-    const r = rows[0] || {};
-    const name = r.display_name || '會員';
-    // 若這次是「本來就已報到」→ 提示重複（用 checked_in_at 判斷不精準，簡化為都顯示成功）
-    showResult('ok', `✓ ${name} 報到成功`);
-    checkedCount++;
-    document.getElementById('count').textContent = checkedCount;
-  } catch(e){
-    showResult('dup', '報到失敗：' + e.message);
+    showReceipt(res);
+    refreshStat();
+  }catch(e){
+    showErr('系統錯誤：'+e.message);
+    btn.disabled=false; btn.textContent='報到並核發選票';
   }
 }
+
+function showReceipt(res){
+  const url = VOTE_BASE + '?t=' + res.uuid;
+  document.getElementById('rz-qr').innerHTML = '';
+  new QRCode(document.getElementById('rz-qr'), { text: url, width:190, height:190, correctLevel: QRCode.CorrectLevel.M });
+  document.getElementById('rz-title').textContent = election.title;
+  document.getElementById('rz-date').textContent = new Date().toLocaleString('zh-TW',{hour12:false});
+  document.getElementById('rz-name').textContent = res.name + (res.member_type==='group' && res.rep ? '（'+res.rep+'）' : '');
+  document.getElementById('rz-no').textContent = '會員編號 ' + res.member_no;
+  document.getElementById('rz-hint').textContent = '✓ 已核發選票，請列印交付';
+  document.getElementById('main').style.display='none';
+  document.getElementById('receipt-wrap').style.display='block';
+  window.scrollTo(0,0);
+}
+
+function nextMember(){
+  document.getElementById('receipt-wrap').style.display='none';
+  document.getElementById('main').style.display='block';
+  const btn = document.getElementById('go-btn'); btn.disabled=false; btn.textContent='報到並核發選票';
+  const inp = document.getElementById('in-no'); inp.value=''; inp.focus();
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && document.getElementById('main').style.display!=='none'){ doCheckin(); }
+});
+loadElection();
 </script>
 </body>
 </html>

@@ -1,0 +1,13 @@
+# === 隱私：含會員個資（PII）的檔案，嚴禁進入公開 repo ===
+# 選舉種子資料（含會員／候選人姓名）
+supabase/*_seed.sql
+
+# 協會內部文件（入會申請書、會費通知、領票名冊、委託書等含個資）
+docs/
+!docs/*.md
+
+# Supabase 本機暫存
+supabase/.temp/
+
+# 系統
+.DS_Store
