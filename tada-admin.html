@@ -731,63 +731,9 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 <script>
 // ── DATA ─────────────────────────────────────────────────
 
-const boardData = [
-  {role:'理事長',name:'胡炳輝',company:'',note:'團體會員 20,000 已匯',status:'pending'},
-  {role:'榮譽理事長',name:'吳昆民',company:'',note:'',status:'pending'},
-  {role:'榮譽理事長',name:'宋鴻琳',company:'',note:'',status:'pending'},
-  {role:'副理事長',name:'唐迎華',company:'',note:'北區',status:'pending'},
-  {role:'副理事長',name:'陳耀松',company:'',note:'中區',status:'pending'},
-  {role:'副理事長',name:'許德全',company:'',note:'南區',status:'pending'},
-  {role:'常務理事',name:'林建智',company:'',note:'',status:'pending'},
-  {role:'理事',name:'洪柏昱',company:'',note:'',status:'pending'},
-  {role:'理事',name:'蘇鵬',company:'',note:'',status:'pending'},
-  {role:'理事',name:'陳肇浩',company:'米屋智農',note:'下屆會長',status:'confirmed'},
-  {role:'理事',name:'蕭頡紋',company:'',note:'個人會員 6000 已匯',status:'pending'},
-  {role:'理事',name:'林岳毅',company:'',note:'個人會員 6000 已匯',status:'pending'},
-  {role:'理事',name:'許炳煌',company:'',note:'',status:'pending'},
-  {role:'常務監事',name:'劉中庸',company:'',note:'',status:'pending'},
-  {role:'監事',name:'甘文聰',company:'',note:'',status:'pending'},
-  {role:'監事',name:'歐陵合',company:'',note:'',status:'pending'},
-  {role:'候補理事',name:'宋元博',company:'',note:'入會費已匯',status:'pending'},
-  {role:'候補理事',name:'李鎮崑',company:'',note:'待補入會費',status:'pending'},
-  {role:'候補理事',name:'許家銘',company:'',note:'待補入會費',status:'pending'},
-  {role:'候補監事',name:'陳彥傑',company:'',note:'20,000+2000 已匯',status:'pending'},
-];
+let boardData = [];   // 理監事名單改由 Supabase tada_board 載入（不寫死於公開原始碼）
 
-const guestData = [
-  {name:'胡署長忠一',org:'農業部農糧署',train:'x',meal:2,note:'',status:'pending'},
-  {name:'姚副署長志旺',org:'農業部農糧署',train:'x',meal:2,note:'',status:'pending'},
-  {name:'何技正小珍',org:'農業部農糧署',train:'x',meal:'x',note:'',status:'pending'},
-  {name:'陳組長立儀',org:'農業部農糧署作物生產組',train:'x',meal:2,note:'',status:'pending'},
-  {name:'黃教授裕益',org:'中興大學',train:'x',meal:1,note:'前台灣設施協會理事長',status:'pending'},
-  {name:'李紅曦 司長',org:'農業部科技司',train:'15:30',meal:2,note:'哲嘉接',status:'pending'},
-  {name:'陳瑞榮 副司長',org:'農業部科技司',train:'15:30',meal:0,note:'哲嘉接',status:'pending'},
-  {name:'謝董事長明達',org:'財團法人中衛發展中心',train:'?',meal:2,note:'',status:'pending'},
-  {name:'林總經理進財',org:'財團法人中衛發展中心',train:'?',meal:1,note:'',status:'pending'},
-  {name:'袁副總威五',org:'財團法人中衛發展中心',train:'x',meal:'x',note:'',status:'pending'},
-  {name:'許處長彰敏',org:'嘉義縣政府農業處',train:'x',meal:1,note:'',status:'pending'},
-  {name:'盧院長虎生',org:'國立臺灣大學生農學院',train:'15:30',meal:0,note:'宗正接',status:'pending'},
-  {name:'林院長裕彬',org:'國立臺灣大學生農學院',train:'?',meal:'?',note:'',status:'pending'},
-  {name:'徐前院長源泰',org:'國立臺灣大學生農學院',train:'?',meal:'?',note:'',status:'pending'},
-  {name:'張主任宏浩',org:'國立臺灣大學農經系',train:'16:48',meal:1,note:'宗正接',status:'pending'},
-  {name:'郭教授彥甫',org:'臺灣大學生物機電工程學系',train:'15:30',meal:1,note:'宗正接',status:'pending'},
-  {name:'艾校長群',org:'嘉義大學',train:'x',meal:1,note:'2022年榮退',status:'pending'},
-  {name:'黃副校長光亮',org:'嘉義大學',train:'x',meal:1,note:'2023年1月任期滿',status:'pending'},
-  {name:'葉鄉長孟龍',org:'新港鄉公所',train:'x',meal:1,note:'',status:'pending'},
-  {name:'吳董事長明敏',org:'農業金庫',train:'x',meal:3,note:'',status:'pending'},
-  {name:'藍顧問科銘',org:'外貿協會國際行銷咨詢',train:'x',meal:2,note:'',status:'pending'},
-  {name:'蔡副所長致榮',org:'農試所',train:'x',meal:2,note:'',status:'pending'},
-  {name:'方分所長怡丹',org:'農試所嘉義分所',train:'x',meal:2,note:'',status:'pending'},
-  {name:'郭場長坤峯',org:'桃園農改場',train:'x',meal:'x',note:'',status:'pending'},
-  {name:'黃董事長清龍',org:'龍隆無塵室科技',train:'?',meal:1,note:'',status:'pending'},
-  {name:'陳總經理永贀',org:'好好物流',train:'15:30',meal:2,note:'維維接，榮退',status:'pending'},
-  {name:'梁社長鴻彬',org:'豐年社',train:'15:30',meal:1,note:'維維接',status:'pending'},
-  {name:'盧軒毅總監、吳尚鴻攝影總監',org:'豐年社',train:'x',meal:2,note:'',status:'pending'},
-  {name:'陳丞彥、陳思岑',org:'廈門人天景農業科技',train:'15:30',meal:2,note:'易鑫接',status:'pending'},
-  {name:'呂盷陞 博士',org:'農試所',train:'x',meal:2,note:'',status:'pending'},
-  {name:'王仕賢技監',org:'蘭科主任',train:'x',meal:1,note:'',status:'pending'},
-  {name:'陳尚仁組長',org:'蔬菜及種苗組',train:'x',meal:2,note:'',status:'pending'},
-];
+let guestData = [];   // 貴賓名冊改由 Supabase tada_guests 載入
 
 // ── SUPABASE ─────────────────────────────────────────────
 const SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
@@ -871,28 +817,7 @@ function switchTab(id){
 // ── 會員名冊 ─────────────────────────────────────────────
 const SESSION_NAMES = {1:'第一屆',2:'第二屆',3:'第三屆',4:'第四屆',5:'第五屆',6:'第六屆'};
 
-const DEFAULT_MEMBER_DIR = [
-  {name:'胡炳輝',company:'',terms:[{session:5,role:'理事長'}]},
-  {name:'吳昆民',company:'',terms:[{session:5,role:'榮譽理事長'}]},
-  {name:'宋鴻琳',company:'',terms:[{session:5,role:'榮譽理事長'}]},
-  {name:'唐迎華',company:'',terms:[{session:5,role:'副理事長'}]},
-  {name:'陳耀松',company:'',terms:[{session:5,role:'副理事長'}]},
-  {name:'許德全',company:'',terms:[{session:5,role:'副理事長'}]},
-  {name:'林建智',company:'',terms:[{session:5,role:'常務理事'}]},
-  {name:'洪柏昱',company:'',terms:[{session:5,role:'理事'}]},
-  {name:'蘇鵬',  company:'',terms:[{session:5,role:'理事'}]},
-  {name:'陳肇浩',company:'米屋智農',terms:[{session:5,role:'理事'}]},
-  {name:'蕭頡紋',company:'',terms:[{session:5,role:'理事'}]},
-  {name:'林岳毅',company:'',terms:[{session:5,role:'理事'}]},
-  {name:'許炳煌',company:'',terms:[{session:5,role:'理事'}]},
-  {name:'劉中庸',company:'',terms:[{session:5,role:'常務監事'}]},
-  {name:'甘文聰',company:'',terms:[{session:5,role:'監事'}]},
-  {name:'歐陵合',company:'',terms:[{session:5,role:'監事'}]},
-  {name:'宋元博',company:'',terms:[{session:5,role:'候補理事'}]},
-  {name:'李鎮崑',company:'',terms:[{session:5,role:'候補理事'}]},
-  {name:'許家銘',company:'',terms:[{session:5,role:'候補理事'}]},
-  {name:'陳彥傑',company:'',terms:[{session:5,role:'候補監事'}]},
-];
+const DEFAULT_MEMBER_DIR = [];   // 會員名冊改由 Supabase tada_members 載入
 
 function loadMemberDir(){
   const saved = localStorage.getItem('tada_member_dir');
@@ -1170,9 +1095,25 @@ function exportCSV(){
 }
 
 // ── INIT ──────────────────────────────────────────────────
-renderMembers();
-renderGuests();
-updateStats();
+async function loadInviteData(){
+  try{
+    const [b,g] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_board?order=sort`, {headers:SB_HEADERS}).then(r=>r.ok?r.json():[]),
+      fetch(`${SB_URL}/rest/v1/tada_guests?order=sort`, {headers:SB_HEADERS}).then(r=>r.ok?r.json():[]),
+    ]);
+    if(Array.isArray(b)) boardData = b;
+    if(Array.isArray(g)) guestData = g;
+  }catch(e){ console.warn('載入邀請名單失敗', e); }
+  renderMembers(); renderGuests(); updateStats();
+  // 會員名冊：本機無快取時，改由雲端 tada_members 載入
+  if(!localStorage.getItem('tada_member_dir')){
+    try{
+      const m = await fetch(`${SB_URL}/rest/v1/tada_members?select=name,company,terms&order=created_at.asc`, {headers:SB_HEADERS}).then(r=>r.ok?r.json():[]);
+      if(m.length){ memberDir = m.map(r=>({name:r.name, company:r.company||'', terms:r.terms||[]})); renderMemberDir(); }
+    }catch(e){}
+  }
+}
+loadInviteData();
 
 // ── 入會審核 ──────────────────────────────────────────────
 let allApps = [];
