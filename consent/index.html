@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>願任書｜TADA 理監事</title>
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;--red:#c0392b;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 40px;}
+.top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.wrap{max-width:500px;margin:0 auto;padding:24px 18px;}
+.head{text-align:center;margin-bottom:18px;}
+.kick{font-size:11px;letter-spacing:0.3em;color:var(--gold);font-weight:600;margin-bottom:6px;}
+.title{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;color:var(--green-deep);}
+.sub{font-size:13px;color:var(--green-light);margin-top:6px;}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 6px 20px rgba(30,51,32,0.05);}
+.stmt{background:var(--cream);border:1px dashed var(--line);border-radius:8px;padding:16px;font-size:15px;line-height:2;color:var(--green-deep);margin-bottom:18px;font-family:'Noto Serif TC',serif;}
+.stmt b{color:var(--gold);}
+label.lb{font-size:13px;font-weight:700;color:var(--green-deep);margin-bottom:7px;display:block;}
+input[type=text],select{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:15px;color:var(--ink);outline:none;background:#fff;margin-bottom:14px;}
+input:focus,select:focus{border-color:var(--gold);}
+.agree{display:flex;align-items:flex-start;gap:10px;padding:14px;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;background:#fff;margin-bottom:16px;}
+.agree.on{border-color:var(--green-mid);background:rgba(45,82,53,0.06);}
+.agree .bx{width:24px;height:24px;border:2px solid var(--line);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;}
+.agree.on .bx{background:var(--green-mid);border-color:var(--green-mid);}
+.agree .tx{font-size:14px;color:var(--green-deep);font-weight:700;line-height:1.6;}
+.submit{width:100%;padding:16px;font-size:17px;font-weight:700;font-family:inherit;background:var(--green-deep);color:var(--gold-light);border:none;border-radius:8px;cursor:pointer;letter-spacing:0.1em;}
+.submit:disabled{opacity:.5;}
+.hint{font-size:11px;color:var(--green-light);margin-top:8px;text-align:center;line-height:1.7;}
+.err{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);color:var(--red);font-size:13px;padding:12px;border-radius:8px;margin-bottom:14px;line-height:1.6;}
+.state{text-align:center;padding:60px 22px;}
+.state .ic{font-size:56px;margin-bottom:16px;}
+.state .msg{font-size:19px;color:var(--green-deep);font-weight:700;line-height:1.7;}
+.state .sub2{font-size:13px;color:var(--green-light);margin-top:12px;line-height:1.9;}
+.loading{text-align:center;padding:80px 20px;color:var(--green-light);font-size:14px;}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+  <div id="loading" class="loading">載入中… 🐝</div>
+
+  <div id="form-view" style="display:none;">
+    <div class="head">
+      <div class="kick">TADA 理監事</div>
+      <div class="title">願　任　書</div>
+      <div class="sub" id="e-sub">—</div>
+    </div>
+    <div id="form-err"></div>
+    <div class="card">
+      <div class="stmt" id="stmt">本人　<b>＿＿＿</b>　當選　<b id="s-title">本會理監事</b>　<b id="s-pos">＿＿</b>，茲同意擔任本職。</div>
+
+      <label class="lb">當選職位</label>
+      <select id="in-pos" onchange="updateStmt()">
+        <option value="director">理事</option>
+        <option value="supervisor">監事</option>
+        <option value="executive">常務理事</option>
+      </select>
+
+      <label class="lb">姓名（願任人）</label>
+      <input type="text" id="in-name" placeholder="請輸入您的姓名" oninput="updateStmt()">
+
+      <label class="lb">會員編號（選填）</label>
+      <input type="text" id="in-no" inputmode="numeric" placeholder="例如 10001">
+
+      <label class="lb">公司／服務單位（選填）</label>
+      <input type="text" id="in-co" placeholder="選填">
+
+      <div class="agree" id="agree" onclick="toggleAgree()">
+        <div class="bx" id="agree-bx">✓</div>
+        <div class="tx">本人確認當選上述職位，願意擔任並履行職責。</div>
+      </div>
+
+      <button class="submit" id="submit-btn" onclick="submitConsent()">送出願任書</button>
+      <div class="hint">送出即完成線上簽署，資料將送交協會秘書處存查。</div>
+    </div>
+  </div>
+
+  <div id="done-view" class="state" style="display:none;">
+    <div class="ic">🖋️</div>
+    <div class="msg">願任書已送出，感謝您！</div>
+    <div class="sub2" id="done-sub"></div>
+  </div>
+</div>
+
+<script>
+let election = null, agreed = false;
+const POS_LABEL = { director:'理事', supervisor:'監事', executive:'常務理事' };
+
+function showErr(m){ document.getElementById('form-err').innerHTML = m ? '<div class="err">'+m+'</div>' : ''; }
+
+async function init(){
+  try{
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election?order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
+    const list = r.ok ? await r.json() : [];
+    document.getElementById('loading').style.display='none';
+    if(!list.length){ statePage('目前沒有選舉場次','願任書將於理監事改選後開放簽署。'); return; }
+    election = list[0];
+    document.getElementById('e-sub').textContent = election.title;
+    document.getElementById('s-title').textContent = election.title;
+    document.getElementById('form-view').style.display='block';
+    updateStmt();
+  }catch(e){ document.getElementById('loading').textContent='載入失敗，請稍後再試或洽秘書處。'; }
+}
+function statePage(msg, sub){
+  document.getElementById('form-view').style.display='none';
+  document.getElementById('done-view').querySelector('.ic').textContent='📋';
+  document.getElementById('done-view').querySelector('.msg').textContent=msg;
+  document.getElementById('done-sub').innerHTML=sub||'';
+  document.getElementById('done-view').style.display='block';
+}
+function updateStmt(){
+  const name = document.getElementById('in-name').value.trim();
+  document.querySelector('#stmt b').textContent = name || '＿＿＿';
+  document.getElementById('s-pos').textContent = POS_LABEL[document.getElementById('in-pos').value];
+}
+function toggleAgree(){
+  agreed = !agreed;
+  document.getElementById('agree').classList.toggle('on', agreed);
+}
+async function submitConsent(){
+  const name = document.getElementById('in-name').value.trim();
+  const pos = document.getElementById('in-pos').value;
+  const no = document.getElementById('in-no').value.trim();
+  const co = document.getElementById('in-co').value.trim();
+  if(!name){ showErr('請輸入姓名'); return; }
+  if(!agreed){ showErr('請勾選「願意擔任並履行職責」'); return; }
+  const btn = document.getElementById('submit-btn'); btn.disabled=true; btn.textContent='送出中…';
+  try{
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_consent`, {
+      method:'POST', headers:{ ...window.tadaSbHeaders(), 'Prefer':'return=minimal' },
+      body: JSON.stringify({ election_id: election.id, position: pos, name, member_no: no||null, company: co||null, agreed: true }),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    document.getElementById('form-view').style.display='none';
+    document.getElementById('done-sub').innerHTML = `${name}　${POS_LABEL[pos]}<br>${election.title}<br><span style="font-size:12px;">${new Date().toLocaleString('zh-TW',{hour12:false})}</span>`;
+    document.getElementById('done-view').style.display='block';
+  }catch(e){ showErr('送出失敗：'+e.message); btn.disabled=false; btn.textContent='送出願任書'; }
+}
+init();
+</script>
+</body>
+</html>

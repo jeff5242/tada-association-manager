@@ -508,6 +508,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <button class="sub-tab" onclick="switchElCat('supervisor',this)">監事候選人</button>
       <button class="sub-tab" onclick="switchElCat('executive',this)">常務理事</button>
       <button class="sub-tab" onclick="switchElCat('roster',this)">會員名冊</button>
+      <button class="sub-tab" onclick="switchElCat('consent',this)">願任書</button>
     </div>
 
     <div id="el-cat-cand">
@@ -536,6 +537,19 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       </div>
       <div class="tbl-wrap"><table><thead><tr><th>編號</th><th>姓名</th><th>類型</th><th>報到</th><th>操作</th></tr></thead>
         <tbody id="roster-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr></tbody></table></div>
+    </div>
+
+    <div id="el-cat-consent" style="display:none;">
+      <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:10px;">
+        當選理監事於選後線上簽署的願任書。填寫連結：<code style="color:var(--gold-lt);">tada-ai.org.tw/consent/</code>（可放進 LINE 選單或直接傳給當選人）。
+      </p>
+      <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;">
+        <a class="btn btn-outline btn-sm" href="/consent/" target="_blank">🖋️ 開啟願任書填寫頁</a>
+        <button class="btn btn-outline btn-sm" onclick="renderConsent()">↻ 重新載入</button>
+        <span id="consent-count" style="font-size:12px;color:var(--gray);align-self:center;"></span>
+      </div>
+      <div class="tbl-wrap"><table><thead><tr><th>姓名</th><th>職位</th><th>會員編號</th><th>公司</th><th>簽署時間</th></tr></thead>
+        <tbody id="consent-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無願任書</td></tr></tbody></table></div>
     </div>
   </div>
 </div>
@@ -1736,10 +1750,25 @@ async function setElectionStatus(s){
 
 function switchElCat(cat,btn){
   document.querySelectorAll('#page-election .sub-tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
-  const isRoster=cat==='roster';
-  document.getElementById('el-cat-cand').style.display=isRoster?'none':'block';
-  document.getElementById('el-cat-roster').style.display=isRoster?'block':'none';
-  if(!isRoster){ elCat=cat; renderCandidates(); }
+  const show = cat==='roster' ? 'roster' : (cat==='consent' ? 'consent' : 'cand');
+  document.getElementById('el-cat-cand').style.display    = show==='cand'    ? 'block':'none';
+  document.getElementById('el-cat-roster').style.display  = show==='roster'  ? 'block':'none';
+  document.getElementById('el-cat-consent').style.display = show==='consent' ? 'block':'none';
+  if(show==='cand'){ elCat=cat; renderCandidates(); }
+  if(show==='consent'){ renderConsent(); }
+}
+
+const POS_LB = { director:'理事', supervisor:'監事', executive:'常務理事' };
+async function renderConsent(){
+  const r=await sbEl(`tada_v_consent?election_id=eq.${election.id}&order=created_at.desc&select=id,position,name,member_no,company,created_at`); const arr=r.ok?await r.json():[];
+  document.getElementById('consent-count').textContent=`已簽署 ${arr.length} 份`;
+  const tb=document.getElementById('consent-tbody');
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無願任書</td></tr>'; return; }
+  tb.innerHTML=arr.map(c=>`<tr><td class="name-cell">${escapeHtml(c.name)}</td>
+    <td>${POS_LB[c.position]||c.position}</td>
+    <td style="font-family:monospace;font-size:12px;color:var(--gray);">${escapeHtml(c.member_no||'–')}</td>
+    <td style="font-size:12px;color:var(--gray);">${escapeHtml(c.company||'–')}</td>
+    <td style="font-size:11px;color:var(--gray);">${new Date(c.created_at).toLocaleString('zh-TW',{hour12:false})}</td></tr>`).join('');
 }
 
 function votesFor(id){ const c=elResults.find(x=>x.id===id); return c?Number(c.votes):0; }

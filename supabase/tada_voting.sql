@@ -322,3 +322,23 @@ BEGIN
     END IF;
   END IF;
 END $$;
+
+-- ============================================================================
+-- 願任書（當選理監事事後線上簽署同意就任）
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS tada_v_consent (
+  id           UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  election_id  UUID NOT NULL,
+  position     TEXT NOT NULL CHECK (position IN ('director','supervisor','executive')),
+  name         TEXT NOT NULL,
+  member_no    TEXT,
+  company      TEXT,
+  agreed       BOOLEAN NOT NULL DEFAULT TRUE,
+  note         TEXT,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE tada_v_consent ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS v_consent_ins ON tada_v_consent;
+DROP POLICY IF EXISTS v_consent_sel ON tada_v_consent;
+CREATE POLICY v_consent_ins ON tada_v_consent FOR INSERT WITH CHECK (true);
+CREATE POLICY v_consent_sel ON tada_v_consent FOR SELECT USING (true);
