@@ -516,6 +516,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <input class="search-input" type="text" id="cand-name" placeholder="候選人姓名" style="flex:1;">
         <input class="search-input" type="text" id="cand-co" placeholder="公司（選填）" style="flex:1;">
         <button class="btn btn-gold btn-sm" onclick="addCandidate()">＋ 新增</button>
+        <button class="btn btn-outline btn-sm" onclick="copyFifthCandidates()" title="把第五屆此職位的候選人複製進本場次">⧉ 帶入第五屆</button>
       </div>
       <p id="el-cat-hint" style="font-size:12px;color:var(--gray);margin:4px 2px 10px;line-height:1.7;"></p>
       <div class="tbl-wrap"><table><thead><tr><th>票號</th><th>姓名</th><th>公司</th><th>得票</th><th>操作</th></tr></thead>
@@ -1767,6 +1768,21 @@ async function addCandidate(){
 }
 async function delCandidate(id){ if(!confirm('刪除此候選人？')) return;
   const r=await sbEl(`tada_v_candidates?id=eq.${id}`,{method:'DELETE',headers:SB_HEADERS}); if(r.ok) renderCandidates(); else alert('刪除失敗'); }
+
+// 把第五屆此職位的候選人帶入目前場次（供第六屆以上屆名單為底稿編修）
+const FIFTH_ELECTION_ID='55555555-5555-4555-8555-555555555555';
+async function copyFifthCandidates(){
+  if(election.id===FIFTH_ELECTION_ID){ alert('目前就是第五屆場次，無需帶入。'); return; }
+  const label={director:'理事',supervisor:'監事',executive:'常務理事'}[elCat]||elCat;
+  if(!confirm(`將第五屆的「${label}候選人」帶入目前場次？（重複姓名會略過）`)) return;
+  const sr=await sbEl(`tada_v_candidates?election_id=eq.${FIFTH_ELECTION_ID}&position=eq.${elCat}&order=sort,no`); const src=sr.ok?await sr.json():[];
+  if(!src.length){ alert('第五屆此職位沒有候選人可帶入。'); return; }
+  const cr=await sbEl(`tada_v_candidates?election_id=eq.${election.id}&position=eq.${elCat}&select=name`); const exist=new Set((cr.ok?await cr.json():[]).map(c=>c.name));
+  const rows=src.filter(c=>!exist.has(c.name)).map(c=>({election_id:election.id,position:elCat,no:c.no,name:c.name,company:c.company,sort:c.sort}));
+  if(!rows.length){ alert('第五屆此職位候選人皆已存在，無需帶入。'); return; }
+  const r=await sbEl('tada_v_candidates',{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify(rows)});
+  if(r.ok){ renderCandidates(); alert(`已帶入 ${rows.length} 位${label}候選人，可直接編修為第六屆名單。`); } else alert('帶入失敗：'+await r.text());
+}
 
 async function renderRoster(){
   const r=await sbEl(`tada_v_members?election_id=eq.${election.id}&order=member_no&select=id,member_no,name,member_type,rep,is_checked_in`); const arr=r.ok?await r.json():[];
