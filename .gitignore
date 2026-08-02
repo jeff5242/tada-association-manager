@@ -3,8 +3,9 @@
 supabase/*_seed.sql
 
 # 協會內部文件（入會申請書、會費通知、領票名冊、委託書等含個資）
-docs/
-!docs/*.md
+# 僅限 repo 根目錄的 docs/，不誤傷 supabase/functions/docs/
+/docs/
+!/docs/*.md
 
 # Supabase 本機暫存
 supabase/.temp/
