@@ -156,38 +156,29 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
 
 <div class="form-wrap">
 
-  <!-- ══ 續約查詢 ══ -->
+  <!-- ══ 續約會員（簡短表單，秘書處後續查證）══ -->
   <div class="hidden" id="renew-flow">
-    <div class="lookup-box">
-      <div class="lookup-title">續約會員身分查詢</div>
-      <p style="font-size:12px;color:var(--gray);margin-bottom:12px;">請輸入您加入時登記的手機或 Email，系統將帶入您的會員資料。</p>
-      <div class="lookup-row">
-        <input type="text" id="lookup-input" placeholder="手機 09XX-XXX-XXX 或 Email">
-        <button class="lookup-btn" onclick="lookupMember()">查詢</button>
-      </div>
-      <div class="lookup-result" id="lookup-result"></div>
-    </div>
-    <!-- 續約確認表單（查到後顯示）-->
-    <form id="form-renew" class="hidden" onsubmit="submitRenew(event)">
+    <form id="form-renew" onsubmit="submitRenew(event)">
       <div class="form-section">
-        <div class="form-section-title">確認資料</div>
+        <div class="form-section-title">續約資料</div>
+        <p style="font-size:12px;color:var(--gray);margin:-4px 0 14px;">僅需填寫以下基本資料，秘書處將於後續核對您的會籍。</p>
+        <div class="field"><label>姓名 <span class="req">*</span></label><input type="text" name="name" required placeholder="請輸入姓名"></div>
         <div class="field-row">
-          <div class="field"><label>姓名／公司名稱</label><input type="text" name="name" id="renew-name"></div>
-          <div class="field"><label>手機</label><input type="tel" name="tel_mobile" id="renew-tel"></div>
+          <div class="field"><label>公司名稱</label><input type="text" name="org_name" placeholder="團體會員請填公司／單位名稱"></div>
+          <div class="field"><label>公司統編</label><input type="text" name="license_no" placeholder="8 碼統編（選填）" maxlength="8" inputmode="numeric"></div>
         </div>
-        <div class="field"><label>E-mail</label><input type="email" name="email" id="renew-email"></div>
-        <div class="field"><label>資料異動備注（選填）</label><textarea name="admin_notes" placeholder="如有地址、職稱等變更，請在此說明"></textarea></div>
+        <div class="field"><label>行動電話 <span class="req">*</span></label><input type="tel" name="tel_mobile" required placeholder="09XX-XXX-XXX"></div>
       </div>
       <div class="bank-box">
         <div class="bank-title">繳費資訊 PAYMENT</div>
         <div class="bank-row"><span class="bank-key">銀行</span><span class="bank-val">兆豐銀行（代號 017）</span></div>
         <div class="bank-row"><span class="bank-key">帳號</span><span class="bank-val">078-10-00851-6</span></div>
-        <div class="bank-note">匯款後請來電告知帳號後 5 碼<br>📞 0988-558246　📧 tada201107@gmail.com</div>
+        <div class="bank-note">匯款後請來電告知帳號後 5 碼　📞 0988-558246</div>
       </div>
       <input type="hidden" name="is_renewal" value="true">
-      <input type="hidden" name="type" id="renew-type" value="personal">
+      <input type="hidden" name="type" value="personal">
       <button type="submit" class="submit-btn">送出續約申請</button>
-      <p class="submit-note">秘書處確認付款後，將完成續約手續。</p>
+      <p class="submit-note">秘書處確認付款與會籍後，將完成續約手續。</p>
       <div class="success-box" id="success-renew">
         <div class="success-icon">✅</div>
         <div class="success-title">續約申請已送出！</div>
@@ -651,38 +642,6 @@ async function submitPartial(btn) {
     btn.disabled = false;
     btn.textContent = '📝 資料一時填不齊？先送出，由秘書處協助填寫';
   }
-}
-
-// ── 續約查詢 ────────────────────────────────────────────────
-async function lookupMember() {
-  const q = document.getElementById('lookup-input').value.trim();
-  const result = document.getElementById('lookup-result');
-  if (!q) { result.textContent = '請輸入手機或 Email'; return; }
-  result.textContent = '查詢中…';
-  result.className = 'lookup-result';
-
-  const col = q.includes('@') ? 'email' : 'tel_mobile';
-  const res = await fetch(
-    `${SB_URL}/rest/v1/tada_applications?${col}=eq.${encodeURIComponent(q)}&status=eq.approved&order=created_at.desc&limit=1`,
-    { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
-  );
-  const data = await res.json();
-
-  if (data.length === 0) {
-    result.textContent = '查無此會員紀錄。如有疑問請來電 0988-558246 洽詢。';
-    result.className = 'lookup-result notfound';
-    return;
-  }
-
-  const m = data[0];
-  result.innerHTML = `✅ 找到會員：<strong>${m.name || m.org_name}</strong>（${m.type === 'personal' ? '個人' : '團體'}會員）`;
-  result.className = 'lookup-result found';
-
-  document.getElementById('renew-name').value = m.name || m.org_name || '';
-  document.getElementById('renew-tel').value  = m.tel_mobile || m.rep_tel || '';
-  document.getElementById('renew-email').value = m.email || m.rep_email || '';
-  document.getElementById('renew-type').value  = m.type;
-  document.getElementById('form-renew').classList.remove('hidden');
 }
 
 // ── 送出：續約 ─────────────────────────────────────────────
