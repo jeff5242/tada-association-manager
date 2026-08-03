@@ -23,6 +23,14 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans TC',sans-serif
 .tab{padding:6px 14px;font-size:12px;cursor:pointer;color:var(--gray);border-radius:4px;letter-spacing:0.05em;transition:all .15s;border:none;background:none;}
 .tab.active{background:rgba(196,146,42,0.15);color:var(--gold-lt);}
 .tab:hover:not(.active){background:rgba(255,255,255,0.05);color:var(--ink);}
+.tab-group{position:relative;}
+.tab-menu{position:absolute;top:100%;left:0;margin-top:5px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px;min-width:150px;display:none;flex-direction:column;gap:2px;box-shadow:0 10px 28px rgba(0,0,0,0.45);z-index:200;}
+.tab-group.open .tab-menu{display:flex;}
+.tab-menu button{padding:9px 12px;font-size:12px;cursor:pointer;color:var(--gray);border:none;background:none;text-align:left;border-radius:4px;letter-spacing:0.05em;white-space:nowrap;}
+.tab-menu button:hover{background:rgba(255,255,255,0.05);color:var(--ink);}
+.tab-menu button.active{background:rgba(196,146,42,0.15);color:var(--gold-lt);}
+.grp-dot{display:none;width:6px;height:6px;border-radius:50%;background:#ef5350;margin-left:5px;vertical-align:middle;}
+.grp-dot.on{display:inline-block;}
 .ai-pill{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gold);border:1px solid rgba(196,146,42,0.3);padding:3px 10px;border-radius:99px;}
 .ai-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
@@ -160,17 +168,36 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 <div class="topbar">
   <div class="topbar-logo">TADA 會務後台<span>邀請進度管理系統</span></div>
   <div class="topbar-tabs">
-    <button class="tab active" onclick="switchTab('invite')">邀請進度</button>
-    <button class="tab" onclick="switchTab('dashboard')">統計總覽</button>
-    <button class="tab" onclick="switchTab('members')">會員名冊</button>
-    <button class="tab" onclick="switchTab('applications')">入會審核</button>
-    <button class="tab" onclick="switchTab('unanswered')">🐝 TADA醬 待回覆<span id="unans-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
-    <button class="tab" onclick="switchTab('lineusers')">💬 LINE 使用者</button>
-    <button class="tab" onclick="switchTab('rsvp')">📋 出席統計</button>
-    <button class="tab" onclick="switchTab('payments')">🏦 繳費回報<span id="pay-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
-    <button class="tab" onclick="switchTab('votes')">🗳️ 投票結果</button>
-    <button class="tab" onclick="switchTab('election')">🏛️ 理監事選舉</button>
-    <button class="tab" onclick="switchTab('docs')">📁 文件區</button>
+    <button class="tab" data-tab="dashboard" onclick="switchTab('dashboard')">📊 總覽</button>
+
+    <div class="tab-group">
+      <button class="tab tab-parent" onclick="toggleGroup(this)">👥 會員 ▾</button>
+      <div class="tab-menu">
+        <button data-tab="members" onclick="switchTab('members')">會員名冊</button>
+        <button data-tab="applications" onclick="switchTab('applications')">入會審核</button>
+        <button data-tab="lineusers" onclick="switchTab('lineusers')">💬 LINE 使用者</button>
+      </div>
+    </div>
+
+    <div class="tab-group">
+      <button class="tab tab-parent" onclick="toggleGroup(this)">🎪 大會活動 ▾<span class="grp-dot" id="grp-event-dot"></span></button>
+      <div class="tab-menu">
+        <button data-tab="invite" onclick="switchTab('invite')">邀請進度</button>
+        <button data-tab="rsvp" onclick="switchTab('rsvp')">📋 出席統計</button>
+        <button data-tab="payments" onclick="switchTab('payments')">🏦 繳費回報<span id="pay-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
+      </div>
+    </div>
+
+    <div class="tab-group">
+      <button class="tab tab-parent" onclick="toggleGroup(this)">🏛️ 選舉 ▾</button>
+      <div class="tab-menu">
+        <button data-tab="election" onclick="switchTab('election')">理監事選舉</button>
+        <button data-tab="votes" onclick="switchTab('votes')">🗳️ 投票結果</button>
+      </div>
+    </div>
+
+    <button class="tab" data-tab="unanswered" onclick="switchTab('unanswered')">🐝 TADA醬<span id="unans-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
+    <button class="tab" data-tab="docs" onclick="switchTab('docs')">📁 文件區</button>
   </div>
   <div class="ai-pill"><div class="ai-dot"></div>AI Agent 協作中</div>
 </div>
@@ -478,6 +505,13 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 
   <div id="el-main" style="display:none;">
+    <!-- 場次切換 -->
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+      <label style="font-size:12px;color:var(--gray);letter-spacing:.05em;">場次</label>
+      <select id="el-picker" onchange="selectElection(this.value)" style="flex:1;max-width:380px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 12px;border-radius:6px;font-family:inherit;font-size:13px;"></select>
+      <button class="btn btn-outline btn-sm" onclick="createElection()">＋ 新增場次</button>
+      <span style="font-size:11px;color:var(--gray);">切換可查閱歷屆開票結果</span>
+    </div>
     <!-- 狀態 + 控制 -->
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);padding:14px 16px;margin-bottom:16px;">
       <span style="font-family:'Noto Serif TC',serif;font-size:15px;color:var(--white);" id="el-title">—</span>
@@ -797,11 +831,22 @@ const statusHTML = {
 };
 
 // ── TABS ─────────────────────────────────────────────────
+function toggleGroup(btn){
+  const grp=btn.closest('.tab-group');
+  const wasOpen=grp.classList.contains('open');
+  closeAllGroups();
+  if(!wasOpen) grp.classList.add('open');
+}
+function closeAllGroups(){ document.querySelectorAll('.tab-group.open').forEach(g=>g.classList.remove('open')); }
+document.addEventListener('click', e=>{ if(!e.target.closest('.tab-group')) closeAllGroups(); });
+
 function switchTab(id){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.topbar-tabs .tab, .tab-menu button').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('page-'+id).classList.add('active');
+  const item=document.querySelector('[data-tab="'+id+'"]');
+  if(item){ item.classList.add('active'); const g=item.closest('.tab-group'); if(g) g.querySelector('.tab-parent').classList.add('active'); }
+  const page=document.getElementById('page-'+id); if(page) page.classList.add('active');
+  closeAllGroups();
   if(id==='dashboard') renderDash();
   if(id==='members') renderMemberDir();
   if(id==='applications') loadApplications();
@@ -1602,6 +1647,7 @@ function renderPay(){
   document.getElementById('pay-sum').textContent='$'+confirmed.reduce((s,p)=>s+(p.amount||0),0).toLocaleString();
   const badge=document.getElementById('pay-badge');
   if(badge){ if(pending>0){badge.style.display='inline-block';badge.textContent=pending;}else badge.style.display='none'; }
+  const gdot=document.getElementById('grp-event-dot'); if(gdot) gdot.classList.toggle('on', pending>0);
   const data=allPay.filter(p=>!payFilter||p.status===payFilter);
   document.getElementById('pay-count').textContent=data.length;
   if(!data.length){ document.getElementById('pay-tbody').innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">無資料</td></tr>'; return; }
@@ -1667,33 +1713,51 @@ const EL_STATUS = { draft:'<span class="status" style="background:rgba(255,255,2
 async function sbEl(path, opts){ return fetch(`${SB_URL}/rest/v1/${path}`, { headers:SB_HEADERS, ...opts }); }
 async function rpcEl(fn, body){ const r=await sbEl(`rpc/${fn}`,{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=representation'},body:JSON.stringify(body)}); return r.ok?r.json():null; }
 
+let allElections = [];
+const EL_STATUS_TXT = { draft:'未開始', checkin:'報到中', open:'投票中', closed:'已截止' };
+
 async function loadElection(){
   const status=document.getElementById('el-status'); status.textContent='';
   try{
-    const r=await sbEl('tada_v_election?order=created_at.desc&limit=1'); const list=r.ok?await r.json():[];
-    if(!list.length){ document.getElementById('el-none').style.display='block'; document.getElementById('el-main').style.display='none'; return; }
-    election=list[0];
-    document.getElementById('el-none').style.display='none'; document.getElementById('el-main').style.display='block';
-    document.getElementById('el-title').textContent=election.title;
-    document.getElementById('el-badge').innerHTML=EL_STATUS[election.status]||election.status;
-    // 進度
-    const prog=await rpcEl('vote_progress',{p_election:election.id})||{};
-    const total=Number(prog.total_members||0),checked=Number(prog.checked_in||0),cast=Number(prog.ballots_cast||0);
-    document.getElementById('el-total').textContent=total;
-    document.getElementById('el-checked').textContent=checked;
-    document.getElementById('el-voted').textContent=cast;
-    document.getElementById('el-rate').textContent=(checked?Math.round(cast/checked*100):0)+'%';
-    // 得票
-    const res=await rpcEl('vote_results',{p_election:election.id}); elResults=(res&&res.candidates)||[];
-    renderCandidates(); renderRoster();
+    const r=await sbEl('tada_v_election?order=created_at.desc'); allElections=r.ok?await r.json():[];
+    if(!allElections.length){ document.getElementById('el-none').style.display='block'; document.getElementById('el-main').style.display='none'; return; }
+    const keep = election && allElections.find(e=>e.id===election.id);
+    election = keep || allElections[0];
+    renderElectionPicker();
+    await renderElection();
     status.style.color='#66bb6a'; status.textContent='✓ 已載入';
   }catch(e){ status.style.color='#ef5350'; status.textContent='載入失敗：'+e.message; }
 }
 
+function renderElectionPicker(){
+  const sel=document.getElementById('el-picker');
+  sel.innerHTML=allElections.map(e=>`<option value="${e.id}"${e.id===election.id?' selected':''}>${escapeHtml(e.title)}（${EL_STATUS_TXT[e.status]||e.status}）</option>`).join('');
+}
+
+async function selectElection(id){
+  const e=allElections.find(x=>x.id===id); if(!e) return;
+  election=e; await renderElection();
+}
+
+async function renderElection(){
+  document.getElementById('el-none').style.display='none'; document.getElementById('el-main').style.display='block';
+  document.getElementById('el-title').textContent=election.title;
+  document.getElementById('el-badge').innerHTML=EL_STATUS[election.status]||election.status;
+  const prog=await rpcEl('vote_progress',{p_election:election.id})||{};
+  const total=Number(prog.total_members||0),checked=Number(prog.checked_in||0),cast=Number(prog.ballots_cast||0);
+  document.getElementById('el-total').textContent=total;
+  document.getElementById('el-checked').textContent=checked;
+  document.getElementById('el-voted').textContent=cast;
+  document.getElementById('el-rate').textContent=(checked?Math.round(cast/checked*100):0)+'%';
+  const res=await rpcEl('vote_results',{p_election:election.id}); elResults=(res&&res.candidates)||[];
+  renderCandidates(); renderRoster();
+}
+
 async function createElection(){
+  const title=prompt('新場次名稱：','第七屆理監事改選'); if(!title||!title.trim()) return;
   const r=await sbEl('tada_v_election',{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=representation'},
-    body:JSON.stringify({title:'第六屆理監事改選',status:'draft',director_seats:11,director_reserve:3,director_pick:11,supervisor_seats:3,supervisor_reserve:1,supervisor_pick:3,executive_seats:3,executive_pick:3,member_ballot:['director','supervisor']})});
-  if(r.ok) loadElection(); else alert('建立失敗：'+await r.text());
+    body:JSON.stringify({title:title.trim(),status:'draft',director_seats:11,director_reserve:3,director_pick:11,supervisor_seats:3,supervisor_reserve:1,supervisor_pick:3,executive_seats:3,executive_pick:3,member_ballot:['director','supervisor']})});
+  if(r.ok){ const rows=await r.json(); election=rows[0]||election; loadElection(); } else alert('建立失敗：'+await r.text());
 }
 
 async function setElectionStatus(s){
@@ -1883,6 +1947,7 @@ async function checkPw(){
 function showApp(){
   document.getElementById('auth-wall').style.display = 'none';
   document.getElementById('main-app').style.display = 'block';
+  switchTab('invite');   // 預設分頁 + 設定分層選單 active 狀態
 }
 
 (function init(){
