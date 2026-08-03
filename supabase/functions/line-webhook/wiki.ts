@@ -111,7 +111,7 @@ export const WIKI: WikiEntry[] = [
   {
     id: 'chairman',
     question: '新任會長是誰',
-    answer: '第六屆理事長：陳肇浩（米屋智農）🌾 當天將舉行就職典禮。',
+    answer: '第六屆理事長將於 9/4 會員大會由理監事選舉後產生，當天並舉行就職典禮。🌾',
     keywords: ['會長', '理事長', '誰是會長', '就職', '接班人'],
     suggest: { label: '🏅 新任會長', text: '會長' },
   },
