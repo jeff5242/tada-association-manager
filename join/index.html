@@ -34,6 +34,10 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
 .type-toggle{display:grid;grid-template-columns:1fr 1fr;border:1px solid rgba(255,255,255,0.2);overflow:hidden;}
 .type-btn{padding:9px;text-align:center;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.5);background:transparent;border:none;transition:all .2s;letter-spacing:.04em;}
 .type-btn.active{background:rgba(255,255,255,0.12);color:white;font-weight:600;}
+/* 續約切換鈕（位於淺色表單區，需深色樣式）*/
+.rn-toggle{border:1px solid var(--border)!important;}
+.rn-toggle .type-btn{color:var(--gray);font-size:13px;padding:11px;}
+.rn-toggle .type-btn.active{background:var(--fern);color:#fff;font-weight:700;}
 
 /* fee cards */
 .fee-row{max-width:600px;margin:16px auto 0;padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
@@ -158,7 +162,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
 
   <!-- ══ 續約會員（簡短表單，秘書處後續查證）══ -->
   <div class="hidden" id="renew-flow">
-    <div class="type-toggle" style="margin-bottom:16px;">
+    <div class="type-toggle rn-toggle" style="margin-bottom:16px;">
       <button type="button" class="type-btn active" id="rn-btn-personal" onclick="switchRenewType('personal')">個人會員</button>
       <button type="button" class="type-btn" id="rn-btn-group" onclick="switchRenewType('group')">團體會員</button>
     </div>
