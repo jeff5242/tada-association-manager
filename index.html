@@ -398,6 +398,7 @@ section { padding: 80px 32px; }
 }
 .event-status.open { color: var(--moss); border: 1px solid var(--moss); }
 .event-status.soon { color: var(--gold); border: 1px solid var(--gold); }
+.event-status.ended { color: #9a968c; border: 1px solid #cfc9ba; }
 
 /* ── ABOUT ── */
 #about { background: var(--ink); }
@@ -634,7 +635,7 @@ footer {
     <h2 class="section-title">近期活動</h2>
     <p class="section-sub">改選大會、論壇、會員交流、AI工作坊，一覽無遺。</p>
     <div class="events-list">
-      <a class="event-row" href="https://www.foodtaipei.com.tw/zh-tw/index.html" target="_blank" rel="noopener" style="text-decoration:none;">
+      <a class="event-row" href="https://www.foodtaipei.com.tw/zh-tw/index.html" target="_blank" rel="noopener" style="text-decoration:none;" data-start="2026-06-24" data-end="2026-06-27">
         <div class="event-date-block"><div class="event-month">JUN</div><div class="event-day">24</div></div>
         <div class="event-body">
           <div class="event-title-text">2026 台北國際食品展｜科技食代聯合館</div>
@@ -642,7 +643,7 @@ footer {
         </div>
         <div class="event-badge"><span class="event-status open">進行中 ↗</span></div>
       </a>
-      <div class="event-row">
+      <div class="event-row" data-start="2026-09-04" data-end="2026-09-04" data-label="籌備中">
         <div class="event-date-block"><div class="event-month">SEP</div><div class="event-day">04</div></div>
         <div class="event-body">
           <div class="event-title-text">智耕傳承 AI 賦能論壇暨第六屆會長就職典禮</div>
@@ -650,7 +651,7 @@ footer {
         </div>
         <div class="event-badge"><span class="event-status soon">籌備中</span></div>
       </div>
-      <div class="event-row">
+      <div class="event-row" data-start="2026-09-04" data-end="2026-09-04" data-label="邀請進行中">
         <div class="event-date-block"><div class="event-month">SEP</div><div class="event-day">04</div></div>
         <div class="event-body">
           <div class="event-title-text">新任會長陳肇浩就職典禮</div>
@@ -659,6 +660,25 @@ footer {
         <div class="event-badge"><span class="event-status soon">邀請進行中</span></div>
       </div>
     </div>
+    <script>
+    // 依活動日期自動判定狀態：已結束 / 進行中 / 即將登場（或自訂籌備標籤）
+    (function(){
+      var today = new Date(); today.setHours(0,0,0,0);
+      document.querySelectorAll('.event-row[data-start]').forEach(function(row){
+        var badge = row.querySelector('.event-status'); if(!badge) return;
+        var start = new Date(row.dataset.start + 'T00:00:00');
+        var end   = new Date((row.dataset.end || row.dataset.start) + 'T23:59:59');
+        var arrow = (row.tagName === 'A') ? ' ↗' : '';
+        if(today > end){
+          badge.className = 'event-status ended'; badge.textContent = '已結束' + arrow;
+        } else if(today >= start){
+          badge.className = 'event-status open';  badge.textContent = '進行中' + arrow;
+        } else {
+          badge.className = 'event-status soon';  badge.textContent = (row.dataset.label || '即將登場') + arrow;
+        }
+      });
+    })();
+    </script>
   </div>
 </section>
 
