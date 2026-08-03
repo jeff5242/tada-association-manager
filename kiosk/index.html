@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1200, initial-scale=1.0">
+<title>TADA 報到機｜會員報到領票</title>
+<!--
+  ── 樹莓派報到 Kiosk 設定 ────────────────────────────────────────────────
+  硬體：觸控螢幕（1200×800）＋ USB QR Code Reader（HID 鍵盤型，掃描後自動輸入內容＋Enter）＋ 網路印表機
+  啟動（全螢幕、免列印對話框自動出票）：
+    chromium-browser --kiosk --kiosk-printing --disable-pinch \
+      --overscroll-history-navigation=0 --app=https://tada-ai.org.tw/kiosk/
+  印表機：於樹莓派 CUPS 安裝網路印表機並設為「預設」，--kiosk-printing 會靜默列印到預設印表機。
+    （熱感應出票機建議紙寬 80mm；本頁列印版面已依 80mm 設計）
+  會員 QR：內容為「會員編號」或含編號的網址皆可（系統自動擷取數字）。
+-->
+<script src="../assets/liff-common.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#14231a;--green-mid:#2d5235;--green-light:#7fae86;--cream:#f8f4ea;--line:#e5ddc8;--red:#c0392b;}
+html,body{width:1200px;height:800px;overflow:hidden;}
+body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at top,#1e3320,#0d1710);color:var(--cream);user-select:none;-webkit-user-select:none;cursor:default;}
+.bar{height:6px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.screen{height:794px;display:flex;flex-direction:column;}
+/* 頂列 */
+.top{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid rgba(255,255,255,.08);}
+.top .t-title{font-family:'Noto Serif TC',serif;font-size:26px;font-weight:900;color:#fff;}
+.top .t-kick{font-size:13px;letter-spacing:.3em;color:var(--gold-light);font-weight:600;margin-bottom:2px;}
+.top .t-prog{text-align:right;font-size:14px;color:var(--green-light);}
+.top .t-prog b{font-family:'Noto Serif TC',serif;font-size:26px;color:var(--gold-light);display:block;line-height:1;}
+/* 主區 */
+.main{flex:1;display:flex;align-items:center;justify-content:center;position:relative;}
+.view{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px 60px;}
+.view.on{display:flex;}
+/* 待機（兩步驟）*/
+.idle-grid{display:flex;align-items:stretch;gap:0;width:100%;max-width:1000px;}
+.idle-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:0 40px;}
+.idle-div{width:1px;background:rgba(255,255,255,.12);margin:20px 0;}
+.step{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:.25em;color:var(--gold);font-weight:700;margin-bottom:8px;}
+.idle-h{font-family:'Noto Serif TC',serif;font-size:34px;font-weight:900;color:#fff;margin-bottom:22px;}
+.oa-qr{width:240px;height:240px;background:#fff;border-radius:16px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.oa-qr img,.oa-qr canvas{width:212px!important;height:212px!important;}
+.oa-qr .ph{color:#999;font-size:14px;text-align:center;padding:10px;font-family:'Noto Sans TC';}
+#v-idle .scan-ic{font-size:150px;line-height:1;margin:6px 0 6px;animation:pulse 1.8s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.9;}50%{transform:scale(1.08);opacity:1;}}
+.idle-p{font-size:19px;color:var(--green-light);line-height:1.8;margin-top:22px;}
+.kbd-btn{margin-top:26px;padding:14px 30px;font-family:inherit;font-size:18px;font-weight:700;color:var(--gold-light);background:transparent;border:2px solid rgba(212,168,83,.5);border-radius:12px;cursor:pointer;}
+.kbd-btn:active{background:rgba(212,168,83,.15);}
+/* 找到會員 */
+#v-found .welcome{font-size:22px;color:var(--gold-light);letter-spacing:.2em;margin-bottom:14px;}
+#v-found .nm{font-family:'Noto Serif TC',serif;font-size:78px;font-weight:900;color:#fff;line-height:1.1;margin-bottom:10px;}
+#v-found .no{font-size:24px;color:var(--green-light);margin-bottom:8px;letter-spacing:.05em;}
+#v-found .rep{font-size:19px;color:var(--green-light);}
+.btn-row{display:flex;gap:26px;margin-top:52px;}
+.big{padding:0 54px;height:118px;display:flex;align-items:center;justify-content:center;gap:14px;font-family:inherit;font-size:32px;font-weight:900;border:none;border-radius:16px;cursor:pointer;letter-spacing:.05em;}
+.big.go{background:linear-gradient(180deg,#3f8a4f,#2d5235);color:#fff;box-shadow:0 10px 30px rgba(45,82,53,.5);}
+.big.go:active{transform:translateY(2px);}
+.big.cancel{background:rgba(255,255,255,.06);color:var(--cream);border:2px solid rgba(255,255,255,.2);}
+.warn-box{margin-top:30px;background:rgba(192,57,43,.15);border:2px solid rgba(192,57,43,.5);color:#ff9b8f;font-size:24px;font-weight:700;padding:20px 40px;border-radius:14px;}
+/* 列印中 */
+#v-print .p-ic{font-size:130px;margin-bottom:20px;}
+#v-print h1{font-family:'Noto Serif TC',serif;font-size:46px;font-weight:900;color:#fff;margin-bottom:16px;}
+#v-print p{font-size:24px;color:var(--gold-light);}
+/* 提示（查無 / 錯誤） */
+.toast{position:absolute;top:30px;left:50%;transform:translateX(-50%);background:rgba(192,57,43,.92);color:#fff;font-size:22px;font-weight:700;padding:16px 36px;border-radius:12px;display:none;z-index:20;}
+.toast.on{display:block;}
+/* 數字鍵盤 */
+.keypad{position:absolute;inset:0;background:rgba(6,14,9,.97);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;}
+.keypad.on{display:flex;}
+.keypad .kp-title{font-size:24px;color:var(--gold-light);margin-bottom:14px;}
+.keypad .kp-display{width:520px;height:78px;background:#fff;color:#111;font-size:40px;font-weight:900;letter-spacing:6px;text-align:center;line-height:78px;border-radius:12px;margin-bottom:22px;min-height:78px;}
+.keypad .kp-grid{display:grid;grid-template-columns:repeat(3,150px);gap:16px;}
+.keypad .kp-grid button{height:88px;font-family:inherit;font-size:38px;font-weight:900;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:14px;cursor:pointer;}
+.keypad .kp-grid button:active{background:rgba(212,168,83,.3);}
+.keypad .kp-grid .ok{background:var(--green-mid);color:#fff;}
+.keypad .kp-grid .clr{background:rgba(192,57,43,.3);}
+.keypad .kp-close{margin-top:20px;font-size:18px;color:var(--green-light);background:none;border:none;cursor:pointer;}
+/* 領票單（列印） */
+#receipt{display:none;}
+@media print{
+  html,body{width:auto;height:auto;background:#fff;overflow:visible;}
+  .screen{display:none!important;}
+  #receipt{display:block!important;color:#000;width:72mm;margin:0 auto;text-align:center;font-family:'Noto Serif TC',serif;}
+  #receipt .rk{font-size:11px;letter-spacing:.2em;color:#333;}
+  #receipt .rt{font-size:17px;font-weight:900;margin:3px 0;}
+  #receipt .rd{font-size:10px;color:#555;margin-bottom:8px;}
+  #receipt .rqr{display:flex;justify-content:center;margin:6px 0;}
+  #receipt .rqr img,#receipt .rqr canvas{width:52mm!important;height:52mm!important;}
+  #receipt .rname{font-size:20px;font-weight:900;margin-top:4px;}
+  #receipt .rno{font-size:12px;color:#333;}
+  #receipt .rtip{font-size:10px;color:#333;margin-top:10px;line-height:1.7;border-top:1px dashed #999;padding-top:8px;}
+  @page{size:80mm auto;margin:3mm;}
+}
+</style>
+</head>
+<body>
+<div class="bar"></div>
+<div class="screen">
+  <div class="top">
+    <div><div class="t-kick">TADA 理監事選舉 · 報到領票</div><div class="t-title" id="e-title">—</div></div>
+    <div class="t-prog"><b id="p-checked">0</b><span>已報到 / <span id="p-total">0</span> 人</span></div>
+  </div>
+  <div class="main">
+    <div class="toast" id="toast"></div>
+
+    <!-- 待機：① 加入 LINE　② 出示會員條碼 -->
+    <div class="view on" id="v-idle">
+      <div class="idle-grid">
+        <div class="idle-col">
+          <div class="step">STEP 1</div>
+          <div class="idle-h">加入 TADA LINE</div>
+          <div class="oa-qr" id="oa-qr"><div class="ph">（待設定官方帳號連結）</div></div>
+          <div class="idle-p">手機掃描加入官方帳號<br>領票、投票、活動通知都在這裡</div>
+        </div>
+        <div class="idle-div"></div>
+        <div class="idle-col">
+          <div class="step">STEP 2</div>
+          <div class="idle-h">出示會員條碼報到</div>
+          <div class="scan-ic">📷</div>
+          <div class="idle-p">將會員條碼對準掃描器<br>系統會顯示姓名並列印選票</div>
+          <button class="kbd-btn" onclick="openKeypad()">⌨ 手動輸入會員編號</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 找到會員 -->
+    <div class="view" id="v-found">
+      <div id="found-ok" style="display:none;">
+        <div class="welcome">歡迎報到</div>
+        <div class="nm" id="f-name">—</div>
+        <div class="no" id="f-no"></div>
+        <div class="rep" id="f-rep"></div>
+        <div class="btn-row">
+          <button class="big go" onclick="confirmCheckin()">✅ 報到並列印選票</button>
+          <button class="big cancel" onclick="toIdle()">✕ 取消</button>
+        </div>
+      </div>
+      <div id="found-done" style="display:none;">
+        <div class="nm" id="fd-name" style="font-size:60px;">—</div>
+        <div class="warn-box">⚠️ 此會員已完成報到領票，選票恕不重發。</div>
+        <div class="btn-row"><button class="big cancel" onclick="toIdle()">返回</button></div>
+      </div>
+    </div>
+
+    <!-- 列印中 -->
+    <div class="view" id="v-print">
+      <div class="p-ic">🖨️</div>
+      <h1 id="pr-name">選票列印中…</h1>
+      <p>請至出票口領取您的選票，掃描選票 QR 即可投票</p>
+    </div>
+
+    <!-- 數字鍵盤 -->
+    <div class="keypad" id="keypad">
+      <div class="kp-title">輸入會員編號</div>
+      <div class="kp-display" id="kp-display"></div>
+      <div class="kp-grid">
+        <button onclick="kp('1')">1</button><button onclick="kp('2')">2</button><button onclick="kp('3')">3</button>
+        <button onclick="kp('4')">4</button><button onclick="kp('5')">5</button><button onclick="kp('6')">6</button>
+        <button onclick="kp('7')">7</button><button onclick="kp('8')">8</button><button onclick="kp('9')">9</button>
+        <button class="clr" onclick="kpClear()">清除</button><button onclick="kp('0')">0</button><button class="ok" onclick="kpOk()">查詢</button>
+      </div>
+      <button class="kp-close" onclick="closeKeypad()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- 列印版面（螢幕隱藏，僅列印時顯示） -->
+<div id="receipt">
+  <div class="rk">TADA 理監事選舉</div>
+  <div class="rt" id="rz-title">選票領票單</div>
+  <div class="rd" id="rz-date"></div>
+  <div class="rqr" id="rz-qr"></div>
+  <div class="rname" id="rz-name"></div>
+  <div class="rno" id="rz-no"></div>
+  <div class="rtip">請以手機掃描上方 QR Code 進入投票。<br>本票為匿名選票，恕不重發，請妥善保管。</div>
+</div>
+
+<script>
+const VOTE_BASE = 'https://tada-ai.org.tw/vote/';
+// ← 貼上 TADA LINE 官方帳號「加好友」連結（lin.ee/xxxx 或 https://line.me/R/ti/p/@基本ID）
+const LINE_OA_ADD_URL = '';
+let election = null, current = null, state = 'idle';
+
+function renderOaQr(){
+  if(!LINE_OA_ADD_URL) return;                 // 未設定則保留占位提示
+  const box=document.getElementById('oa-qr'); box.innerHTML='';
+  new QRCode(box, { text: LINE_OA_ADD_URL, width:212, height:212, correctLevel: QRCode.CorrectLevel.M });
+}
+
+function show(view){
+  ['v-idle','v-found','v-print'].forEach(id=>document.getElementById(id).classList.toggle('on', id===view));
+}
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('on'), 2600);
+}
+async function rpc(fn, body){
+  const r=await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`,{method:'POST',headers:window.tadaSbHeaders(),body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('HTTP '+r.status); return r.json();
+}
+
+async function loadElection(){
+  const r=await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election?status=in.(checkin,open)&order=created_at.desc&limit=1`,{headers:window.tadaSbHeaders()});
+  const list=r.ok?await r.json():[];
+  if(!list.length){ document.getElementById('e-title').textContent='目前無開放報到的場次'; return; }
+  election=list[0];
+  document.getElementById('e-title').textContent=election.title;
+  refreshProg(); setInterval(refreshProg, 10000);
+}
+async function refreshProg(){
+  if(!election) return;
+  try{ const p=await rpc('vote_progress',{p_election:election.id});
+    document.getElementById('p-checked').textContent=p.checked_in;
+    document.getElementById('p-total').textContent=p.total_members;
+  }catch(e){}
+}
+
+// 查會員（不報到，只顯示是誰）
+async function lookup(memberNo){
+  if(!election){ toast('尚未開放報到'); return; }
+  try{
+    const url=`${window.TADA_SB_URL}/rest/v1/tada_v_members?election_id=eq.${election.id}&member_no=eq.${encodeURIComponent(memberNo)}&select=member_no,name,member_type,rep,is_checked_in&limit=1`;
+    const r=await fetch(url,{headers:window.tadaSbHeaders()});
+    const arr=r.ok?await r.json():[];
+    if(!arr.length){ toast('查無會員編號 '+memberNo); return; }
+    current=arr[0];
+    document.getElementById('found-ok').style.display   = current.is_checked_in?'none':'block';
+    document.getElementById('found-done').style.display = current.is_checked_in?'block':'none';
+    if(current.is_checked_in){
+      document.getElementById('fd-name').textContent=current.name;
+    }else{
+      document.getElementById('f-name').textContent=current.name;
+      document.getElementById('f-no').textContent='會員編號 '+current.member_no;
+      document.getElementById('f-rep').textContent=(current.member_type==='group'&&current.rep)?('代表：'+current.rep):'';
+    }
+    state='found'; show('v-found');
+  }catch(e){ toast('系統忙碌，請重試'); }
+}
+
+// 確認 → 報到 → 產生 token → 列印
+async function confirmCheckin(){
+  if(!current) return;
+  try{
+    const res=await rpc('vote_checkin',{p_election:election.id,p_member_no:current.member_no});
+    if(!res.ok){
+      if(res.error==='already_checked_in') toast('此會員已報到領票');
+      else toast('報到失敗：'+res.error);
+      return;
+    }
+    printReceipt(res);
+    refreshProg();
+  }catch(e){ toast('報到失敗，請重試'); }
+}
+
+function printReceipt(res){
+  const url=VOTE_BASE+'?t='+res.uuid;
+  document.getElementById('rz-qr').innerHTML='';
+  new QRCode(document.getElementById('rz-qr'),{text:url,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+  document.getElementById('rz-title').textContent=election.title;
+  document.getElementById('rz-date').textContent=new Date().toLocaleString('zh-TW',{hour12:false});
+  document.getElementById('rz-name').textContent=res.name+(res.member_type==='group'&&res.rep?'（'+res.rep+'）':'');
+  document.getElementById('rz-no').textContent='會員編號 '+res.member_no;
+  document.getElementById('pr-name').textContent=res.name+' 的選票列印中…';
+  state='print'; show('v-print');
+  setTimeout(()=>{ window.print(); }, 300);      // --kiosk-printing 會靜默送印
+  setTimeout(()=>{ toIdle(); }, 6000);           // 6 秒後回待機
+}
+
+function toIdle(){ current=null; state='idle'; show('v-idle'); }
+
+// ── 硬體 QR Reader（HID 鍵盤）：快速輸入 + Enter ─────────────
+let scanBuf='', scanTimer=null;
+document.addEventListener('keydown', e=>{
+  if(state!=='idle' || document.getElementById('keypad').classList.contains('on')) return;
+  if(e.key==='Enter'){ if(scanBuf){ handleScan(scanBuf); scanBuf=''; } return; }
+  if(e.key.length===1){ scanBuf+=e.key; clearTimeout(scanTimer); scanTimer=setTimeout(()=>scanBuf='',250); }
+});
+function handleScan(raw){
+  // 內容可能是純編號，或含編號的網址；擷取 6~10 位數字
+  const m=raw.match(/(\d{6,10})/);
+  lookup(m?m[1]:raw.trim());
+}
+
+// ── 數字鍵盤（觸控備援）───────────────────────────────────
+let kpVal='';
+function openKeypad(){ kpVal=''; document.getElementById('kp-display').textContent=''; document.getElementById('keypad').classList.add('on'); }
+function closeKeypad(){ document.getElementById('keypad').classList.remove('on'); }
+function kp(d){ if(kpVal.length<10){ kpVal+=d; document.getElementById('kp-display').textContent=kpVal; } }
+function kpClear(){ kpVal=''; document.getElementById('kp-display').textContent=''; }
+function kpOk(){ if(!kpVal){ return; } closeKeypad(); lookup(kpVal); }
+
+renderOaQr();
+loadElection();
+</script>
+</body>
+</html>
