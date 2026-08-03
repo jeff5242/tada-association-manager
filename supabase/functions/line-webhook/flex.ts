@@ -77,7 +77,7 @@ export const AGENDA_FLEX = {
         margin: 'md',
         contents: [
           { type: 'text', text: '18:00', color: C.goldLt, size: 'sm', weight: 'bold', flex: 2 },
-          { type: 'text', text: '理事長交接典禮（晚宴席間舉行）', color: C.green, size: 'sm', weight: 'bold', flex: 6, wrap: true },
+          { type: 'text', text: '理事長就職典禮（晚宴席間舉行）', color: C.green, size: 'sm', weight: 'bold', flex: 6, wrap: true },
         ],
       },
     ],
