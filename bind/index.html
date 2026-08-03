@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>會員綁定｜TADA</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;--red:#c0392b;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 40px;}
+.top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.wrap{max-width:480px;margin:0 auto;padding:26px 18px;}
+.head{text-align:center;margin-bottom:18px;}
+.kick{font-size:11px;letter-spacing:0.3em;color:var(--gold);font-weight:600;margin-bottom:6px;}
+.title{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;color:var(--green-deep);}
+.sub{font-size:13px;color:var(--green-light);margin-top:8px;line-height:1.8;}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 6px 20px rgba(30,51,32,0.05);}
+label.lb{font-size:13px;font-weight:700;color:var(--green-deep);margin-bottom:7px;display:block;}
+label.lb .req{color:var(--red);}
+input[type=text]{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:16px;color:var(--ink);outline:none;background:#fff;margin-bottom:15px;}
+input:focus{border-color:var(--gold);}
+.or{font-size:11px;color:var(--green-light);margin:-8px 0 6px;}
+.submit{width:100%;padding:16px;font-size:17px;font-weight:700;font-family:inherit;background:var(--green-deep);color:var(--gold-light);border:none;border-radius:8px;cursor:pointer;letter-spacing:0.1em;}
+.submit:disabled{opacity:.5;}
+.hint{font-size:12px;color:var(--green-light);margin-top:10px;line-height:1.7;text-align:center;}
+.err{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);color:var(--red);font-size:13px;padding:12px;border-radius:8px;margin-bottom:14px;line-height:1.7;}
+.state{text-align:center;padding:56px 22px;}
+.state .ic{font-size:58px;margin-bottom:16px;}
+.state .msg{font-size:20px;color:var(--green-deep);font-weight:700;line-height:1.7;}
+.state .who{font-family:'Noto Serif TC',serif;font-size:32px;color:var(--green-deep);font-weight:900;margin:6px 0;}
+.state .sub2{font-size:13px;color:var(--green-light);margin-top:12px;line-height:1.9;}
+.loading{text-align:center;padding:80px 20px;color:var(--green-light);font-size:14px;}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+  <div id="loading" class="loading">載入中… 🐝</div>
+
+  <!-- 綁定表單 -->
+  <div id="form-view" style="display:none;">
+    <div class="head">
+      <div class="kick">TADA 會員綁定</div>
+      <div class="title">綁定您的會員身分</div>
+      <div class="sub">綁定後，報到、投票、繳費與通知都會對應到您本人，只需綁定一次。</div>
+    </div>
+    <div id="form-err"></div>
+    <div class="card">
+      <label class="lb">姓名 <span class="req">*</span></label>
+      <input type="text" id="in-name" placeholder="您的本名（與入會登記相同）">
+
+      <label class="lb">公司名稱（協助比對）</label>
+      <input type="text" id="in-company" placeholder="團體會員請填公司／單位名稱">
+      <div class="or">— 或 —</div>
+      <label class="lb">公司統一編號</label>
+      <input type="text" id="in-taxid" inputmode="numeric" maxlength="8" placeholder="8 碼統編（選填）">
+
+      <button class="submit" id="submit-btn" onclick="doBind()" style="margin-top:6px;">確認綁定</button>
+      <div class="hint">系統將以您填寫的資料比對協會會員名冊。<br>若查無或同名多筆，請補上公司名稱或統編。</div>
+    </div>
+  </div>
+
+  <!-- 已綁定 / 綁定成功 -->
+  <div id="done-view" class="state" style="display:none;">
+    <div class="ic" id="done-ic">✅</div>
+    <div class="msg" id="done-msg"></div>
+    <div class="who" id="done-who"></div>
+    <div class="sub2" id="done-sub"></div>
+  </div>
+</div>
+
+<script>
+let profile = null, election = null;
+
+function showErr(m){ document.getElementById('form-err').innerHTML = m ? '<div class="err">'+m+'</div>' : ''; }
+function doneView(ic, msg, who, sub){
+  document.getElementById('form-view').style.display='none';
+  document.getElementById('loading').style.display='none';
+  document.getElementById('done-ic').textContent = ic;
+  document.getElementById('done-msg').textContent = msg;
+  document.getElementById('done-who').textContent = who || '';
+  document.getElementById('done-sub').innerHTML = sub || '';
+  document.getElementById('done-view').style.display='block';
+}
+async function rpc(fn, body){
+  const r=await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`,{method:'POST',headers:window.tadaSbHeaders(),body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('HTTP '+r.status); return r.json();
+}
+
+async function init(){
+  // 取得 LINE userId（正式須於 LINE 內開啟）；?u= 供測試備援
+  const testU = new URLSearchParams(location.search).get('u');
+  try{
+    if(testU){ profile = { userId: testU }; }
+    else { profile = await window.tadaInitLiff('bind'); if(!profile) return; }
+  }catch(e){
+    document.getElementById('loading').innerHTML = '請從 TADA LINE 官方帳號選單開啟本頁。<br><span style="font-size:12px;">（尚未設定 LIFF 或未在 LINE 內開啟）</span>';
+    return;
+  }
+
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election?order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
+  const list = r.ok ? await r.json() : [];
+  if(!list.length){ document.getElementById('loading').textContent='目前沒有可綁定的名冊，請稍後再試。'; return; }
+  election = list[0];
+
+  // 已綁定？
+  try{
+    const b = await rpc('member_bound', { p_election: election.id, p_user_id: profile.userId });
+    if(b.bound){
+      doneView('✅','您已完成會員綁定', b.name + (b.member_no?'（'+b.member_no+'）':''), '報到時出示會員證條碼即可，無需重新綁定。');
+      return;
+    }
+  }catch(e){}
+
+  document.getElementById('loading').style.display='none';
+  document.getElementById('form-view').style.display='block';
+}
+
+async function doBind(){
+  const name=document.getElementById('in-name').value.trim();
+  const company=document.getElementById('in-company').value.trim();
+  const taxid=document.getElementById('in-taxid').value.trim();
+  if(!name){ showErr('請輸入姓名'); return; }
+  const btn=document.getElementById('submit-btn'); btn.disabled=true; btn.textContent='比對中…';
+  try{
+    const r = await rpc('member_bind', { p_election: election.id, p_user_id: profile.userId, p_name: name, p_company: company, p_tax_id: taxid });
+    if(r.ok){
+      doneView('🎉','綁定成功！', r.name + (r.member_no?'（'+r.member_no+'）':''), (r.member_type==='group'&&r.rep?('代表：'+r.rep+'<br>'):'')+'之後報到、投票、通知都會對應到您本人。');
+    } else if(r.error==='not_found'){ showErr('查無相符的會員資料。請確認姓名是否與入會登記相同，或補上公司名稱／統編。'); btn.disabled=false; btn.textContent='確認綁定';
+    } else if(r.error==='multiple'){ showErr('有多筆同名會員，請補上「公司名稱」或「統一編號」以利辨識。'); btn.disabled=false; btn.textContent='確認綁定';
+    } else if(r.error==='taken'){ showErr('此會員已由其他 LINE 帳號綁定。若有誤，請洽秘書處協助。'); btn.disabled=false; btn.textContent='確認綁定';
+    } else if(r.error==='missing_name'){ showErr('請輸入姓名'); btn.disabled=false; btn.textContent='確認綁定';
+    } else { showErr('綁定失敗（'+r.error+'），請洽秘書處。'); btn.disabled=false; btn.textContent='確認綁定'; }
+  }catch(e){ showErr('系統錯誤：'+e.message); btn.disabled=false; btn.textContent='確認綁定'; }
+}
+init();
+</script>
+</body>
+</html>

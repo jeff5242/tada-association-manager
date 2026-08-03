@@ -377,3 +377,12 @@ BEGIN
   RETURN json_build_object('ok',true,'meeting',v_meeting);
 END $$;
 GRANT EXECUTE ON FUNCTION proxy_submit(UUID,TEXT,TEXT,TEXT,TEXT) TO anon;
+
+-- ============================================================================
+-- 會員 LINE 綁定（LINE userId ↔ 名冊會員；供 /bind/ 綁定頁與 kiosk 報到辨識）
+-- ============================================================================
+ALTER TABLE tada_v_members ADD COLUMN IF NOT EXISTS line_user_id TEXT;
+ALTER TABLE tada_v_members ADD COLUMN IF NOT EXISTS company TEXT;
+ALTER TABLE tada_v_members ADD COLUMN IF NOT EXISTS tax_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_v_members_line ON tada_v_members(election_id, line_user_id);
+-- RPC member_bind / member_bound 已於資料庫建立（見 session 紀錄）；姓名必填，公司名/統編用於同名收斂。
