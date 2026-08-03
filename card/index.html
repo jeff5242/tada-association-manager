@@ -10,7 +10,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--gold:#b8913a;--gold-light:#d4a853;--gold-pale:#f5ecd4;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;}
+:root{--gold:#b8913a;--gold-light:#d4a853;--gold-pale:#f5ecd4;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--red:#e88;}
 body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 18px;}
 .loading{color:var(--gold-pale);font-size:14px;}
 .card{width:100%;max-width:420px;background:linear-gradient(160deg,#24402a,#16241a);border:1px solid rgba(184,145,58,0.35);border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.5);display:none;}
@@ -25,72 +25,125 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
 .status-line{font-size:12px;color:var(--green-light);margin-bottom:22px;}
 .status-line .on{color:var(--gold-light);}
 .qr-wrap{background:#fff;border-radius:14px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:10px;}
-#qrcode{width:200px;height:200px;}
+#qrcode{width:210px;height:210px;}
 #qrcode img{display:block;}
-.qr-hint{font-size:11px;color:#8a7a55;letter-spacing:0.05em;}
+.qr-hint{font-size:11px;color:#8a7a55;letter-spacing:0.05em;text-align:center;}
 .checked{margin-top:18px;text-align:center;padding:12px;border-radius:10px;background:rgba(46,125,50,0.18);border:1px solid rgba(102,187,106,0.35);color:#a5d6a7;font-size:14px;font-weight:700;display:none;}
 .foot{text-align:center;margin-top:20px;font-size:10px;color:var(--green-light);letter-spacing:0.1em;line-height:1.8;}
+/* 綁定表單 */
+.bind-lead{font-size:13px;color:var(--gold-pale);line-height:1.9;margin-bottom:18px;}
+.bind-lead b{color:var(--gold-light);}
+.fld{margin-bottom:14px;}
+.fld label{font-size:12px;font-weight:700;color:var(--gold-pale);display:block;margin-bottom:6px;}
+.fld label .req{color:var(--red);}
+.fld input{width:100%;padding:12px;border:1px solid rgba(184,145,58,0.4);border-radius:9px;font-family:inherit;font-size:15px;color:#fff;background:rgba(255,255,255,0.06);outline:none;}
+.fld input:focus{border-color:var(--gold-light);}
+.fld .or{font-size:10px;color:var(--green-light);margin:2px 0 6px;}
+.bind-btn{width:100%;padding:14px;font-family:inherit;font-size:16px;font-weight:700;background:var(--gold);color:#1a1a14;border:none;border-radius:9px;cursor:pointer;letter-spacing:0.08em;}
+.bind-btn:disabled{opacity:.5;}
+.bind-err{background:rgba(192,57,43,0.2);border:1px solid rgba(192,57,43,0.5);color:#ffb3aa;font-size:12px;padding:10px;border-radius:8px;margin-bottom:12px;line-height:1.6;display:none;}
 </style>
 </head>
 <body>
 <div id="loading" class="loading">載入電子會員證… 🐝</div>
 
+<!-- 未綁定：卡片內直接綁定 -->
+<div class="card" id="bind-card">
+  <div class="card-top"></div>
+  <div class="card-inner">
+    <div class="brand">
+      <div class="brand-logo">🌾</div>
+      <div><div class="brand-name">台灣科技農企業發展協會</div><div class="brand-sub">MEMBER BINDING</div></div>
+    </div>
+    <div class="label">綁定會員身分</div>
+    <div class="bind-lead">首次使用請先綁定，把您的 LINE 與會員資料對應起來。<br>綁定後即可產生<b>報到用會員證</b>，投票、通知也會對應到您本人。</div>
+    <div class="bind-err" id="bind-err"></div>
+    <div class="fld"><label>姓名 <span class="req">*</span></label><input type="text" id="b-name" placeholder="您的本名（與入會登記相同）"></div>
+    <div class="fld"><label>公司名稱（協助比對）</label><input type="text" id="b-company" placeholder="團體會員請填公司／單位名稱"><div class="or">— 或 —</div><label>公司統一編號</label><input type="text" id="b-taxid" inputmode="numeric" maxlength="8" placeholder="8 碼統編（選填）"></div>
+    <button class="bind-btn" id="bind-btn" onclick="doBind()">確認綁定</button>
+  </div>
+</div>
+
+<!-- 已綁定：會員證 + 報到 QR -->
 <div class="card" id="card">
   <div class="card-top"></div>
   <div class="card-inner">
     <div class="brand">
       <div class="brand-logo">🌾</div>
-      <div>
-        <div class="brand-name">台灣科技農企業發展協會</div>
-        <div class="brand-sub">TADA MEMBER PASS</div>
-      </div>
+      <div><div class="brand-name">台灣科技農企業發展協會</div><div class="brand-sub">TADA MEMBER PASS</div></div>
     </div>
-
     <div class="label">Member</div>
     <div class="name" id="member-name">—</div>
     <div class="status-line" id="status-line"></div>
-
     <div class="qr-wrap">
       <div id="qrcode"></div>
-      <div class="qr-hint">報到時請出示此 QR 給工作人員掃描</div>
+      <div class="qr-hint">報到時請出示此 QR 給報到機／工作人員掃描</div>
     </div>
-
-    <div class="checked" id="checked-box">✓ 您已完成報到</div>
-
-    <div class="foot">
-      2026 第六屆會員大會｜9/4（五）臻愛婚宴會館 烏日高鐵店
-    </div>
+    <div class="checked" id="checked-box">✓ 您已完成報到領票</div>
+    <div class="foot">2026 第六屆會員大會｜9/4（五）臻愛婚宴會館 烏日高鐵店</div>
   </div>
 </div>
 
 <script>
+let profile = null, election = null;
+
+async function rpc(fn, body){
+  const r=await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`,{method:'POST',headers:window.tadaSbHeaders(),body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('HTTP '+r.status); return r.json();
+}
+
 async function init(){
+  const testU = new URLSearchParams(location.search).get('u');
   try{
-    const profile = await window.tadaInitLiff('card');
-    if(!profile) return; // 導向登入中
-    document.getElementById('member-name').textContent = profile.displayName;
+    if(testU){ profile = { userId: testU, displayName: '' }; }
+    else { profile = await window.tadaInitLiff('card'); if(!profile) return; }
+  }catch(e){ document.getElementById('loading').textContent='載入失敗，請從 LINE 官方帳號選單開啟。'; return; }
 
-    // QR 內容：報到用連結（現場掃描頁會解析 u 參數）
-    const payload = 'https://tada-ai.org.tw/checkin/?u=' + encodeURIComponent(profile.userId);
-    new QRCode(document.getElementById('qrcode'), { text: payload, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+  const r=await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election?order=created_at.desc&limit=1`,{headers:window.tadaSbHeaders()});
+  const list=r.ok?await r.json():[];
+  election=list[0]||null;
 
-    // 讀取出席/報到狀態
-    const res = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(profile.userId)}`, { headers: window.tadaSbHeaders() });
-    const rows = res.ok ? await res.json() : [];
-    const sl = document.getElementById('status-line');
-    if(rows.length){
-      const r = rows[0];
-      sl.innerHTML = r.attending ? `出席登記：<span class="on">${r.headcount} 位</span>` : '出席狀態：未出席';
-      if(r.checked_in) document.getElementById('checked-box').style.display = 'block';
-    } else {
-      sl.innerHTML = '尚未回覆出席，可從選單「我要報名」登記';
-    }
-
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('card').style.display = 'block';
-  } catch(e){
-    document.getElementById('loading').textContent = '載入失敗，請從 LINE 官方帳號選單開啟。';
+  if(election){
+    try{
+      const b=await rpc('member_bound',{p_election:election.id,p_user_id:profile.userId});
+      if(b.bound){ renderCard(b); return; }
+    }catch(e){}
   }
+  // 未綁定 → 顯示綁定卡
+  document.getElementById('loading').style.display='none';
+  document.getElementById('bind-card').style.display='block';
+}
+
+function renderCard(m){
+  document.getElementById('member-name').textContent = m.name;
+  const sl=document.getElementById('status-line');
+  sl.innerHTML = `會員編號 <span class="on">${m.member_no}</span>` + (m.member_type==='group'&&m.rep?`　·　代表 ${m.rep}`:'');
+  // QR 內容：M:會員編號（報到機辨識用）
+  document.getElementById('qrcode').innerHTML='';
+  new QRCode(document.getElementById('qrcode'), { text:'M:'+m.member_no, width:210, height:210, correctLevel:QRCode.CorrectLevel.M });
+  if(m.is_checked_in) document.getElementById('checked-box').style.display='block';
+  document.getElementById('loading').style.display='none';
+  document.getElementById('bind-card').style.display='none';
+  document.getElementById('card').style.display='block';
+}
+
+async function doBind(){
+  const name=document.getElementById('b-name').value.trim();
+  const company=document.getElementById('b-company').value.trim();
+  const taxid=document.getElementById('b-taxid').value.trim();
+  const err=document.getElementById('bind-err');
+  function showErr(m){ err.textContent=m; err.style.display=m?'block':'none'; }
+  if(!name){ showErr('請輸入姓名'); return; }
+  if(!election){ showErr('目前無可綁定的名冊'); return; }
+  const btn=document.getElementById('bind-btn'); btn.disabled=true; btn.textContent='比對中…';
+  try{
+    const r=await rpc('member_bind',{p_election:election.id,p_user_id:profile.userId,p_name:name,p_company:company,p_tax_id:taxid});
+    if(r.ok){ renderCard({bound:true,name:r.name,member_no:r.member_no,member_type:r.member_type,rep:r.rep,is_checked_in:false}); }
+    else if(r.error==='not_found'){ showErr('查無相符會員。請確認姓名與入會登記相同，或補公司名稱／統編。'); btn.disabled=false; btn.textContent='確認綁定'; }
+    else if(r.error==='multiple'){ showErr('有多筆同名，請補「公司名稱」或「統一編號」。'); btn.disabled=false; btn.textContent='確認綁定'; }
+    else if(r.error==='taken'){ showErr('此會員已由其他 LINE 綁定，請洽秘書處。'); btn.disabled=false; btn.textContent='確認綁定'; }
+    else { showErr('綁定失敗（'+r.error+'）'); btn.disabled=false; btn.textContent='確認綁定'; }
+  }catch(e){ showErr('系統錯誤：'+e.message); btn.disabled=false; btn.textContent='確認綁定'; }
 }
 init();
 </script>

@@ -278,9 +278,12 @@ document.addEventListener('keydown', e=>{
   if(e.key.length===1){ scanBuf+=e.key; clearTimeout(scanTimer); scanTimer=setTimeout(()=>scanBuf='',250); }
 });
 function handleScan(raw){
-  // 內容可能是純編號，或含編號的網址；擷取 6~10 位數字
-  const m=raw.match(/(\d{6,10})/);
-  lookup(m?m[1]:raw.trim());
+  const t=(raw||'').trim();
+  // 電子會員證 QR 格式為「M:會員編號」；也相容純編號或含編號的網址
+  let no;
+  if(/^M:/i.test(t)) no=t.slice(2);
+  else { const m=t.match(/(\d{6,10})/); no=m?m[1]:t; }
+  lookup(no);
 }
 
 // ── 數字鍵盤（觸控備援）───────────────────────────────────
