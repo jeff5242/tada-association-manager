@@ -261,7 +261,7 @@ export const FEE_FLEX = {
     spacing: 'md',
     contents: [
       feePlan('個人會員', 'NT$1,000', 'NT$6,000', 'NT$7,000'),
-      feePlan('團體會員', 'NT$10,000', 'NT$20,000', 'NT$30,000'),
+      feePlan('團體會員', 'NT$2,000', 'NT$20,000', 'NT$22,000'),
     ],
   },
   footer: {
