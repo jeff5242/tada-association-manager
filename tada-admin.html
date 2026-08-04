@@ -621,13 +621,20 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 <!-- ══════════ 投票結果 ══════════ -->
 <div class="page" id="page-votes">
   <div class="section-header" style="margin-bottom:16px;">
-    <div class="section-title">🗳️ 投票結果</div>
+    <div class="section-title">🗳️ 議案投票</div>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
       <button class="btn btn-outline btn-sm" onclick="loadVotes()">↻ 重新載入</button>
       <span id="vote-sb-status" style="font-size:11px;"></span>
     </div>
   </div>
-  <div id="vote-result" style="font-size:14px;color:var(--gray);">點選「重新載入」讀取進行中的投票</div>
+  <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:12px;">現場議案表決（如章程修正、信任案）。同時只會有一個議案「進行中」，按「啟用」即開放，其他自動關閉。</p>
+  <div class="toolbar" style="gap:8px;flex-wrap:wrap;">
+    <input class="search-input" type="text" id="poll-title" placeholder="議案主題（例如：組織章程修正案）" style="flex:2;min-width:200px;">
+    <input class="search-input" type="text" id="poll-options" placeholder="選項，逗號分隔（留空＝贊成,反對,棄權）" style="flex:2;min-width:200px;">
+    <button class="btn btn-gold btn-sm" onclick="createPoll()">＋ 建立議案</button>
+  </div>
+  <div id="poll-list" style="margin:16px 0;"></div>
+  <div id="vote-result" style="font-size:14px;color:var(--gray);"></div>
 </div>
 
 <!-- ══════════ 出席統計 ══════════ -->
@@ -1677,30 +1684,77 @@ async function confirmPay(id){
 }
 
 // ── 投票結果 ─────────────────────────────────────────────
+let allPolls = [];
 async function loadVotes(){
-  const btn=document.querySelector('[onclick="loadVotes()"]'), status=document.getElementById('vote-sb-status');
-  if(btn){btn.disabled=true;btn.textContent='載入中…';} status.textContent='';
+  const status=document.getElementById('vote-sb-status'); status.textContent='';
   try{
-    const pr=await fetch(`${SB_URL}/rest/v1/tada_polls?active=eq.true&order=created_at.desc&limit=1`,{headers:SB_HEADERS});
-    const polls=pr.ok?await pr.json():[];
-    if(!polls.length){ document.getElementById('vote-result').innerHTML='<p style="color:var(--gray);font-size:14px;">目前沒有進行中的投票。<br><span style="font-size:12px;">（到 Supabase 把某個 tada_polls 的 active 設為 true 即可開啟）</span></p>'; status.textContent=''; if(btn){btn.disabled=false;btn.textContent='↻ 重新載入';} return; }
-    const poll=polls[0];
-    const vr=await fetch(`${SB_URL}/rest/v1/tada_votes?poll_id=eq.${poll.id}&select=choice,display_name`,{headers:SB_HEADERS});
-    const votes=vr.ok?await vr.json():[];
-    const opts=Array.isArray(poll.options)?poll.options:[];
-    const total=votes.length;
-    const tally=opts.map(o=>({o,n:votes.filter(v=>v.choice===o).length}));
-    document.getElementById('vote-result').innerHTML=`
-      <div class="section-title" style="font-size:16px;margin-bottom:6px;">${escapeHtml(poll.title)}</div>
-      <div style="font-size:12px;color:var(--gray);margin-bottom:18px;">${escapeHtml(poll.description||'')}　｜　總投票數 <b style="color:var(--gold);">${total}</b></div>
-      ${tally.map(t=>{const pct=total?Math.round(t.n/total*100):0;return `
-        <div style="margin-bottom:14px;">
-          <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:5px;"><span style="color:var(--white);font-weight:700;">${escapeHtml(t.o)}</span><span style="color:var(--gold);">${t.n} 票（${pct}%）</span></div>
-          <div style="height:10px;background:var(--surface2);border-radius:5px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--green),var(--gold));"></div></div>
-        </div>`;}).join('')}`;
-    status.style.color='#66bb6a'; status.textContent=`✓ ${total} 票`;
-  }catch(e){ document.getElementById('vote-result').innerHTML='<p style="color:#ef5350;">載入失敗：'+e.message+'</p>'; }
-  if(btn){btn.disabled=false;btn.textContent='↻ 重新載入';}
+    const pr=await fetch(`${SB_URL}/rest/v1/tada_polls?order=created_at.desc`,{headers:SB_HEADERS});
+    allPolls=pr.ok?await pr.json():[];
+    renderPollList();
+    await renderActivePoll();
+    status.style.color='#66bb6a'; status.textContent='✓ 已載入';
+  }catch(e){ document.getElementById('poll-list').innerHTML='<p style="color:#ef5350;">載入失敗：'+e.message+'</p>'; }
+}
+
+function renderPollList(){
+  const box=document.getElementById('poll-list');
+  if(!allPolls.length){ box.innerHTML='<p style="color:var(--gray);font-size:13px;">尚無議案，於上方建立第一個。</p>'; return; }
+  box.innerHTML=allPolls.map(p=>{
+    const opts=(Array.isArray(p.options)?p.options:[]).join(' ／ ');
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid ${p.active?'rgba(46,125,50,0.4)':'var(--border)'};padding:11px 14px;margin-bottom:8px;border-radius:6px;">
+      <div style="flex:1;min-width:0;">
+        <div style="color:var(--white);font-weight:700;font-size:14px;">${escapeHtml(p.title)}${p.active?' <span class="status" style="background:rgba(46,125,50,0.2);color:#66bb6a;font-size:10px;">● 進行中</span>':''}</div>
+        <div style="font-size:11px;color:var(--gray);margin-top:2px;">${escapeHtml(opts)}</div>
+      </div>
+      <button class="btn btn-sm" onclick="togglePoll('${p.id}',${!p.active})" style="${p.active?'background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);':'background:rgba(46,125,50,0.2);color:#66bb6a;border:1px solid rgba(46,125,50,0.3);'}">${p.active?'■ 停止':'▶ 啟用'}</button>
+      <button class="btn btn-sm btn-outline" onclick="delPoll('${p.id}')">刪除</button>
+    </div>`;
+  }).join('');
+}
+
+async function togglePoll(id, activate){
+  try{
+    if(activate){
+      await fetch(`${SB_URL}/rest/v1/tada_polls?active=eq.true`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({active:false})});
+    }
+    const r=await fetch(`${SB_URL}/rest/v1/tada_polls?id=eq.${id}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({active:activate})});
+    if(r.ok) loadVotes(); else alert('操作失敗：'+await r.text());
+  }catch(e){ alert('操作失敗：'+e.message); }
+}
+
+async function createPoll(){
+  const title=document.getElementById('poll-title').value.trim();
+  if(!title){ alert('請輸入議案主題'); return; }
+  const raw=document.getElementById('poll-options').value.trim();
+  const options=raw?raw.split(/[,，]/).map(s=>s.trim()).filter(Boolean):['贊成','反對','棄權'];
+  const r=await fetch(`${SB_URL}/rest/v1/tada_polls`,{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({title,options,active:false})});
+  if(r.ok){ document.getElementById('poll-title').value=''; document.getElementById('poll-options').value=''; loadVotes(); } else alert('建立失敗：'+await r.text());
+}
+
+async function delPoll(id){
+  if(!confirm('刪除此議案及其所有票數？')) return;
+  const r=await fetch(`${SB_URL}/rest/v1/tada_polls?id=eq.${id}`,{method:'DELETE',headers:SB_HEADERS});
+  if(r.ok) loadVotes(); else alert('刪除失敗');
+}
+
+async function renderActivePoll(){
+  const poll=allPolls.find(p=>p.active);
+  const box=document.getElementById('vote-result');
+  if(!poll){ box.innerHTML='<p style="color:var(--gray);font-size:13px;padding-top:6px;border-top:1px solid var(--border);">目前沒有進行中的議案。按上方任一議案的「▶ 啟用」即可開放投票。</p>'; return; }
+  const vr=await fetch(`${SB_URL}/rest/v1/tada_votes?poll_id=eq.${poll.id}&select=choice`,{headers:SB_HEADERS});
+  const votes=vr.ok?await vr.json():[];
+  const opts=Array.isArray(poll.options)?poll.options:[];
+  const total=votes.length;
+  const tally=opts.map(o=>({o,n:votes.filter(v=>v.choice===o).length}));
+  box.innerHTML=`
+    <div style="border-top:1px solid var(--border);padding-top:16px;">
+    <div class="section-title" style="font-size:16px;margin-bottom:6px;">${escapeHtml(poll.title)}　<span class="status" style="background:rgba(46,125,50,0.2);color:#66bb6a;font-size:11px;">● 進行中</span></div>
+    <div style="font-size:12px;color:var(--gray);margin-bottom:18px;">${escapeHtml(poll.description||'')}　｜　總投票數 <b style="color:var(--gold);">${total}</b></div>
+    ${tally.map(t=>{const pct=total?Math.round(t.n/total*100):0;return `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:5px;"><span style="color:var(--white);font-weight:700;">${escapeHtml(t.o)}</span><span style="color:var(--gold);">${t.n} 票（${pct}%）</span></div>
+        <div style="height:10px;background:var(--surface2);border-radius:5px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--green),var(--gold));"></div></div>
+      </div>`;}).join('')}</div>`;
 }
 
 // ── 理監事選舉（O2O 匿名投票）─────────────────────────────
