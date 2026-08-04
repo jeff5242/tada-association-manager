@@ -175,7 +175,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
         <div id="rn-personal">
           <div class="field"><label>姓名 <span class="req">*</span></label><input type="text" id="rn-name" placeholder="請輸入姓名"></div>
           <div class="field-row">
-            <div class="field"><label>公司名稱</label><input type="text" id="rn-company-p" placeholder="選填"></div>
+            <div class="field"><label>公司名稱 <span class="req">*</span></label><input type="text" id="rn-company-p" placeholder="請輸入公司名稱"></div>
             <div class="field"><label>公司統編</label><input type="text" id="rn-taxid-p" placeholder="8 碼統編（選填）" maxlength="8" inputmode="numeric"></div>
           </div>
           <div class="field"><label>行動電話 <span class="req">*</span></label><input type="tel" id="rn-tel" placeholder="09XX-XXX-XXX"></div>
@@ -682,9 +682,10 @@ async function submitRenew(e) {
   const payload = { is_renewal: true, status: 'pending', type: renewType };
   if (renewType === 'personal') {
     if (!v('rn-name')) { alert('請輸入姓名'); return; }
+    if (!v('rn-company-p')) { alert('請輸入公司名稱'); return; }
     if (!v('rn-tel'))  { alert('請輸入行動電話'); return; }
     payload.name = v('rn-name');
-    if (v('rn-company-p')) payload.org_name = v('rn-company-p');
+    payload.org_name = v('rn-company-p');
     if (v('rn-taxid-p'))   payload.license_no = v('rn-taxid-p');
     payload.tel_mobile = v('rn-tel');
   } else {
