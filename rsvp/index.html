@@ -58,13 +58,18 @@ textarea{resize:vertical;min-height:60px;}
     <div class="head">
       <div class="kick">第六屆會員大會・出席回覆</div>
       <div class="title">智耕傳承 農業新世代</div>
-      <div class="sub">2026 年 9 月 4 日（五）｜臻愛婚宴會館 烏日高鐵店</div>
+      <div class="sub">2026 年 9 月 4 日（五）｜臻愛婚宴會館 2F 風情雅典廳</div>
     </div>
 
     <div id="err-box"></div>
 
     <div class="card">
-      <div class="greet"><b id="member-name">您</b> 您好，<span id="edit-badge"></span>請回覆是否出席：</div>
+      <div class="greet">回覆 9/4 大會出席　<span id="edit-badge"></span></div>
+
+      <div class="field">
+        <label class="label">姓名 <span style="color:#c0392b;">*</span></label>
+        <input type="text" id="rsvp-name" placeholder="請輸入您的姓名">
+      </div>
 
       <div class="field">
         <label class="label">是否出席</label>
@@ -125,8 +130,13 @@ const LIFF_ID = window.TADA_LIFF_IDS.rsvp;
 const SB_URL = window.TADA_SB_URL;
 const SB_HEADERS = window.tadaSbHeaders();
 
-let profile = null;
+let profile = null, userId = null, inClient = false;
 let attending = true;
+function getWebId(){
+  let id = localStorage.getItem('tada_rsvp_webid');
+  if(!id){ id = 'web-' + ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now()+'-'+Math.random().toString(16).slice(2)); localStorage.setItem('tada_rsvp_webid', id); }
+  return id;
+}
 
 function showErr(msg){ document.getElementById('err-box').innerHTML = '<div class="err">'+msg+'</div>'; }
 
@@ -145,17 +155,28 @@ function step(id, d){
 }
 
 async function init(){
+  // 判斷來源：從 LINE 內開啟 → 帶暱稱；從網頁開啟 → 需自填姓名
   try{
     await liff.init({ liffId: LIFF_ID });
-    if(!liff.isLoggedIn()){ liff.login(); return; }
-    profile = await liff.getProfile();
-    document.getElementById('member-name').textContent = profile.displayName;
+    inClient = liff.isInClient();
+    if(inClient){
+      profile = await liff.getProfile();
+      userId = profile.userId;
+      document.getElementById('rsvp-name').value = profile.displayName || '';
+    } else {
+      userId = getWebId();   // 網頁模式：以瀏覽器識別碼記住這台裝置的回覆
+    }
+  } catch(e){
+    userId = getWebId();     // LIFF 初始化失敗（多為從網頁開啟）→ 網頁模式
+  }
 
-    // 讀取既有回覆（若有）→ 預填
-    const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(profile.userId)}`, { headers: SB_HEADERS });
+  // 讀取既有回覆（若有）→ 預填
+  try{
+    const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(userId)}`, { headers: SB_HEADERS });
     const rows = res.ok ? await res.json() : [];
     if(rows.length){
       const r = rows[0];
+      if(r.display_name) document.getElementById('rsvp-name').value = r.display_name;
       setAttend(r.attending);
       document.getElementById('headcount').value = r.headcount ?? 1;
       document.getElementById('vegetarian').value = r.vegetarian ?? 0;
@@ -165,24 +186,22 @@ async function init(){
     } else {
       setAttend(true);
     }
+  }catch(e){ setAttend(true); }
 
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('form-view').style.display = 'block';
-  } catch(e){
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('form-view').style.display = 'block';
-    showErr('初始化失敗：' + (e.message || e) + '<br>請從 LINE 官方帳號的選單開啟此頁面。');
-  }
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('form-view').style.display = 'block';
 }
 
 async function submitRsvp(){
-  if(!profile){ showErr('尚未取得您的 LINE 身分，請重新從選單開啟。'); return; }
+  const name = document.getElementById('rsvp-name').value.trim();
+  if(!name){ showErr('請輸入姓名'); return; }
+  if(!userId){ showErr('初始化尚未完成，請重新整理頁面。'); return; }
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = '送出中…';
 
   const payload = {
-    user_id: profile.userId,
-    display_name: profile.displayName,
+    user_id: userId,
+    display_name: name,
     attending: attending,
     headcount: attending ? (+document.getElementById('headcount').value || 1) : 0,
     vegetarian: attending ? (+document.getElementById('vegetarian').value || 0) : 0,
@@ -211,7 +230,7 @@ async function submitRsvp(){
       document.getElementById('done-sub').innerHTML = '很遺憾這次無法與您相聚，期待下次再會 🌱';
     }
     done.style.display = 'block';
-    setTimeout(() => { if(liff.isInClient()) liff.closeWindow(); }, 2600);
+    if(inClient){ setTimeout(() => { try{ liff.closeWindow(); }catch(e){} }, 2600); }
   } catch(e){
     showErr('送出失敗：' + (e.message || e));
     btn.disabled = false; btn.textContent = '送出回覆';

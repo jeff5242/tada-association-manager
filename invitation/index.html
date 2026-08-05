@@ -79,6 +79,12 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
 .join-cta .arw{font-size:16px;font-weight:400;}
 .join-cta-top{margin:2px 0 20px;}
 .join-cta-bottom{margin:2px 0 16px;}
+.cta-row{display:flex;gap:10px;margin:2px 0 20px;}
+.cta-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:15px 8px;font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;letter-spacing:0.05em;text-decoration:none;border-radius:8px;transition:transform .2s;}
+.cta-btn:hover{transform:translateY(-2px);}
+.cta-btn .cta-ic{font-size:16px;}
+.cta-rsvp{background:var(--green-deep);color:var(--gold-light);border:1.5px solid var(--gold);}
+.cta-join{background:linear-gradient(135deg,var(--gold),var(--gold-light));color:var(--green-deep);box-shadow:0 6px 18px rgba(184,145,58,0.35);}
 .bottom-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
 </style>
 </head>
@@ -128,7 +134,10 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
       </div>
     </div>
 
-    <a href="../join/" target="_blank" class="join-cta join-cta-top">我要加入 TADA <span class="arw">→</span></a>
+    <div class="cta-row">
+      <a href="../rsvp/" target="_blank" class="cta-btn cta-rsvp"><span class="cta-ic">✍️</span>出席回覆</a>
+      <a href="../join/" target="_blank" class="cta-btn cta-join"><span class="cta-ic">🌱</span>加入會員</a>
+    </div>
 
     <div class="pillars">
       <div class="pillar">
