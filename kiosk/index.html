@@ -111,7 +111,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
         <div class="idle-col">
           <div class="step">STEP 1</div>
           <div class="idle-h">加入 TADA LINE</div>
-          <div class="oa-qr" id="oa-qr"><div class="ph">（待設定官方帳號連結）</div></div>
+          <div class="oa-qr" id="oa-qr"><img src="../assets/line/oa-qr.png" alt="加入 TADA LINE 官方帳號"></div>
           <div class="idle-p">手機掃描加入官方帳號<br>領票、投票、活動通知都在這裡</div>
         </div>
         <div class="idle-div"></div>
@@ -183,11 +183,7 @@ const VOTE_BASE = 'https://tada-ai.org.tw/vote/';
 const LINE_OA_ADD_URL = 'https://line.me/R/ti/p/@352ovzeo';
 let election = null, current = null, state = 'idle';
 
-function renderOaQr(){
-  if(!LINE_OA_ADD_URL) return;                 // 未設定則保留占位提示
-  const box=document.getElementById('oa-qr'); box.innerHTML='';
-  new QRCode(box, { text: LINE_OA_ADD_URL, width:212, height:212, correctLevel: QRCode.CorrectLevel.M });
-}
+function renderOaQr(){ /* 使用官方 QR 圖片（assets/line/oa-qr.png），毋須動態產生 */ }
 
 function show(view){
   ['v-idle','v-found','v-print'].forEach(id=>document.getElementById(id).classList.toggle('on', id===view));
