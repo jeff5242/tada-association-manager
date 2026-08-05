@@ -13,6 +13,10 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
 .top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
 .card-bg{position:absolute;inset:0;opacity:0.03;background-image:repeating-linear-gradient(45deg,var(--green-deep) 0px,var(--green-deep) 1px,transparent 1px,transparent 14px);pointer-events:none;}
 .inner{position:relative;z-index:1;padding:36px 32px 32px;}
+.masthead{background:var(--green-deep);margin:-36px -32px 20px;padding:20px 26px;display:flex;justify-content:center;align-items:center;}
+.masthead img{width:100%;max-width:420px;height:auto;display:block;}
+.map-link{display:inline-flex;align-items:center;gap:5px;margin-top:9px;font-size:12.5px;font-weight:700;color:var(--green-deep);background:var(--gold-pale);border:1px solid rgba(184,145,58,0.5);border-radius:6px;padding:6px 12px;text-decoration:none;letter-spacing:0.03em;}
+.map-link:active{background:var(--gold-light);}
 .header-row{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
 .logo-box{width:54px;height:54px;border-radius:50%;border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;background:white;flex-shrink:0;overflow:hidden;}
 .org{flex:1;}
@@ -79,24 +83,9 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
   <div class="card-bg"></div>
   <div class="inner">
 
-    <div class="header-row">
-      <div class="logo-box">
-        <svg width="54" height="54" viewBox="0 0 54 54" xmlns="http://www.w3.org/2000/svg">
-          <ellipse cx="20" cy="20" rx="14" ry="10" fill="#6ab04c" transform="rotate(-30 20 20)"/>
-          <ellipse cx="34" cy="20" rx="14" ry="10" fill="#6ab04c" transform="rotate(30 34 20)"/>
-          <ellipse cx="18" cy="34" rx="11" ry="8" fill="#2e86c1" transform="rotate(20 18 34)"/>
-          <ellipse cx="36" cy="34" rx="11" ry="8" fill="#2e86c1" transform="rotate(-20 36 34)"/>
-          <ellipse cx="27" cy="27" rx="4" ry="12" fill="#1a5276"/>
-          <text x="27" y="30" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="7.5" font-weight="900" fill="white" letter-spacing="0.5">TADA</text>
-        </svg>
-      </div>
-      <div class="org">
-        <div class="org-name">台灣科技農企業發展協會</div>
-        <div class="org-sub">Taiwan Advanced Agribusiness Development Association</div>
-      </div>
+    <div class="masthead">
+      <img src="../assets/logo/tada-logo-gold.png" alt="台灣科技農企業發展協會 Taiwan Advanced Agribusiness Development Association">
     </div>
-
-    <div class="divider"></div>
 
     <div class="ai-badge">
       <div class="ai-dot"></div>
@@ -121,9 +110,10 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
       </div>
       <div class="info-cell full">
         <div class="info-label">VENUE 地點</div>
-        <div class="info-value">臻愛婚宴會館　烏日高鐵店
+        <div class="info-value">臻愛婚宴會館　2F 風情雅典廳
           <span class="sub">台中市烏日區高鐵路三段 168 號</span>
           <span class="sub2">台中高鐵站步行約 8 分鐘　｜　停車位逾 400 個</span>
+          <a class="map-link" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%87%BB%E6%84%9B%E5%A9%9A%E5%AE%B4%E6%9C%83%E9%A4%A8%20%E5%8F%B0%E4%B8%AD%E5%B8%82%E7%83%8F%E6%97%A5%E5%8D%80%E9%AB%98%E9%90%B5%E8%B7%AF%E4%B8%89%E6%AE%B5168%E8%99%9F" target="_blank" rel="noopener">📍 Google 地圖導航 →</a>
         </div>
       </div>
     </div>
@@ -167,14 +157,14 @@ body{background:var(--green-deep);min-height:100vh;display:flex;align-items:cent
         <div class="p-time">16:50</div>
         <div class="p-body">
           <div class="p-tag">大師講座</div>
-          <div class="p-name">傳承與創新—以科技驅動臺灣農產業韌性發展<em>講者：農業部農業試驗所 所長 李紅曦</em></div>
+          <div class="p-name">以科技驅動臺灣農產業韌性發展<em>講者：農業部農業試驗所 所長 李紅曦</em></div>
         </div>
       </div>
       <div class="program-item">
         <div class="p-time">17:30</div>
         <div class="p-body">
           <div class="p-tag">政策宣導</div>
-          <div class="p-name">中衛輔導計劃簡介<em>財團法人中衛發展中心</em></div>
+          <div class="p-name">產業升級輔導資源分享（中衛）<em>財團法人中衛發展中心</em></div>
         </div>
       </div>
       <div class="program-item dinner">
