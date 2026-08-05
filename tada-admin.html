@@ -661,15 +661,16 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <option value="no">無法出席</option>
       <option value="">全部</option>
     </select>
+    <label style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:5px;margin-left:12px;cursor:pointer;"><input type="checkbox" id="rsvp-show-hidden" onchange="renderRsvp()"> 顯示已隱藏</label>
     <span style="font-size:11px;color:var(--gray);margin-left:auto;">共 <span id="rsvp-count">0</span> 筆回覆</span>
   </div>
 
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>回覆者</th><th>出席</th><th>人數</th><th>素食</th><th>同行/備註</th><th>回覆時間</th>
+        <th>回覆者</th><th>來源</th><th>出席</th><th>人數</th><th>素食</th><th>同行/備註</th><th>回覆時間</th><th>操作</th>
       </tr></thead>
-      <tbody id="rsvp-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取回覆</td></tr></tbody>
+      <tbody id="rsvp-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取回覆</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -1570,16 +1571,25 @@ async function loadRsvp() {
 
 function filterRsvp(v) { rsvpFilter = v; renderRsvp(); }
 
-function renderRsvp() {
-  const yes = allRsvp.filter(r => r.attending);
-  const totalHead = yes.reduce((s, r) => s + (r.headcount || 0), 0);
-  const totalVeg = yes.reduce((s, r) => s + (r.vegetarian || 0), 0);
-  document.getElementById('rsvp-headcount').textContent = totalHead;
-  document.getElementById('rsvp-yes').textContent = yes.length;
-  document.getElementById('rsvp-no').textContent = allRsvp.filter(r => !r.attending).length;
-  document.getElementById('rsvp-veg').textContent = totalVeg;
+let editingRsvp = null;
 
+function rsvpSource(r){
+  return (r.user_id||'').startsWith('web-')
+    ? '<span class="status" style="background:rgba(41,182,246,0.15);color:#4fc3f7;">🌐 網頁自填</span>'
+    : '<span class="status" style="background:rgba(6,199,85,0.15);color:#5bd88a;">💬 LINE</span>';
+}
+
+function renderRsvp() {
+  const visible = allRsvp.filter(r => !r.hidden);   // 統計不含已隱藏
+  const yes = visible.filter(r => r.attending);
+  document.getElementById('rsvp-headcount').textContent = yes.reduce((s, r) => s + (r.headcount || 0), 0);
+  document.getElementById('rsvp-yes').textContent = yes.length;
+  document.getElementById('rsvp-no').textContent = visible.filter(r => !r.attending).length;
+  document.getElementById('rsvp-veg').textContent = yes.reduce((s, r) => s + (r.vegetarian || 0), 0);
+
+  const showHidden = document.getElementById('rsvp-show-hidden')?.checked;
   const data = allRsvp.filter(r => {
+    if (!showHidden && r.hidden) return false;
     if (rsvpFilter === 'yes') return r.attending;
     if (rsvpFilter === 'no') return !r.attending;
     return true;
@@ -1587,32 +1597,82 @@ function renderRsvp() {
   document.getElementById('rsvp-count').textContent = data.length;
 
   if (!data.length) {
-    document.getElementById('rsvp-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:30px;">尚無回覆</td></tr>';
+    document.getElementById('rsvp-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">尚無回覆</td></tr>';
     return;
   }
 
   document.getElementById('rsvp-tbody').innerHTML = data.map(r => {
+    if (r.user_id === editingRsvp) return rsvpEditRow(r);
     const dt = r.updated_at ? new Date(r.updated_at).toLocaleString('zh-TW', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '–';
     const att = r.attending
       ? '<span class="status" style="background:rgba(46,125,50,0.2);color:#66bb6a;">✓ 出席</span>'
       : '<span class="status" style="background:rgba(192,57,43,0.15);color:#ef5350;">✕ 不克</span>';
     const extra = [r.companions, r.note].filter(Boolean).map(escapeHtml).join('｜') || '–';
-    return `<tr>
-      <td data-label="回覆者" style="color:var(--white);">${escapeHtml(r.display_name || '（未取得）')}</td>
+    const uid = escapeHtml(r.user_id);
+    return `<tr style="${r.hidden?'opacity:.5;':''}">
+      <td data-label="回覆者" style="color:var(--white);">${escapeHtml(r.display_name || '（未取得）')}${r.hidden?' <span style="font-size:10px;color:var(--gray);">(已隱藏)</span>':''}</td>
+      <td data-label="來源">${rsvpSource(r)}</td>
       <td data-label="出席">${att}</td>
       <td data-label="人數" style="font-weight:700;color:var(--gold);">${r.attending ? (r.headcount ?? 0) : '–'}</td>
       <td data-label="素食" style="color:var(--gray);">${r.attending ? (r.vegetarian ?? 0) : '–'}</td>
-      <td data-label="同行/備註" style="font-size:12px;color:var(--gray);max-width:200px;">${extra}</td>
+      <td data-label="同行/備註" style="font-size:12px;color:var(--gray);max-width:180px;">${extra}</td>
       <td data-label="回覆時間" style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td>
+      <td data-label="操作" style="white-space:nowrap;">
+        <button class="btn btn-sm btn-outline" onclick="editRsvpRow('${uid}')">編輯</button>
+        ${r.hidden
+          ? `<button class="btn btn-sm" style="background:rgba(46,125,50,0.2);color:#66bb6a;border:1px solid rgba(46,125,50,0.3);" onclick="toggleHideRsvp('${uid}',false)">取消隱藏</button>`
+          : `<button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="toggleHideRsvp('${uid}',true)">隱藏</button>`}
+      </td>
     </tr>`;
   }).join('');
 }
 
+function rsvpEditRow(r){
+  const uid = escapeHtml(r.user_id);
+  return `<tr style="background:rgba(196,146,42,0.08);">
+    <td><input id="ed-name" class="search-input" style="width:100%;min-width:80px;" value="${escapeHtml(r.display_name||'')}"></td>
+    <td>${rsvpSource(r)}</td>
+    <td><select id="ed-att" class="search-input" style="width:76px;"><option value="1"${r.attending?' selected':''}>出席</option><option value="0"${!r.attending?' selected':''}>不克</option></select></td>
+    <td><input id="ed-head" type="number" min="0" class="search-input" style="width:60px;" value="${r.headcount??0}"></td>
+    <td><input id="ed-veg" type="number" min="0" class="search-input" style="width:60px;" value="${r.vegetarian??0}"></td>
+    <td colspan="2"><input id="ed-note" class="search-input" style="width:100%;" placeholder="備註" value="${escapeHtml(r.note||'')}"></td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-sm btn-gold" onclick="saveRsvpRow('${uid}')">儲存</button>
+      <button class="btn btn-sm btn-outline" onclick="editingRsvp=null;renderRsvp()">取消</button>
+    </td>
+  </tr>`;
+}
+
+function editRsvpRow(uid){ editingRsvp = uid; renderRsvp(); }
+
+async function saveRsvpRow(uid){
+  const attending = document.getElementById('ed-att').value === '1';
+  const payload = {
+    display_name: document.getElementById('ed-name').value.trim(),
+    attending,
+    headcount: attending ? (+document.getElementById('ed-head').value||0) : 0,
+    vegetarian: attending ? (+document.getElementById('ed-veg').value||0) : 0,
+    note: document.getElementById('ed-note').value.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+  const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(uid)}`, {
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify(payload) });
+  if(res.ok){ editingRsvp=null; loadRsvp(); } else alert('儲存失敗：'+await res.text());
+}
+
+async function toggleHideRsvp(uid, hide){
+  const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(uid)}`, {
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({hidden:hide}) });
+  if(res.ok) loadRsvp(); else alert('操作失敗：'+await res.text());
+}
+
 function exportRsvpCSV() {
-  if (!allRsvp.length) { alert('尚無資料可匯出'); return; }
-  const rows = [['姓名','出席','人數','素食份數','同行眷屬','備註','回覆時間']];
-  allRsvp.forEach(r => rows.push([
-    r.display_name || '', r.attending ? '出席' : '不克出席',
+  const list = allRsvp.filter(r => !r.hidden);
+  if (!list.length) { alert('尚無資料可匯出'); return; }
+  const rows = [['姓名','來源','出席','人數','素食份數','同行眷屬','備註','回覆時間']];
+  list.forEach(r => rows.push([
+    r.display_name || '', (r.user_id||'').startsWith('web-') ? '網頁自填' : 'LINE',
+    r.attending ? '出席' : '不克出席',
     r.attending ? (r.headcount ?? 0) : 0, r.attending ? (r.vegetarian ?? 0) : 0,
     r.companions || '', r.note || '',
     r.updated_at ? new Date(r.updated_at).toLocaleString('zh-TW') : '',

@@ -28,3 +28,6 @@ CREATE POLICY "anon_update_rsvp" ON tada_rsvp FOR UPDATE USING (true);
 
 DROP POLICY IF EXISTS "anon_select_rsvp" ON tada_rsvp;
 CREATE POLICY "anon_select_rsvp" ON tada_rsvp FOR SELECT USING (true);
+
+-- 後臺「隱藏」不需要的回覆用（軟隱藏，統計自動排除；anon 可 UPDATE）
+ALTER TABLE tada_rsvp ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE;
