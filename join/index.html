@@ -505,42 +505,21 @@ function buildRepBlock(idx) {
   const label = `代表人 ${idx + 1}${isFirst ? '（主要）' : ''}`;
   const req = isFirst ? '<span class="req">*</span>' : '';
   const reqAttr = isFirst ? 'required' : '';
-  const eduOpts = EDU_OPTIONS.map(o => `<option>${o}</option>`).join('');
   return `
     <div class="rep-block" id="rep-block-${idx}" style="border:1px solid var(--border);padding:14px 14px 10px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <span style="font-size:11px;font-weight:600;color:var(--fern);">${label}</span>
         ${!isFirst ? `<button type="button" onclick="removeRepBlock(${idx})" style="font-size:11px;color:var(--red);border:none;background:none;cursor:pointer;padding:0;">✕ 移除</button>` : ''}
       </div>
-      <div class="field-row">
-        <div class="field"><label>姓名 ${req}</label>
-          <input type="text" id="${repFieldId(idx,'name')}" ${reqAttr} placeholder="姓名">
-        </div>
-        <div class="field"><label>性別</label>
-          <div class="radio-group">
-            <label><input type="radio" name="${repFieldId(idx,'gender')}" value="男"> 男</label>
-            <label><input type="radio" name="${repFieldId(idx,'gender')}" value="女"> 女</label>
-          </div>
-        </div>
+      <div class="field"><label>姓名 ${req}</label>
+        <input type="text" id="${repFieldId(idx,'name')}" ${reqAttr} placeholder="姓名">
       </div>
       <div class="field-row">
-        <div class="field"><label>出生日期</label><input type="date" id="${repFieldId(idx,'birthday')}"></div>
-        <div class="field"><label>出生地</label><input type="text" id="${repFieldId(idx,'birthplace')}" placeholder="例：台中市"></div>
-      </div>
-      <div class="field"><label>學歷</label>
-        <select id="${repFieldId(idx,'education')}">
-          <option value="">請選擇</option>${eduOpts}
-        </select>
-      </div>
-      <div class="field"><label>經歷</label>
-        <textarea id="${repFieldId(idx,'experience')}" placeholder="工作經歷"></textarea>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>E-mail ${req}</label>
-          <input type="email" id="${repFieldId(idx,'email')}" ${reqAttr} placeholder="Email">
-        </div>
         <div class="field"><label>聯絡電話 ${req}</label>
           <input type="tel" id="${repFieldId(idx,'tel')}" ${reqAttr} placeholder="09XX-XXX-XXX">
+        </div>
+        <div class="field"><label>E-mail</label>
+          <input type="email" id="${repFieldId(idx,'email')}" placeholder="Email（選填）">
         </div>
       </div>
     </div>`;
@@ -567,15 +546,9 @@ function collectRepData() {
     if (!block) continue;
     const prefix = REP_PREFIXES[i];
     const val = (f) => (document.getElementById(repFieldId(i, f)) || {}).value || '';
-    const genderRadio = block.querySelector(`input[name="${repFieldId(i,'gender')}"]:checked`);
     if (val('name')) data[`${prefix}_name`] = val('name');
-    if (genderRadio)  data[`${prefix}_gender`] = genderRadio.value;
-    if (val('birthday')) data[`${prefix}_birthday`] = val('birthday');
-    if (val('birthplace')) data[`${prefix}_birthplace`] = val('birthplace');
-    if (val('education')) data[`${prefix}_education`] = val('education');
-    if (val('experience')) data[`${prefix}_experience`] = val('experience');
-    if (val('email')) data[`${prefix}_email`] = val('email');
     if (val('tel')) data[`${prefix}_tel`] = val('tel');
+    if (val('email')) data[`${prefix}_email`] = val('email');
   }
   return data;
 }
@@ -593,7 +566,8 @@ async function submitForm(e, type) {
 
   const fd = new FormData(form);
   const payload = { type, is_renewal: false };
-  for (const [k, v] of fd.entries()) if (v) payload[k] = v;
+  // 只接受真正的欄位（皆為 snake_case，無「-」）；代表人區塊的 id 含「-」，不可流入 payload
+  for (const [k, v] of fd.entries()) if (v && !k.includes('-')) payload[k] = v;
 
   if (type === 'group') {
     Object.assign(payload, collectRepData());
@@ -643,7 +617,8 @@ async function submitPartial(btn) {
   btn.textContent = '送出中…';
 
   const payload = { type, is_renewal: false, admin_notes: '⚠️ 會員自行先送出，資料待秘書處協助補齊' };
-  for (const [k, v] of fd.entries()) if (v) payload[k] = v;
+  // 只接受真正的欄位（皆為 snake_case，無「-」）；代表人區塊的 id 含「-」，不可流入 payload
+  for (const [k, v] of fd.entries()) if (v && !k.includes('-')) payload[k] = v;
   if (type === 'group') Object.assign(payload, collectRepData());
 
   try {
