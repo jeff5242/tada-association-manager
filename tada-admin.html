@@ -376,6 +376,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="section-header" style="margin-bottom:16px;">
     <div class="section-title">入會申請審核</div>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-outline btn-sm" id="app-view-toggle" onclick="toggleAppView()">🗂 已隱藏 <span id="app-hidden-count">0</span></button>
       <button class="btn btn-outline btn-sm" onclick="loadApplications()">↻ 重新載入</button>
       <span id="app-sb-status" style="font-size:11px;"></span>
     </div>
@@ -736,6 +737,18 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
       <button class="btn btn-outline" onclick="closeAppModal()">取消</button>
       <button class="btn btn-gold" id="app-modal-confirm-btn">確認</button>
+    </div>
+  </div>
+</div>
+
+<!-- 入會申請 檢視／修改 Modal -->
+<div id="app-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:18px;" id="app-edit-title">檢視／修改申請</div>
+    <div id="app-edit-fields" style="display:flex;flex-direction:column;gap:12px;"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeAppEdit()">取消</button>
+      <button class="btn btn-gold" id="app-edit-save-btn" onclick="saveAppEdit()">儲存修改</button>
     </div>
   </div>
 </div>
@@ -1171,6 +1184,7 @@ loadInviteData();
 // ── 入會審核 ──────────────────────────────────────────────
 let allApps = [];
 let appFilter = '', appStatusFilter = '', appTypeFilter = '';
+let appView = 'active'; // 'active' | 'hidden'
 let pendingAction = null; // { id, action }
 
 const APP_STATUS_HTML = {
@@ -1207,7 +1221,9 @@ function filterAppStatus(s) { appStatusFilter = s; renderApps(); }
 function filterAppType(t) { appTypeFilter = t; renderApps(); }
 
 function renderApps() {
+  const wantHidden = appView === 'hidden';
   const data = allApps.filter(a => {
+    if (!!a.hidden !== wantHidden) return false;
     const name = a.name || a.org_name || '';
     const email = a.email || a.rep_email || '';
     const q = !appFilter || name.includes(appFilter) || email.includes(appFilter) || (a.job||'').includes(appFilter);
@@ -1216,14 +1232,27 @@ function renderApps() {
     return q && s && t;
   });
 
+  // 已隱藏數量與切換鈕狀態
+  const hiddenCount = allApps.filter(a => a.hidden).length;
+  document.getElementById('app-hidden-count').textContent = hiddenCount;
+  const vt = document.getElementById('app-view-toggle');
+  if (vt) {
+    vt.classList.toggle('btn-gold', wantHidden);
+    vt.classList.toggle('btn-outline', !wantHidden);
+    vt.innerHTML = wantHidden
+      ? '← 返回申請列表'
+      : '🗂 已隱藏 <span id="app-hidden-count">' + hiddenCount + '</span>';
+  }
+
   document.getElementById('app-count').textContent = data.length;
-  document.getElementById('app-cnt-pending').textContent   = allApps.filter(a => a.status === 'pending').length;
-  document.getElementById('app-cnt-paid').textContent      = allApps.filter(a => a.status === 'payment_confirmed').length;
-  document.getElementById('app-cnt-approved').textContent  = allApps.filter(a => a.status === 'approved').length;
-  document.getElementById('app-cnt-rejected').textContent  = allApps.filter(a => a.status === 'rejected').length;
+  document.getElementById('app-cnt-pending').textContent   = allApps.filter(a => !a.hidden && a.status === 'pending').length;
+  document.getElementById('app-cnt-paid').textContent      = allApps.filter(a => !a.hidden && a.status === 'payment_confirmed').length;
+  document.getElementById('app-cnt-approved').textContent  = allApps.filter(a => !a.hidden && a.status === 'approved').length;
+  document.getElementById('app-cnt-rejected').textContent  = allApps.filter(a => !a.hidden && a.status === 'rejected').length;
 
   if (!data.length) {
-    document.getElementById('app-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">無符合條件的申請</td></tr>';
+    const emptyMsg = wantHidden ? '目前沒有已隱藏的申請' : '無符合條件的申請';
+    document.getElementById('app-tbody').innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">${emptyMsg}</td></tr>`;
     return;
   }
 
@@ -1256,6 +1285,16 @@ function renderApps() {
 function buildActionButtons(a) {
   const id = a.id;
   const btns = [];
+
+  // 已隱藏檢視：只提供 檢視／修改、取消隱藏、刪除
+  if (appView === 'hidden') {
+    btns.push(`<button class="btn btn-sm btn-outline" onclick="openAppEdit('${id}')">檢視／修改</button>`);
+    btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="unhideApp('${id}')">取消隱藏</button>`);
+    btns.push(`<button class="btn btn-sm" style="margin-left:4px;background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.4);" onclick="deleteApp('${id}')">刪除</button>`);
+    return btns.join('');
+  }
+
+  // 一般檢視：狀態流程按鈕
   if (a.status === 'pending') {
     btns.push(`<button class="btn btn-sm" style="background:rgba(41,182,246,0.15);color:#29b6f6;border:1px solid rgba(41,182,246,0.3);" onclick="openAppModal('${id}','payment_confirmed')">確認付款</button>`);
     btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="openAppModal('${id}','rejected')">婉拒</button>`);
@@ -1267,7 +1306,118 @@ function buildActionButtons(a) {
   } else if (a.status === 'rejected') {
     btns.push(`<button class="btn btn-sm btn-outline" onclick="openAppModal('${id}','pending')">重置待審</button>`);
   }
+  // 通用：檢視／修改、隱藏
+  btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="openAppEdit('${id}')">檢視／修改</button>`);
+  btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;color:var(--gray);" onclick="hideApp('${id}')">隱藏</button>`);
   return btns.join('');
+}
+
+// ── 隱藏／取消隱藏／刪除 ─────────────────────────────
+function toggleAppView() {
+  appView = appView === 'hidden' ? 'active' : 'hidden';
+  renderApps();
+}
+
+async function patchApp(id, payload) {
+  const res = await fetch(`${SB_URL}/rest/v1/tada_applications?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+}
+
+async function hideApp(id) {
+  try { await patchApp(id, { hidden: true }); await loadApplications(); }
+  catch (e) { alert('隱藏失敗：' + e.message); }
+}
+
+async function unhideApp(id) {
+  try { await patchApp(id, { hidden: false }); await loadApplications(); }
+  catch (e) { alert('取消隱藏失敗：' + e.message); }
+}
+
+async function deleteApp(id) {
+  const a = allApps.find(x => x.id === id);
+  const nm = a ? (a.name || a.org_name || '此筆') : '此筆';
+  if (!confirm(`確定永久刪除「${nm}」的申請資料嗎？\n此動作無法復原。`)) return;
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_applications?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    await loadApplications();
+  } catch (e) { alert('刪除失敗：' + e.message); }
+}
+
+// ── 檢視／修改 ───────────────────────────────────────
+const APP_EDIT_FIELDS = {
+  personal: [
+    ['name','姓名'], ['gender','性別'], ['birthday','出生日期'], ['id_number','身分證字號'],
+    ['education','學歷'], ['experience','經歷'], ['job','職稱'], ['expertise','專長'],
+    ['addr_domicile','戶籍地址'], ['addr_mail','通訊地址'],
+    ['tel_office','公司電話'], ['tel_mobile','手機'], ['email','Email'],
+    ['org_name','公司名稱'], ['license_no','統編'], ['ref1','推薦人1'], ['ref2','推薦人2'],
+  ],
+  group: [
+    ['org_name','團體名稱'], ['org_addr','地址'], ['org_tel','電話'], ['org_founded','成立日期'],
+    ['ceo_name','負責人'], ['member_count','會員人數'], ['license_no','證照字號'], ['license_org','發證機關'],
+    ['business_scope','業務項目'],
+    ['rep_name','代表一 姓名'], ['rep_tel','代表一 電話'], ['rep_email','代表一 Email'],
+    ['rep2_name','代表二 姓名'], ['rep2_tel','代表二 電話'], ['rep2_email','代表二 Email'],
+    ['rep3_name','代表三 姓名'], ['rep3_tel','代表三 電話'], ['rep3_email','代表三 Email'],
+    ['contact_tel','聯絡人電話'], ['contact_email','聯絡人Email'],
+    ['ref1','推薦人1'], ['ref2','推薦人2'],
+  ],
+};
+let editingAppId = null;
+
+function openAppEdit(id) {
+  const a = allApps.find(x => x.id === id);
+  if (!a) return;
+  editingAppId = id;
+  const spec = APP_EDIT_FIELDS[a.type] || APP_EDIT_FIELDS.personal;
+  document.getElementById('app-edit-title').textContent =
+    '檢視／修改：' + (a.name || a.org_name || '申請');
+  const esc = s => String(s == null ? '' : s).replace(/"/g, '&quot;');
+  const rows = spec.map(([k, label]) => `
+    <div class="field" style="display:flex;flex-direction:column;gap:4px;">
+      <label style="font-size:11px;color:var(--gray);">${label}</label>
+      <input type="text" data-appfield="${k}" value="${esc(a[k])}"
+        style="background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:8px 10px;font-size:13px;font-family:'Noto Sans TC',sans-serif;outline:none;">
+    </div>`).join('');
+  const notes = `
+    <div class="field" style="display:flex;flex-direction:column;gap:4px;">
+      <label style="font-size:11px;color:var(--gray);">秘書處備註</label>
+      <textarea data-appfield="admin_notes" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:8px 10px;font-size:13px;font-family:'Noto Sans TC',sans-serif;min-height:56px;resize:vertical;outline:none;">${esc(a.admin_notes)}</textarea>
+    </div>`;
+  document.getElementById('app-edit-fields').innerHTML = rows + notes;
+  document.getElementById('app-edit-modal').style.display = 'flex';
+}
+
+function closeAppEdit() {
+  document.getElementById('app-edit-modal').style.display = 'none';
+  editingAppId = null;
+}
+
+async function saveAppEdit() {
+  if (!editingAppId) return;
+  const btn = document.getElementById('app-edit-save-btn');
+  btn.disabled = true; btn.textContent = '儲存中…';
+  const payload = {};
+  document.querySelectorAll('#app-edit-fields [data-appfield]').forEach(el => {
+    const v = el.value.trim();
+    payload[el.dataset.appfield] = v === '' ? null : v;
+  });
+  try {
+    await patchApp(editingAppId, payload);
+    closeAppEdit();
+    await loadApplications();
+  } catch (e) {
+    alert('儲存失敗：' + e.message);
+  }
+  btn.disabled = false; btn.textContent = '儲存修改';
 }
 
 function openAppModal(id, action) {
