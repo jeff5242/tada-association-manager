@@ -72,6 +72,22 @@ textarea{resize:vertical;min-height:60px;}
       </div>
 
       <div class="field">
+        <label class="label">單位（選填）</label>
+        <input type="text" id="rsvp-org" placeholder="公司／機構名稱">
+      </div>
+
+      <div class="field">
+        <label class="label">職稱（選填）</label>
+        <input type="text" id="rsvp-title" placeholder="例如：董事長、總經理">
+      </div>
+
+      <div class="field">
+        <label class="label">手機（選填）</label>
+        <input type="tel" id="rsvp-mobile" placeholder="09XX-XXX-XXX" inputmode="tel">
+        <div class="hint">方便當天聯繫與製作桌卡</div>
+      </div>
+
+      <div class="field">
         <label class="label">是否出席</label>
         <div class="seg">
           <button type="button" id="btn-yes" onclick="setAttend(true)">✓ 會出席</button>
@@ -177,6 +193,9 @@ async function init(){
     if(rows.length){
       const r = rows[0];
       if(r.display_name) document.getElementById('rsvp-name').value = r.display_name;
+      document.getElementById('rsvp-org').value = r.org ?? '';
+      document.getElementById('rsvp-title').value = r.title ?? '';
+      document.getElementById('rsvp-mobile').value = r.mobile ?? '';
       setAttend(r.attending);
       document.getElementById('headcount').value = r.headcount ?? 1;
       document.getElementById('vegetarian').value = r.vegetarian ?? 0;
@@ -202,6 +221,9 @@ async function submitRsvp(){
   const payload = {
     user_id: userId,
     display_name: name,
+    org: document.getElementById('rsvp-org').value.trim() || null,
+    title: document.getElementById('rsvp-title').value.trim() || null,
+    mobile: document.getElementById('rsvp-mobile').value.trim() || null,
     attending: attending,
     headcount: attending ? (+document.getElementById('headcount').value || 1) : 0,
     vegetarian: attending ? (+document.getElementById('vegetarian').value || 0) : 0,

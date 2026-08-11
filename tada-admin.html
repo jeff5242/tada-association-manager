@@ -1759,8 +1759,11 @@ function renderRsvp() {
       : '<span class="status" style="background:rgba(192,57,43,0.15);color:#ef5350;">✕ 不克</span>';
     const extra = [r.companions, r.note].filter(Boolean).map(escapeHtml).join('｜') || '–';
     const uid = escapeHtml(r.user_id);
+    const orgTitle = [r.org, r.title].filter(Boolean).map(escapeHtml).join('　');
+    const sub = [orgTitle, r.mobile ? '📱 ' + escapeHtml(r.mobile) : '']
+      .filter(Boolean).map(s => `<div style="font-size:11px;color:var(--gray);font-weight:400;">${s}</div>`).join('');
     return `<tr style="${r.hidden?'opacity:.5;':''}">
-      <td data-label="回覆者" style="color:var(--white);">${escapeHtml(r.display_name || '（未取得）')}${r.hidden?' <span style="font-size:10px;color:var(--gray);">(已隱藏)</span>':''}</td>
+      <td data-label="回覆者" style="color:var(--white);">${escapeHtml(r.display_name || '（未取得）')}${r.hidden?' <span style="font-size:10px;color:var(--gray);">(已隱藏)</span>':''}${sub}</td>
       <td data-label="來源">${rsvpSource(r)}</td>
       <td data-label="出席">${att}</td>
       <td data-label="人數" style="font-weight:700;color:var(--gold);">${r.attending ? (r.headcount ?? 0) : '–'}</td>
@@ -1780,7 +1783,12 @@ function renderRsvp() {
 function rsvpEditRow(r){
   const uid = escapeHtml(r.user_id);
   return `<tr style="background:rgba(196,146,42,0.08);">
-    <td><input id="ed-name" class="search-input" style="width:100%;min-width:80px;" value="${escapeHtml(r.display_name||'')}"></td>
+    <td>
+      <input id="ed-name" class="search-input" style="width:100%;min-width:80px;" placeholder="姓名" value="${escapeHtml(r.display_name||'')}">
+      <input id="ed-org" class="search-input" style="width:100%;min-width:80px;margin-top:4px;" placeholder="單位" value="${escapeHtml(r.org||'')}">
+      <input id="ed-title" class="search-input" style="width:100%;min-width:80px;margin-top:4px;" placeholder="職稱" value="${escapeHtml(r.title||'')}">
+      <input id="ed-mobile" class="search-input" style="width:100%;min-width:80px;margin-top:4px;" placeholder="手機" value="${escapeHtml(r.mobile||'')}">
+    </td>
     <td>${rsvpSource(r)}</td>
     <td><select id="ed-att" class="search-input" style="width:76px;"><option value="1"${r.attending?' selected':''}>出席</option><option value="0"${!r.attending?' selected':''}>不克</option></select></td>
     <td><input id="ed-head" type="number" min="0" class="search-input" style="width:60px;" value="${r.headcount??0}"></td>
@@ -1799,6 +1807,9 @@ async function saveRsvpRow(uid){
   const attending = document.getElementById('ed-att').value === '1';
   const payload = {
     display_name: document.getElementById('ed-name').value.trim(),
+    org: document.getElementById('ed-org').value.trim() || null,
+    title: document.getElementById('ed-title').value.trim() || null,
+    mobile: document.getElementById('ed-mobile').value.trim() || null,
     attending,
     headcount: attending ? (+document.getElementById('ed-head').value||0) : 0,
     vegetarian: attending ? (+document.getElementById('ed-veg').value||0) : 0,
@@ -1819,9 +1830,10 @@ async function toggleHideRsvp(uid, hide){
 function exportRsvpCSV() {
   const list = allRsvp.filter(r => !r.hidden);
   if (!list.length) { alert('尚無資料可匯出'); return; }
-  const rows = [['姓名','來源','出席','人數','素食份數','同行眷屬','備註','回覆時間']];
+  const rows = [['姓名','單位','職稱','手機','來源','出席','人數','素食份數','同行眷屬','備註','回覆時間']];
   list.forEach(r => rows.push([
-    r.display_name || '', (r.user_id||'').startsWith('web-') ? '網頁自填' : 'LINE',
+    r.display_name || '', r.org || '', r.title || '', r.mobile || '',
+    (r.user_id||'').startsWith('web-') ? '網頁自填' : 'LINE',
     r.attending ? '出席' : '不克出席',
     r.attending ? (r.headcount ?? 0) : 0, r.attending ? (r.vegetarian ?? 0) : 0,
     r.companions || '', r.note || '',
