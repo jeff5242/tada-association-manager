@@ -1258,6 +1258,10 @@ function renderApps() {
 
   document.getElementById('app-tbody').innerHTML = data.map(a => {
     const name = a.name || a.org_name || '（未填）';
+    // 個人申請：姓名後面加上（公司名稱），方便辨識
+    const nameDisplay = (a.type === 'personal' && a.org_name)
+      ? `${name}<span style="font-weight:400;color:var(--gray);">（${a.org_name}）</span>`
+      : name;
     const repNames = [a.rep_name, a.rep2_name, a.rep3_name].filter(Boolean);
     const repTag = (a.type === 'group' && repNames.length)
       ? `<br><span style="font-size:10px;color:var(--gray);">代表：${repNames.join('、')}</span>` : '';
@@ -1273,7 +1277,7 @@ function renderApps() {
     return `<tr>
       <td data-label="申請時間" style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td>
       <td data-label="類型">${typeTag}${renewTag}</td>
-      <td data-label="姓名" class="name-cell">${name}<br><span style="font-size:11px;color:var(--gray);font-weight:400;">${a.job||a.ceo_name||''}</span>${repTag}</td>
+      <td data-label="姓名" class="name-cell">${nameDisplay}<br><span style="font-size:11px;color:var(--gray);font-weight:400;">${a.job||a.ceo_name||''}</span>${repTag}</td>
       <td data-label="聯絡" style="font-size:12px;">${contact}</td>
       <td data-label="狀態">${APP_STATUS_HTML[a.status] || a.status}</td>
       <td data-label="備注" style="font-size:11px;color:var(--gray);max-width:140px;">${a.admin_notes||'–'}</td>
