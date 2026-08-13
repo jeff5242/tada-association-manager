@@ -352,6 +352,15 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <option value="group">團體會員</option>
       <option value="board">僅職務(理監事)</option>
     </select>
+    <select class="filter-select" onchange="filterMemberStatus(this.value)">
+      <option value="">全部狀態</option>
+      <option value="有效會員">有效會員</option>
+      <option value="待續約會員">待續約會員</option>
+      <option value="永久會員">永久會員</option>
+      <option value="榮譽會員">榮譽會員</option>
+      <option value="退會會員">退會會員</option>
+      <option value="__none">未標記</option>
+    </select>
     <select class="filter-select" onchange="filterMemberDirSession(this.value)">
       <option value="">全部屆次</option>
       <option value="6">第六屆</option>
@@ -367,7 +376,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>會員編號</th><th>姓名 / 團體</th><th>服務機關 / 團體</th><th>電話</th><th>Email</th><th>職務</th><th>操作</th>
+        <th>會員編號</th><th>姓名 / 團體</th><th>服務機關 / 團體</th><th>電話</th><th>Email</th><th>狀態</th><th>最後繳費</th><th>職務</th><th>操作</th>
       </tr></thead>
       <tbody id="dir-tbody"></tbody>
     </table>
@@ -798,6 +807,59 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ 團體會員編輯 Modal（含最多 3 位代表）══════════ -->
+<div id="group-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:640px;max-height:92vh;overflow-y:auto;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:18px;" id="group-modal-title">編輯團體會員</div>
+    <input type="hidden" id="g-id">
+
+    <div style="font-size:11px;color:var(--gold);letter-spacing:.15em;margin-bottom:10px;">團體基本資料</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;gap:10px;">
+        <label style="font-size:11px;color:var(--gray);flex:0 0 130px;">會員編號<input id="g-no" class="search-input" style="width:100%;margin-top:4px;" placeholder="如 11072002"></label>
+        <label style="font-size:11px;color:var(--gray);flex:1;">團體名稱<input id="g-name" class="search-input" style="width:100%;margin-top:4px;" placeholder="團體全名"></label>
+        <label style="font-size:11px;color:var(--gray);flex:0 0 100px;">入會日<input id="g-join" class="search-input" style="width:100%;margin-top:4px;" placeholder="民國"></label>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <label style="font-size:11px;color:var(--gray);flex:1;">電話<input id="g-phone" class="search-input" style="width:100%;margin-top:4px;"></label>
+        <label style="font-size:11px;color:var(--gray);flex:1;">統編／證照字號<input id="g-cert" class="search-input" style="width:100%;margin-top:4px;"></label>
+        <label style="font-size:11px;color:var(--gray);flex:0 0 90px;">發證機關<input id="g-certorg" class="search-input" style="width:100%;margin-top:4px;"></label>
+      </div>
+      <label style="font-size:11px;color:var(--gray);">地址<input id="g-addr" class="search-input" style="width:100%;margin-top:4px;"></label>
+      <label style="font-size:11px;color:var(--gray);">業務項目<input id="g-business" class="search-input" style="width:100%;margin-top:4px;"></label>
+      <div style="display:flex;gap:10px;">
+        <label style="font-size:11px;color:var(--gray);flex:1;">成立日期<input id="g-founded" class="search-input" style="width:100%;margin-top:4px;"></label>
+        <label style="font-size:11px;color:var(--gray);flex:1;">會員人數<input id="g-count" class="search-input" style="width:100%;margin-top:4px;"></label>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <label style="font-size:11px;color:var(--gray);flex:1;">本案聯絡人<input id="g-contactname" class="search-input" style="width:100%;margin-top:4px;"></label>
+        <label style="font-size:11px;color:var(--gray);flex:1;">聯絡電話<input id="g-contactphone" class="search-input" style="width:100%;margin-top:4px;"></label>
+        <label style="font-size:11px;color:var(--gray);flex:1;">聯絡 Email<input id="g-contactemail" class="search-input" style="width:100%;margin-top:4px;"></label>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <label style="font-size:11px;color:var(--gray);flex:1;">會員狀態
+          <select id="g-status" class="filter-select" style="width:100%;margin-top:4px;">
+            <option value="">—</option>
+            <option>有效會員</option><option>待續約會員</option><option>永久會員</option><option>榮譽會員</option><option>退會會員</option>
+          </select>
+        </label>
+        <label style="font-size:11px;color:var(--gray);flex:1;">最後繳費日期<input id="g-paid" class="search-input" style="width:100%;margin-top:4px;" placeholder="如 112.08"></label>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--gold);letter-spacing:.15em;margin:18px 0 10px;">會員代表（最多 3 位）</div>
+    <div id="g-reps" style="display:flex;flex-direction:column;gap:12px;"></div>
+
+    <div style="display:flex;gap:10px;margin-top:22px;align-items:center;">
+      <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="deleteGroupFromModal()">刪除此團體</button>
+      <div style="margin-left:auto;display:flex;gap:10px;">
+        <button class="btn btn-outline" onclick="closeGroupModal()">取消</button>
+        <button class="btn btn-gold" onclick="saveGroup()">儲存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── DATA ─────────────────────────────────────────────────
 
@@ -814,7 +876,7 @@ async function loadMembers(){
   const status = document.getElementById('sb-status');
   if(status){ status.style.color='var(--gray)'; status.textContent='載入中…'; }
   try {
-    const sel = 'id,member_no,member_type,name,company,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,join_date,title,terms,note';
+    const sel = 'id,member_no,member_type,name,company,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name';
     const res = await fetch(`${SB_URL}/rest/v1/tada_members?select=${sel}&order=member_no.asc.nullslast`, {headers: SB_HEADERS});
     if(!res.ok) throw new Error('HTTP '+res.status);
     memberRows = await res.json();
@@ -879,7 +941,7 @@ function switchTab(id){
 const SESSION_NAMES = {1:'第一屆',2:'第二屆',3:'第三屆',4:'第四屆',5:'第五屆',6:'第六屆'};
 
 let memberRows = [];              // 直接讀寫 tada_members
-let dirFilter = '', dirSession = '', dirType = '';
+let dirFilter = '', dirSession = '', dirType = '', dirStatus = '';
 let editingMemberId = null;
 const MTYPE = {personal:'個人', group:'團體'};
 const mTypeBadge = t => {
@@ -887,50 +949,89 @@ const mTypeBadge = t => {
   if(t==='group')    return '<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(196,146,42,0.4);color:var(--gold);border-radius:2px;">團體</span>';
   return '<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(41,182,246,0.3);color:#29b6f6;border-radius:2px;">理監事</span>';
 };
+// 會員狀態顏色
+const STATUS_LIST = ['有效會員','待續約會員','永久會員','榮譽會員','退會會員'];
+const STATUS_COLOR = {
+  '有效會員':'#66bb6a', '待續約會員':'var(--gold)', '永久會員':'#29b6f6',
+  '榮譽會員':'#b57edc', '退會會員':'#ef5350',
+};
+const statusBadge = s => {
+  if(!s) return '<span style="font-size:11px;color:var(--gray);">—</span>';
+  const c = STATUS_COLOR[s] || 'var(--gray)';
+  return `<span class="status" style="color:${c};border:1px solid ${c};background:transparent;">${escapeHtml(s)}</span>`;
+};
+const memberIsGroup = m => m.member_type==='group';
 
 function renderMemberDir(){
   const q = dirFilter.trim();
   const data = memberRows.filter(m=>{
-    const hay = [m.member_no,m.name,m.company,m.mobile,m.phone_office,m.contact_phone,m.email,m.contact_email,m.title].map(x=>x||'').join(' ');
+    const repHay = (m.reps||[]).map(r=>[r.name,r.tel,r.email].filter(Boolean).join(' ')).join(' ');
+    const hay = [m.member_no,m.name,m.company,m.mobile,m.phone_office,m.contact_phone,m.email,m.contact_email,m.title,repHay].map(x=>x||'').join(' ');
     const okq = !q || hay.includes(q);
     const oks = !dirSession || (m.terms||[]).some(t=>String(t.session)===dirSession);
     const okt = !dirType || (m.member_type||'board')===dirType;
-    return okq && oks && okt;
+    const okst = !dirStatus || (dirStatus==='__none' ? !m.status : m.status===dirStatus);
+    return okq && oks && okt && okst;
   });
   document.getElementById('dir-count').textContent = data.length;
   document.getElementById('dir-tbody').innerHTML = data.map(m=>{
-    if(m.id===editingMemberId) return memberEditRow(m);
-    const termBadges = (m.terms||[]).map(t=>
-      `<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(196,146,42,0.4);color:var(--gold);border-radius:99px;white-space:nowrap;">${SESSION_NAMES[t.session]||('第'+t.session+'屆')} ${t.role}</span>`
-    ).join(' ') || '<span style="color:var(--gray);font-size:11px;">—</span>';
-    const phone = m.mobile || m.phone_office || m.contact_phone || '';
-    const email = m.email || m.contact_email || '';
-    return `<tr>
-      <td data-label="會員編號" style="font-family:'DM Mono',monospace;color:${m.member_no?'var(--gold-lt)':'var(--gray)'};white-space:nowrap;">${m.member_no?escapeHtml(m.member_no):'—'}</td>
-      <td data-label="姓名" class="name-cell">${escapeHtml(m.name)} ${mTypeBadge(m.member_type)}</td>
-      <td data-label="服務機關" class="org-cell" style="font-size:12px;">${m.company?escapeHtml(m.company):'<span style="color:var(--gray);font-size:11px;">—</span>'}</td>
-      <td data-label="電話" style="font-size:12px;color:var(--gray);white-space:nowrap;">${escapeHtml(phone)||'–'}</td>
-      <td data-label="Email" style="font-size:12px;color:var(--gray);">${email?escapeHtml(email):'–'}</td>
-      <td data-label="職務" style="padding:8px 12px;"><div style="display:flex;flex-wrap:wrap;gap:4px;">${termBadges}</div></td>
-      <td data-label="操作" style="white-space:nowrap;">
-        <button class="btn btn-outline btn-sm" onclick="editMemberRow('${m.id}')">編輯</button>
-        <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);margin-left:4px;" onclick="deleteMemberRow('${m.id}')">刪除</button>
-      </td>
-    </tr>`;
+    if(m.id===editingMemberId && !memberIsGroup(m)) return memberEditRow(m);
+    return memberMainRow(m) + (memberIsGroup(m) ? repSubRows(m) : '');
   }).join('');
+}
+
+function memberMainRow(m){
+  const termBadges = (m.terms||[]).map(t=>
+    `<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(196,146,42,0.4);color:var(--gold);border-radius:99px;white-space:nowrap;">${SESSION_NAMES[t.session]||('第'+t.session+'屆')} ${t.role}</span>`
+  ).join(' ') || '<span style="color:var(--gray);font-size:11px;">—</span>';
+  const phone = m.mobile || m.phone_office || m.contact_phone || '';
+  const email = m.email || m.contact_email || '';
+  const editFn = memberIsGroup(m) ? `openGroupModal('${m.id}')` : `editMemberRow('${m.id}')`;
+  return `<tr>
+    <td data-label="會員編號" style="font-family:'DM Mono',monospace;color:${m.member_no?'var(--gold-lt)':'var(--gray)'};white-space:nowrap;">${m.member_no?escapeHtml(m.member_no):'—'}</td>
+    <td data-label="姓名" class="name-cell">${escapeHtml(m.name)} ${mTypeBadge(m.member_type)}</td>
+    <td data-label="服務機關" class="org-cell" style="font-size:12px;">${m.company?escapeHtml(m.company):'<span style="color:var(--gray);font-size:11px;">—</span>'}</td>
+    <td data-label="電話" style="font-size:12px;color:var(--gray);white-space:nowrap;">${escapeHtml(phone)||'–'}</td>
+    <td data-label="Email" style="font-size:12px;color:var(--gray);">${email?escapeHtml(email):'–'}</td>
+    <td data-label="狀態">${statusBadge(m.status)}</td>
+    <td data-label="最後繳費" style="font-size:12px;color:var(--gray);white-space:nowrap;">${m.last_paid?escapeHtml(m.last_paid):'–'}</td>
+    <td data-label="職務" style="padding:8px 12px;"><div style="display:flex;flex-wrap:wrap;gap:4px;">${termBadges}</div></td>
+    <td data-label="操作" style="white-space:nowrap;">
+      <button class="btn btn-outline btn-sm" onclick="${editFn}">編輯</button>
+      <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);margin-left:4px;" onclick="deleteMemberRow('${m.id}')">刪除</button>
+    </td>
+  </tr>`;
+}
+
+// 團體代表：以子列呈現，編號＝團體編號-1/-2/-3，點編輯開團體編輯視窗
+function repSubRows(m){
+  return (m.reps||[]).slice(0,3).map((r,i)=>`
+    <tr style="background:rgba(255,255,255,0.015);">
+      <td style="font-family:'DM Mono',monospace;color:var(--gray);white-space:nowrap;padding-left:18px;">${m.member_no?escapeHtml(m.member_no)+'-'+(i+1):'—'}</td>
+      <td class="name-cell" style="font-weight:400;padding-left:20px;">↳ ${escapeHtml(r.name||'')} <span style="font-size:9px;color:var(--gray);">代表${i+1}</span></td>
+      <td class="org-cell" style="font-size:11px;color:var(--gray);">${escapeHtml(r.title||m.company||'')}</td>
+      <td style="font-size:12px;color:var(--gray);white-space:nowrap;">${escapeHtml(r.tel||'')||'–'}</td>
+      <td style="font-size:12px;color:var(--gray);">${escapeHtml((r.email||'').split('\n')[0])||'–'}</td>
+      <td></td><td></td><td></td>
+      <td style="white-space:nowrap;"><button class="btn btn-outline btn-sm" onclick="openGroupModal('${m.id}')">編輯</button></td>
+    </tr>`).join('');
 }
 
 function memberEditRow(m){
   const v = s => escapeHtml(s==null?'':String(s));
   const opt = (val,lbl,cur)=>`<option value="${val}"${cur===val?' selected':''}>${lbl}</option>`;
+  const statusOpts = ['<option value="">—</option>'].concat(STATUS_LIST.map(s=>opt(s,s,m.status||''))).join('');
   return `<tr style="background:rgba(196,146,42,0.08);">
-    <td><input id="me-no" class="search-input" style="width:92px;" placeholder="編號" value="${v(m.member_no)}"></td>
+    <td><input id="me-no" class="search-input" style="width:92px;" placeholder="編號" value="${v(m.member_no)}">
+        <input id="me-join" class="search-input" style="width:92px;margin-top:4px;" placeholder="入會日" value="${v(m.join_date)}"></td>
     <td><input id="me-name" class="search-input" style="width:100%;min-width:90px;" value="${v(m.name)}">
         <select id="me-type" class="filter-select" style="width:100%;margin-top:4px;">${opt('personal','個人',m.member_type)}${opt('group','團體',m.member_type)}${opt('','理監事',m.member_type||'')}</select></td>
-    <td><input id="me-company" class="search-input" style="width:100%;min-width:100px;" placeholder="服務機關/團體" value="${v(m.company)}"></td>
+    <td><input id="me-company" class="search-input" style="width:100%;min-width:100px;" placeholder="服務機關" value="${v(m.company)}"></td>
     <td><input id="me-mobile" class="search-input" style="width:110px;" placeholder="電話" value="${v(m.mobile||m.phone_office)}"></td>
     <td><input id="me-email" class="search-input" style="width:100%;min-width:120px;" placeholder="Email" value="${v(m.email)}"></td>
-    <td><input id="me-join" class="search-input" style="width:96px;" placeholder="入會日" value="${v(m.join_date)}"></td>
+    <td><select id="me-status" class="filter-select" style="width:104px;">${statusOpts}</select></td>
+    <td><input id="me-paid" class="search-input" style="width:96px;" placeholder="最後繳費" value="${v(m.last_paid)}"></td>
+    <td></td>
     <td style="white-space:nowrap;">
       <button class="btn btn-sm btn-gold" onclick="saveMemberRow('${m.id}')">儲存</button>
       <button class="btn btn-sm btn-outline" onclick="editingMemberId=null;renderMemberDir()">取消</button>
@@ -949,6 +1050,8 @@ async function saveMemberRow(id){
     mobile: document.getElementById('me-mobile').value.trim() || null,
     email: document.getElementById('me-email').value.trim() || null,
     join_date: document.getElementById('me-join').value.trim() || null,
+    status: document.getElementById('me-status').value || null,
+    last_paid: document.getElementById('me-paid').value.trim() || null,
     updated_at: new Date().toISOString(),
   };
   if(!payload.name){ alert('姓名不可空白'); return; }
@@ -958,6 +1061,74 @@ async function saveMemberRow(id){
     if(!res.ok) throw new Error(await res.text());
     editingMemberId=null; await loadMembers();
   } catch(e){ alert('儲存失敗：'+e.message); }
+}
+
+// ── 團體會員編輯（含最多 3 位代表）──
+let editingGroupId = null;
+function repSlotHtml(i, base, r){
+  r = r||{};
+  const v = s => escapeHtml(s==null?'':String(s));
+  const noLabel = base ? `${base}-${i+1}` : `（未定）-${i+1}`;
+  return `<div style="border:1px solid var(--border);padding:12px;border-radius:4px;">
+    <div style="font-size:11px;color:var(--gold-lt);margin-bottom:8px;">代表 ${i+1}　<span style="font-family:'DM Mono',monospace;color:var(--gray);">會員編號 ${noLabel}</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input id="gr${i}-name" class="search-input" style="flex:1;min-width:90px;" placeholder="姓名" value="${v(r.name)}">
+      <select id="gr${i}-gender" class="filter-select" style="flex:0 0 70px;"><option value="">性別</option><option${r.gender==='男'?' selected':''}>男</option><option${r.gender==='女'?' selected':''}>女</option></select>
+      <input id="gr${i}-tel" class="search-input" style="flex:1;min-width:100px;" placeholder="電話" value="${v(r.tel)}">
+      <input id="gr${i}-email" class="search-input" style="flex:1;min-width:120px;" placeholder="Email" value="${v((r.email||'').split('\\n')[0])}">
+      <input id="gr${i}-title" class="search-input" style="flex:1;min-width:120px;" placeholder="職稱" value="${v(r.title)}">
+    </div>
+  </div>`;
+}
+
+function openGroupModal(id){
+  const m = memberRows.find(x=>x.id===id); if(!m) return;
+  editingGroupId = id;
+  const g = f => document.getElementById(f);
+  g('group-modal-title').textContent = '編輯團體會員：' + m.name;
+  g('g-id').value = id;
+  g('g-no').value = m.member_no||''; g('g-name').value = m.name||''; g('g-join').value = m.join_date||'';
+  g('g-phone').value = m.phone_office||''; g('g-cert').value = m.cert_no||''; g('g-certorg').value = m.cert_org||'';
+  g('g-addr').value = m.addr_mail||''; g('g-business').value = m.business||'';
+  g('g-founded').value = m.founded||''; g('g-count').value = m.member_count||'';
+  g('g-contactname').value = m.contact_name||''; g('g-contactphone').value = m.contact_phone||''; g('g-contactemail').value = m.contact_email||'';
+  g('g-status').value = m.status||''; g('g-paid').value = m.last_paid||'';
+  const base = m.member_no||'';
+  const reps = m.reps||[];
+  g('g-reps').innerHTML = [0,1,2].map(i=>repSlotHtml(i, base, reps[i])).join('');
+  g('group-modal').style.display = 'flex';
+}
+function closeGroupModal(){ document.getElementById('group-modal').style.display='none'; editingGroupId=null; }
+
+async function saveGroup(){
+  const id = editingGroupId; if(!id) return;
+  const val = f => document.getElementById(f).value.trim();
+  const name = val('g-name'); if(!name){ alert('團體名稱不可空白'); return; }
+  const reps = [0,1,2].map(i=>({
+    name: val(`gr${i}-name`), gender: document.getElementById(`gr${i}-gender`).value,
+    tel: val(`gr${i}-tel`), email: val(`gr${i}-email`), title: val(`gr${i}-title`),
+  })).filter(r=>r.name);
+  const payload = {
+    member_no: val('g-no')||null, name, company: name, member_type:'group',
+    phone_office: val('g-phone')||null, cert_no: val('g-cert')||null, cert_org: val('g-certorg')||null,
+    addr_mail: val('g-addr')||null, business: val('g-business')||null,
+    founded: val('g-founded')||null, member_count: val('g-count')||null,
+    contact_name: val('g-contactname')||null, contact_phone: val('g-contactphone')||null, contact_email: val('g-contactemail')||null,
+    status: document.getElementById('g-status').value||null, last_paid: val('g-paid')||null,
+    reps: reps.length ? reps : null, updated_at: new Date().toISOString(),
+  };
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members?id=eq.${id}`, {
+      method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify(payload) });
+    if(!res.ok) throw new Error(await res.text());
+    closeGroupModal(); await loadMembers();
+  } catch(e){ alert('儲存失敗：'+e.message); }
+}
+
+async function deleteGroupFromModal(){
+  if(!editingGroupId) return;
+  const id = editingGroupId; closeGroupModal();
+  await deleteMemberRow(id);
 }
 
 async function deleteMemberRow(id){
@@ -974,6 +1145,7 @@ async function deleteMemberRow(id){
 function filterMemberDir(q){ dirFilter=q; renderMemberDir(); }
 function filterMemberDirSession(s){ dirSession=s; renderMemberDir(); }
 function filterMemberType(t){ dirType=t; renderMemberDir(); }
+function filterMemberStatus(s){ dirStatus=s; renderMemberDir(); }
 
 function openAddModal(){
   document.getElementById('modal-title').textContent = '新增會員';
@@ -1056,11 +1228,12 @@ async function lookupCompany(){
 }
 
 function exportMemberCSV(){
-  const rows = [['會員編號','類型','姓名/團體','服務機關/團體','電話','Email','入會日','屆次職務']];
+  const rows = [['會員編號','類型','姓名/團體','服務機關/團體','電話','Email','會員狀態','最後繳費','入會日','代表(團體)','屆次職務']];
   memberRows.forEach(m=>{
     const termsStr = (m.terms||[]).map(t=>`${SESSION_NAMES[t.session]||('第'+t.session+'屆')}${t.role}`).join('；');
     const type = m.member_type==='personal'?'個人':(m.member_type==='group'?'團體':'理監事');
-    rows.push([m.member_no||'', type, m.name, m.company||'', m.mobile||m.phone_office||'', m.email||'', m.join_date||'', termsStr]);
+    const repsStr = (m.reps||[]).map((r,i)=>`${(m.member_no||'')+'-'+(i+1)} ${r.name||''}`).join('；');
+    rows.push([m.member_no||'', type, m.name, m.company||'', m.mobile||m.phone_office||m.contact_phone||'', m.email||m.contact_email||'', m.status||'', m.last_paid||'', m.join_date||'', repsStr, termsStr]);
   });
   const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
