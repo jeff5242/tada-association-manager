@@ -350,7 +350,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <option value="">全部類型</option>
       <option value="personal">個人會員</option>
       <option value="group">團體會員</option>
-      <option value="board">僅職務(理監事)</option>
+      <option value="board">理監事(有職務者)</option>
     </select>
     <select class="filter-select" onchange="filterMemberStatus(this.value)">
       <option value="">全部狀態</option>
@@ -860,6 +860,23 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ 詳細編輯 Modal（所有欄位）══════════ -->
+<div id="detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:720px;max-height:92vh;overflow-y:auto;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:6px;" id="detail-modal-title">詳細編輯</div>
+    <div style="font-size:11px;color:var(--gray);margin-bottom:16px;">編輯此會員資料表中的所有欄位。JSON 欄位（屆次職務、團體代表）請維持有效 JSON 格式。</div>
+    <input type="hidden" id="d-id">
+    <div id="detail-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"></div>
+    <div style="display:flex;gap:10px;margin-top:22px;align-items:center;">
+      <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="deleteFromDetail()">刪除此筆</button>
+      <div style="margin-left:auto;display:flex;gap:10px;">
+        <button class="btn btn-outline" onclick="closeDetailModal()">取消</button>
+        <button class="btn btn-gold" onclick="saveDetail()">儲存全部</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── DATA ─────────────────────────────────────────────────
 
@@ -969,7 +986,7 @@ function renderMemberDir(){
     const hay = [m.member_no,m.name,m.company,m.mobile,m.phone_office,m.contact_phone,m.email,m.contact_email,m.title,repHay].map(x=>x||'').join(' ');
     const okq = !q || hay.includes(q);
     const oks = !dirSession || (m.terms||[]).some(t=>String(t.session)===dirSession);
-    const okt = !dirType || (m.member_type||'board')===dirType;
+    const okt = !dirType || (dirType==='board' ? (m.terms||[]).length>0 : (m.member_type||'')===dirType);
     const okst = !dirStatus || (dirStatus==='__none' ? !m.status : m.status===dirStatus);
     return okq && oks && okt && okst;
   });
@@ -998,6 +1015,7 @@ function memberMainRow(m){
     <td data-label="職務" style="padding:8px 12px;"><div style="display:flex;flex-wrap:wrap;gap:4px;">${termBadges}</div></td>
     <td data-label="操作" style="white-space:nowrap;">
       <button class="btn btn-outline btn-sm" onclick="${editFn}">編輯</button>
+      <button class="btn btn-outline btn-sm" style="margin-left:4px;" onclick="openDetailModal('${m.id}')">詳細</button>
       <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);margin-left:4px;" onclick="deleteMemberRow('${m.id}')">刪除</button>
     </td>
   </tr>`;
@@ -1129,6 +1147,80 @@ async function deleteGroupFromModal(){
   if(!editingGroupId) return;
   const id = editingGroupId; closeGroupModal();
   await deleteMemberRow(id);
+}
+
+// ── 詳細編輯（所有欄位）──
+const DETAIL_FIELDS = [
+  ['member_no','會員編號','text'], ['member_type','類型','type'], ['status','會員狀態','status'],
+  ['name','姓名／團體','text'], ['company','服務機關／團體','text'],
+  ['gender','性別','text'], ['birthday','出生年月日','text'], ['id_number','身分證／統編','text'],
+  ['mobile','手機','text'], ['phone_office','公司電話','text'], ['email','Email','text'],
+  ['addr_domicile','戶籍地址','text'], ['addr_mail','通訊地址','text'],
+  ['title','職稱／現職','text'], ['expertise','專業領域','text'], ['edu','學歷','text'],
+  ['join_date','入會日期','text'], ['last_paid','最後繳費','text'], ['fee_note','常年會費備註','text'],
+  ['founded','成立日期','text'], ['member_count','會員人數','text'],
+  ['cert_no','證照字號／統編','text'], ['cert_org','發證機關','text'], ['business','業務項目','textarea'],
+  ['contact_name','本案聯絡人','text'], ['contact_phone','聯絡電話','text'], ['contact_email','聯絡 Email','text'],
+  ['recommenders','推薦人','text'], ['source','資料來源','text'], ['note','備註','textarea'],
+  ['terms','屆次職務（JSON）','json'], ['reps','團體代表（JSON）','json'],
+];
+
+async function openDetailModal(id){
+  let row;
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members?id=eq.${id}&select=*`, {headers:SB_HEADERS});
+    row = (await res.json())[0];
+  } catch(e){ alert('讀取失敗：'+e.message); return; }
+  if(!row) return;
+  document.getElementById('d-id').value = id;
+  document.getElementById('detail-modal-title').textContent = '詳細編輯：' + (row.name||'');
+  const esc = s => escapeHtml(s==null?'':String(s));
+  document.getElementById('detail-fields').innerHTML = DETAIL_FIELDS.map(([k,label,type])=>{
+    let field;
+    if(type==='type'){
+      field = `<select data-key="${k}" class="filter-select" style="width:100%;"><option value="personal"${row[k]==='personal'?' selected':''}>個人</option><option value="group"${row[k]==='group'?' selected':''}>團體</option><option value=""${!row[k]?' selected':''}>理監事／無</option></select>`;
+    } else if(type==='status'){
+      field = `<select data-key="${k}" class="filter-select" style="width:100%;"><option value="">—</option>`+STATUS_LIST.map(s=>`<option${row[k]===s?' selected':''}>${s}</option>`).join('')+`</select>`;
+    } else if(type==='json'){
+      const val = (row[k]==null)?'':JSON.stringify(row[k]);
+      field = `<textarea data-key="${k}" data-json="1" class="search-input" style="width:100%;min-height:52px;font-family:monospace;font-size:11px;">${esc(val)}</textarea>`;
+    } else if(type==='textarea'){
+      field = `<textarea data-key="${k}" class="search-input" style="width:100%;min-height:44px;">${esc(row[k])}</textarea>`;
+    } else {
+      field = `<input data-key="${k}" class="search-input" style="width:100%;" value="${esc(row[k])}">`;
+    }
+    const span = (type==='textarea'||type==='json') ? 'grid-column:1/-1;' : '';
+    return `<label style="font-size:11px;color:var(--gray);${span}">${label}<div style="margin-top:4px;">${field}</div></label>`;
+  }).join('');
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+function closeDetailModal(){ document.getElementById('detail-modal').style.display='none'; }
+
+async function saveDetail(){
+  const id = document.getElementById('d-id').value;
+  const payload = {}; let jsonErr = null;
+  document.querySelectorAll('#detail-fields [data-key]').forEach(el=>{
+    const k = el.dataset.key; const v = el.value.trim();
+    if(el.dataset.json){
+      if(v==='') payload[k]=null;
+      else { try{ payload[k]=JSON.parse(v); }catch(e){ jsonErr=k; } }
+    } else {
+      payload[k] = v===''?null:v;
+    }
+  });
+  if(jsonErr){ alert('JSON 格式錯誤，請檢查欄位：'+jsonErr); return; }
+  if(!payload.name){ alert('姓名／團體名稱不可空白'); return; }
+  payload.updated_at = new Date().toISOString();
+  try{
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members?id=eq.${id}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify(payload)});
+    if(!res.ok) throw new Error(await res.text());
+    closeDetailModal(); await loadMembers();
+  }catch(e){ alert('儲存失敗：'+e.message); }
+}
+
+async function deleteFromDetail(){
+  const id = document.getElementById('d-id').value; closeDetailModal(); await deleteMemberRow(id);
 }
 
 async function deleteMemberRow(id){
