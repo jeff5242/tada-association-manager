@@ -336,19 +336,22 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 <div class="page" id="page-members">
   <div class="section-header" style="margin-bottom:16px;">
     <div class="section-title">會員名冊管理</div>
-    <span class="badge badge-warn">資料存於本機瀏覽器</span>
-    <div style="margin-left:auto;display:flex;gap:8px;">
-      <button class="btn btn-outline btn-sm" id="sb-pull-btn" onclick="loadFromSupabase()">↓ 從雲端載入</button>
-      <button class="btn btn-outline btn-sm" id="sb-push-btn" onclick="syncToSupabase()">☁ 同步到雲端</button>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="loadMembers()">↻ 重新載入</button>
       <span id="sb-status" style="font-size:11px;align-self:center;"></span>
-      <button class="btn btn-outline btn-sm" onclick="exportMemberJSON()">匯出 JSON</button>
       <button class="btn btn-outline btn-sm" onclick="exportMemberCSV()">匯出 CSV</button>
       <button class="btn btn-gold btn-sm" onclick="openAddModal()">＋ 新增會員</button>
     </div>
   </div>
 
   <div class="toolbar">
-    <input class="search-input" type="text" placeholder="搜尋姓名、公司、職稱…" oninput="filterMemberDir(this.value)">
+    <input class="search-input" type="text" placeholder="搜尋 會員編號、姓名、單位、電話、Email…" oninput="filterMemberDir(this.value)">
+    <select class="filter-select" onchange="filterMemberType(this.value)">
+      <option value="">全部類型</option>
+      <option value="personal">個人會員</option>
+      <option value="group">團體會員</option>
+      <option value="board">僅職務(理監事)</option>
+    </select>
     <select class="filter-select" onchange="filterMemberDirSession(this.value)">
       <option value="">全部屆次</option>
       <option value="6">第六屆</option>
@@ -364,7 +367,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>姓名</th><th>公司 / 單位</th><th>職稱（最新）</th><th>參與屆次</th><th>操作</th>
+        <th>會員編號</th><th>姓名 / 團體</th><th>服務機關 / 團體</th><th>電話</th><th>Email</th><th>職務</th><th>操作</th>
       </tr></thead>
       <tbody id="dir-tbody"></tbody>
     </table>
@@ -758,8 +761,20 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
     <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:20px;" id="modal-title">編輯會員</div>
     <div style="display:flex;flex-direction:column;gap:14px;">
-      <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;">姓名
-        <input id="m-name" class="search-input" style="width:100%;margin-top:4px;" type="text" placeholder="姓名">
+      <div style="display:flex;gap:10px;">
+        <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;flex:1;">會員編號
+          <input id="m-no" class="search-input" style="width:100%;margin-top:4px;" type="text" placeholder="如 26081301（可留空）">
+        </label>
+        <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;flex:0 0 120px;">類型
+          <select id="m-type" class="filter-select" style="width:100%;margin-top:4px;">
+            <option value="personal">個人</option>
+            <option value="group">團體</option>
+            <option value="">僅職務</option>
+          </select>
+        </label>
+      </div>
+      <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;">姓名 / 團體名稱
+        <input id="m-name" class="search-input" style="width:100%;margin-top:4px;" type="text" placeholder="姓名或團體名稱">
       </label>
       <label style="font-size:11px;color:var(--gray);letter-spacing:.1em;">統一編號（選填，可自動帶入公司名稱）
         <div style="display:flex;gap:8px;margin-top:4px;">
@@ -795,40 +810,19 @@ const SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
 const SB_KEY = 'sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
 const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
 
-async function syncToSupabase(){
-  const btn = document.getElementById('sb-push-btn');
-  btn.disabled = true; btn.textContent = '同步中…';
+async function loadMembers(){
+  const status = document.getElementById('sb-status');
+  if(status){ status.style.color='var(--gray)'; status.textContent='載入中…'; }
   try {
-    const payload = memberDir.map(m=>({name:m.name, company:m.company||'', terms:m.terms}));
-    const res = await fetch(`${SB_URL}/rest/v1/tada_members`, {
-      method:'POST',
-      headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates'},
-      body: JSON.stringify(payload)
-    });
-    if(!res.ok) throw new Error(await res.text());
-    setSbStatus('✓ 已同步到雲端','#66bb6a');
-  } catch(e) {
-    setSbStatus('同步失敗：'+e.message,'#ef5350');
-  }
-  btn.disabled = false; btn.textContent = '☁ 同步到雲端';
-}
-
-async function loadFromSupabase(){
-  const btn = document.getElementById('sb-pull-btn');
-  btn.disabled = true; btn.textContent = '載入中…';
-  try {
-    const res = await fetch(`${SB_URL}/rest/v1/tada_members?select=name,company,terms&order=created_at.asc`, {headers: SB_HEADERS});
-    if(!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    if(!data.length){ setSbStatus('雲端無資料','var(--gray)'); btn.disabled=false; btn.textContent='↓ 從雲端載入'; return; }
-    memberDir = data.map(r=>({name:r.name, company:r.company||'', terms:r.terms||[]}));
-    saveMemberDir(memberDir);
+    const sel = 'id,member_no,member_type,name,company,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,join_date,title,terms,note';
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members?select=${sel}&order=member_no.asc.nullslast`, {headers: SB_HEADERS});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    memberRows = await res.json();
     renderMemberDir();
-    setSbStatus(`✓ 已載入 ${data.length} 筆資料`,'#66bb6a');
+    if(status){ status.style.color='#66bb6a'; status.textContent=`✓ ${memberRows.length} 位`; }
   } catch(e) {
-    setSbStatus('載入失敗：'+e.message,'#ef5350');
+    if(status){ status.style.color='#ef5350'; status.textContent='載入失敗：'+e.message; }
   }
-  btn.disabled = false; btn.textContent = '↓ 從雲端載入';
 }
 
 function setSbStatus(msg, color){
@@ -870,7 +864,7 @@ function switchTab(id){
   const page=document.getElementById('page-'+id); if(page) page.classList.add('active');
   closeAllGroups();
   if(id==='dashboard') renderDash();
-  if(id==='members') renderMemberDir();
+  if(id==='members') loadMembers();
   if(id==='applications') loadApplications();
   if(id==='unanswered') loadUnanswered();
   if(id==='lineusers') loadLineUsers();
@@ -884,66 +878,110 @@ function switchTab(id){
 // ── 會員名冊 ─────────────────────────────────────────────
 const SESSION_NAMES = {1:'第一屆',2:'第二屆',3:'第三屆',4:'第四屆',5:'第五屆',6:'第六屆'};
 
-const DEFAULT_MEMBER_DIR = [];   // 會員名冊改由 Supabase tada_members 載入
-
-function loadMemberDir(){
-  const saved = localStorage.getItem('tada_member_dir');
-  return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_MEMBER_DIR));
-}
-function saveMemberDir(data){
-  localStorage.setItem('tada_member_dir', JSON.stringify(data));
-}
-
-let memberDir = loadMemberDir();
-let dirFilter = '', dirSession = '';
-let editingIdx = null;
+let memberRows = [];              // 直接讀寫 tada_members
+let dirFilter = '', dirSession = '', dirType = '';
+let editingMemberId = null;
+const MTYPE = {personal:'個人', group:'團體'};
+const mTypeBadge = t => {
+  if(t==='personal') return '<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(122,171,135,0.4);color:var(--green-lt);border-radius:2px;">個人</span>';
+  if(t==='group')    return '<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(196,146,42,0.4);color:var(--gold);border-radius:2px;">團體</span>';
+  return '<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(41,182,246,0.3);color:#29b6f6;border-radius:2px;">理監事</span>';
+};
 
 function renderMemberDir(){
-  const data = memberDir.filter(m=>{
-    const q = !dirFilter || m.name.includes(dirFilter) || m.company.includes(dirFilter) ||
-              m.terms.some(t=>t.role.includes(dirFilter));
-    const s = !dirSession || m.terms.some(t=>String(t.session)===dirSession);
-    return q&&s;
+  const q = dirFilter.trim();
+  const data = memberRows.filter(m=>{
+    const hay = [m.member_no,m.name,m.company,m.mobile,m.phone_office,m.contact_phone,m.email,m.contact_email,m.title].map(x=>x||'').join(' ');
+    const okq = !q || hay.includes(q);
+    const oks = !dirSession || (m.terms||[]).some(t=>String(t.session)===dirSession);
+    const okt = !dirType || (m.member_type||'board')===dirType;
+    return okq && oks && okt;
   });
   document.getElementById('dir-count').textContent = data.length;
   document.getElementById('dir-tbody').innerHTML = data.map(m=>{
-    const idx = memberDir.indexOf(m);
-    const latestRole = m.terms.length ? m.terms[m.terms.length-1].role : '—';
-    const termBadges = m.terms.map(t=>
-      `<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(196,146,42,0.4);color:var(--gold);border-radius:99px;white-space:nowrap;">${SESSION_NAMES[t.session]} ${t.role}</span>`
-    ).join(' ');
+    if(m.id===editingMemberId) return memberEditRow(m);
+    const termBadges = (m.terms||[]).map(t=>
+      `<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(196,146,42,0.4);color:var(--gold);border-radius:99px;white-space:nowrap;">${SESSION_NAMES[t.session]||('第'+t.session+'屆')} ${t.role}</span>`
+    ).join(' ') || '<span style="color:var(--gray);font-size:11px;">—</span>';
+    const phone = m.mobile || m.phone_office || m.contact_phone || '';
+    const email = m.email || m.contact_email || '';
     return `<tr>
-      <td data-label="姓名" class="name-cell">${m.name}</td>
-      <td data-label="公司" class="org-cell">${m.company||'<span style="color:var(--gray);font-size:11px;">未填寫</span>'}</td>
-      <td data-label="職稱" style="font-size:12px;color:var(--gray);">${latestRole}</td>
-      <td data-label="屆次" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;">${termBadges}</td>
-      <td data-label="操作"><button class="btn btn-outline btn-sm" onclick="openEditModal(${idx})">編輯</button>
-      <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);margin-left:4px;" onclick="deleteMember(${idx})">刪除</button></td>
+      <td data-label="會員編號" style="font-family:'DM Mono',monospace;color:${m.member_no?'var(--gold-lt)':'var(--gray)'};white-space:nowrap;">${m.member_no?escapeHtml(m.member_no):'—'}</td>
+      <td data-label="姓名" class="name-cell">${escapeHtml(m.name)} ${mTypeBadge(m.member_type)}</td>
+      <td data-label="服務機關" class="org-cell" style="font-size:12px;">${m.company?escapeHtml(m.company):'<span style="color:var(--gray);font-size:11px;">—</span>'}</td>
+      <td data-label="電話" style="font-size:12px;color:var(--gray);white-space:nowrap;">${escapeHtml(phone)||'–'}</td>
+      <td data-label="Email" style="font-size:12px;color:var(--gray);">${email?escapeHtml(email):'–'}</td>
+      <td data-label="職務" style="padding:8px 12px;"><div style="display:flex;flex-wrap:wrap;gap:4px;">${termBadges}</div></td>
+      <td data-label="操作" style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="editMemberRow('${m.id}')">編輯</button>
+        <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);margin-left:4px;" onclick="deleteMemberRow('${m.id}')">刪除</button>
+      </td>
     </tr>`;
   }).join('');
 }
 
+function memberEditRow(m){
+  const v = s => escapeHtml(s==null?'':String(s));
+  const opt = (val,lbl,cur)=>`<option value="${val}"${cur===val?' selected':''}>${lbl}</option>`;
+  return `<tr style="background:rgba(196,146,42,0.08);">
+    <td><input id="me-no" class="search-input" style="width:92px;" placeholder="編號" value="${v(m.member_no)}"></td>
+    <td><input id="me-name" class="search-input" style="width:100%;min-width:90px;" value="${v(m.name)}">
+        <select id="me-type" class="filter-select" style="width:100%;margin-top:4px;">${opt('personal','個人',m.member_type)}${opt('group','團體',m.member_type)}${opt('','理監事',m.member_type||'')}</select></td>
+    <td><input id="me-company" class="search-input" style="width:100%;min-width:100px;" placeholder="服務機關/團體" value="${v(m.company)}"></td>
+    <td><input id="me-mobile" class="search-input" style="width:110px;" placeholder="電話" value="${v(m.mobile||m.phone_office)}"></td>
+    <td><input id="me-email" class="search-input" style="width:100%;min-width:120px;" placeholder="Email" value="${v(m.email)}"></td>
+    <td><input id="me-join" class="search-input" style="width:96px;" placeholder="入會日" value="${v(m.join_date)}"></td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-sm btn-gold" onclick="saveMemberRow('${m.id}')">儲存</button>
+      <button class="btn btn-sm btn-outline" onclick="editingMemberId=null;renderMemberDir()">取消</button>
+    </td>
+  </tr>`;
+}
+
+function editMemberRow(id){ editingMemberId=id; renderMemberDir(); }
+
+async function saveMemberRow(id){
+  const payload = {
+    member_no: document.getElementById('me-no').value.trim() || null,
+    name: document.getElementById('me-name').value.trim(),
+    member_type: document.getElementById('me-type').value || null,
+    company: document.getElementById('me-company').value.trim() || null,
+    mobile: document.getElementById('me-mobile').value.trim() || null,
+    email: document.getElementById('me-email').value.trim() || null,
+    join_date: document.getElementById('me-join').value.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+  if(!payload.name){ alert('姓名不可空白'); return; }
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members?id=eq.${id}`, {
+      method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify(payload) });
+    if(!res.ok) throw new Error(await res.text());
+    editingMemberId=null; await loadMembers();
+  } catch(e){ alert('儲存失敗：'+e.message); }
+}
+
+async function deleteMemberRow(id){
+  const m = memberRows.find(x=>x.id===id);
+  if(!confirm(`確定刪除「${m?m.name:''}」${m&&m.member_no?'（'+m.member_no+'）':''}？此動作無法復原。`)) return;
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members?id=eq.${id}`, {
+      method:'DELETE', headers:{...SB_HEADERS,'Prefer':'return=minimal'} });
+    if(!res.ok) throw new Error(await res.text());
+    await loadMembers();
+  } catch(e){ alert('刪除失敗：'+e.message); }
+}
+
 function filterMemberDir(q){ dirFilter=q; renderMemberDir(); }
 function filterMemberDirSession(s){ dirSession=s; renderMemberDir(); }
+function filterMemberType(t){ dirType=t; renderMemberDir(); }
 
 function openAddModal(){
-  editingIdx = null;
   document.getElementById('modal-title').textContent = '新增會員';
+  document.getElementById('m-no').value = '';
+  document.getElementById('m-type').value = 'personal';
   document.getElementById('m-name').value = '';
   document.getElementById('m-company').value = '';
   document.getElementById('m-terms').innerHTML = '';
-  addTermRow();
-  document.getElementById('member-modal').style.display = 'flex';
-}
-
-function openEditModal(idx){
-  editingIdx = idx;
-  const m = memberDir[idx];
-  document.getElementById('modal-title').textContent = '編輯會員：' + m.name;
-  document.getElementById('m-name').value = m.name;
-  document.getElementById('m-company').value = m.company||'';
-  document.getElementById('m-terms').innerHTML = '';
-  m.terms.forEach(t=>addTermRow(t.session, t.role));
   document.getElementById('member-modal').style.display = 'flex';
 }
 
@@ -959,32 +997,29 @@ function addTermRow(session='', role=''){
   document.getElementById('m-terms').appendChild(row);
 }
 
-function saveMember(){
+async function saveMember(){
   const name = document.getElementById('m-name').value.trim();
-  if(!name){ alert('請填寫姓名'); return; }
-  const company = document.getElementById('m-company').value.trim();
+  if(!name){ alert('請填寫姓名／團體名稱'); return; }
   const termRows = document.getElementById('m-terms').querySelectorAll('div');
   const terms = Array.from(termRows).map(row=>{
-    const sel = row.querySelector('select');
-    const inp = row.querySelector('input');
+    const sel = row.querySelector('select'); const inp = row.querySelector('input');
     return {session: Number(sel.value), role: inp.value.trim()};
   }).filter(t=>t.role);
-  const member = {name, company, terms};
-  if(editingIdx !== null){
-    memberDir[editingIdx] = member;
-  } else {
-    memberDir.push(member);
-  }
-  saveMemberDir(memberDir);
-  closeMemberModal();
-  renderMemberDir();
-}
-
-function deleteMember(idx){
-  if(!confirm(`確定刪除「${memberDir[idx].name}」？`)) return;
-  memberDir.splice(idx,1);
-  saveMemberDir(memberDir);
-  renderMemberDir();
+  const payload = {
+    member_no: document.getElementById('m-no').value.trim() || null,
+    member_type: document.getElementById('m-type').value || null,
+    name,
+    company: document.getElementById('m-company').value.trim() || null,
+    terms: terms.length ? terms : null,
+    source: 'admin',
+  };
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members`, {
+      method:'POST', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify(payload) });
+    if(!res.ok) throw new Error(await res.text());
+    closeMemberModal();
+    await loadMembers();
+  } catch(e){ alert('新增失敗：'+e.message); }
 }
 
 function closeMemberModal(){
@@ -1020,19 +1055,12 @@ async function lookupCompany(){
   btn.textContent = '🔍 查詢公司';
 }
 
-function exportMemberJSON(){
-  const a = document.createElement('a');
-  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(memberDir, null, 2));
-  a.download = 'TADA_會員名冊_' + new Date().toISOString().slice(0,10) + '.json';
-  a.click();
-}
-
 function exportMemberCSV(){
-  const rows = [['姓名','公司','最新職稱','屆次紀錄']];
-  memberDir.forEach(m=>{
-    const latestRole = m.terms.length ? m.terms[m.terms.length-1].role : '';
-    const termsStr = m.terms.map(t=>`${SESSION_NAMES[t.session]}${t.role}`).join('；');
-    rows.push([m.name, m.company, latestRole, termsStr]);
+  const rows = [['會員編號','類型','姓名/團體','服務機關/團體','電話','Email','入會日','屆次職務']];
+  memberRows.forEach(m=>{
+    const termsStr = (m.terms||[]).map(t=>`${SESSION_NAMES[t.session]||('第'+t.session+'屆')}${t.role}`).join('；');
+    const type = m.member_type==='personal'?'個人':(m.member_type==='group'?'團體':'理監事');
+    rows.push([m.member_no||'', type, m.name, m.company||'', m.mobile||m.phone_office||'', m.email||'', m.join_date||'', termsStr]);
   });
   const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
@@ -1237,13 +1265,6 @@ async function loadInviteData(){
     if(Array.isArray(g)) guestData = g;
   }catch(e){ console.warn('載入邀請名單失敗', e); }
   renderMembers(); renderGuests(); updateStats();
-  // 會員名冊：本機無快取時，改由雲端 tada_members 載入
-  if(!localStorage.getItem('tada_member_dir')){
-    try{
-      const m = await fetch(`${SB_URL}/rest/v1/tada_members?select=name,company,terms&order=created_at.asc`, {headers:SB_HEADERS}).then(r=>r.ok?r.json():[]);
-      if(m.length){ memberDir = m.map(r=>({name:r.name, company:r.company||'', terms:r.terms||[]})); renderMemberDir(); }
-    }catch(e){}
-  }
 }
 loadInviteData();
 
