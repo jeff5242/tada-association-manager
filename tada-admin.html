@@ -841,6 +841,7 @@ function setSbStatus(msg, color){
 // ── STATE ─────────────────────────────────────────────────
 let mFilter='', mStatus='';
 let gFilter='', gStatus='', gCat='';
+let editingGuest=null;   // 正在行內編輯的貴賓 id
 
 const nextStatus = {pending:'invited',invited:'confirmed',confirmed:'declined',declined:'pending'};
 const nextLabel  = {pending:'標記已邀請',invited:'確認出席',confirmed:'標記婉謝',declined:'重置'};
@@ -1093,22 +1094,87 @@ function renderGuests(){
   const trainBadge=v=>v==='x'?'<span style="color:var(--gray)">不需</span>':v==='?'?'<span style="color:var(--warn)">待確</span>':`<span style="color:var(--gold)">${v}</span>`;
   const mealBadge=v=>v==='x'||v===0?'<span style="color:var(--gray)">–</span>':v==='?'?'<span style="color:var(--warn)">?</span>':`<b style="color:var(--green-lt)">${v}</b>`;
   document.getElementById('guest-tbody').innerHTML=data.map(g=>{
+    if(g.id===editingGuest) return guestEditRow(g);
     const ri=guestData.indexOf(g);
     return `<tr>
-      <td data-label="姓名／職稱" class="name-cell" style="max-width:160px;">${g.name}</td>
-      <td data-label="機關單位" class="org-cell">${g.org}</td>
+      <td data-label="姓名／職稱" class="name-cell" style="max-width:160px;">${escapeHtml(g.name)}</td>
+      <td data-label="機關單位" class="org-cell">${escapeHtml(g.org)}</td>
       <td data-label="高鐵">${trainBadge(g.train)}</td>
       <td data-label="用餐">${mealBadge(g.meal)}</td>
       <td data-label="狀態">${statusHTML[g.status]}</td>
-      <td data-label="備註" style="font-size:11px;color:var(--gray);">${g.note||'–'}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="advanceGuest(${ri})">${nextLabel[g.status]}</button></td>
+      <td data-label="備註" style="font-size:11px;color:var(--gray);">${g.note?escapeHtml(g.note):'–'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="editGuestRow('${g.id}')">編輯</button>
+        <button class="btn btn-outline btn-sm" onclick="advanceGuest(${ri})">${nextLabel[g.status]}</button>
+      </td>
     </tr>`;
   }).join('');
   updateStats();
 }
 
-function advanceGuest(i){
-  guestData[i].status=nextStatus[guestData[i].status];
+function guestEditRow(g){
+  const esc=s=>escapeHtml(s==null?'':String(s));
+  // 高鐵：待確(?) / 不需(x) / 指定時間；用餐：待確(?) / 份數
+  const trainVal = (g.train==='x'||g.train==='?'||!g.train) ? '' : g.train;
+  return `<tr style="background:rgba(196,146,42,0.08);">
+    <td><input id="eg-name" class="search-input" style="width:100%;min-width:90px;" placeholder="姓名／職稱" value="${esc(g.name)}"></td>
+    <td><input id="eg-org" class="search-input" style="width:100%;min-width:90px;" placeholder="機關單位" value="${esc(g.org)}"></td>
+    <td>
+      <select id="eg-trainmode" class="search-input" style="width:82px;" onchange="document.getElementById('eg-traintime').style.display=this.value==='time'?'':'none'">
+        <option value="?"${(g.train==='?'||!g.train)?' selected':''}>待確</option>
+        <option value="x"${g.train==='x'?' selected':''}>不需</option>
+        <option value="time"${trainVal?' selected':''}>指定</option>
+      </select>
+      <input id="eg-traintime" type="time" class="search-input" style="width:96px;margin-top:4px;display:${trainVal?'':'none'};" value="${esc(trainVal)}">
+    </td>
+    <td>
+      <input id="eg-meal" type="number" min="0" max="30" class="search-input" style="width:58px;" placeholder="份" value="${(g.meal==='?'||g.meal==='x'||g.meal==null)?'':esc(g.meal)}">
+      <label style="display:block;font-size:10px;color:var(--gray);margin-top:2px;cursor:pointer;"><input type="checkbox" id="eg-mealtbc"${(g.meal==='?'||!g.meal||g.meal==='x')?' checked':''}> 待確</label>
+    </td>
+    <td>${statusHTML[g.status]}</td>
+    <td><input id="eg-note" class="search-input" style="width:100%;min-width:80px;" placeholder="備註" value="${esc(g.note)}"></td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-sm btn-gold" onclick="saveGuestRow('${g.id}')">儲存</button>
+      <button class="btn btn-sm btn-outline" onclick="editingGuest=null;renderGuests()">取消</button>
+    </td>
+  </tr>`;
+}
+
+function editGuestRow(id){ editingGuest=id; renderGuests(); }
+
+async function saveGuestRow(id){
+  const mode=document.getElementById('eg-trainmode').value;
+  const t=document.getElementById('eg-traintime').value.trim();
+  const train = mode==='time' ? (t||'?') : mode;   // 指定但沒填時間 → 待確
+  const mealTbc=document.getElementById('eg-mealtbc').checked;
+  const mealNum=document.getElementById('eg-meal').value.trim();
+  const meal = mealTbc ? '?' : (mealNum==='' ? '0' : mealNum);
+  const payload = {
+    name: document.getElementById('eg-name').value.trim(),
+    org:  document.getElementById('eg-org').value.trim(),
+    train, meal,
+    note: document.getElementById('eg-note').value.trim() || null,
+  };
+  const res=await fetch(`${SB_URL}/rest/v1/tada_guests?id=eq.${encodeURIComponent(id)}`,{
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify(payload) });
+  if(res.ok){ editingGuest=null; await reloadGuests(); }
+  else alert('儲存失敗：'+await res.text());
+}
+
+async function advanceGuest(i){
+  const g=guestData[i];
+  const newStatus=nextStatus[g.status];
+  const res=await fetch(`${SB_URL}/rest/v1/tada_guests?id=eq.${encodeURIComponent(g.id)}`,{
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({status:newStatus}) });
+  if(res.ok){ g.status=newStatus; renderGuests(); }
+  else alert('狀態更新失敗：'+await res.text());
+}
+
+async function reloadGuests(){
+  try{
+    const g=await fetch(`${SB_URL}/rest/v1/tada_guests?order=sort`, {headers:SB_HEADERS}).then(r=>r.ok?r.json():null);
+    if(Array.isArray(g)) guestData=g;
+  }catch(e){}
   renderGuests();
 }
 
