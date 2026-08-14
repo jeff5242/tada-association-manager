@@ -16,10 +16,9 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
 .card{width:100%;max-width:420px;background:linear-gradient(160deg,#24402a,#16241a);border:1px solid rgba(184,145,58,0.35);border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.5);display:none;}
 .card-top{height:5px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
 .card-inner{padding:28px 26px 30px;}
-.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
-.brand-logo{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(255,255,255,0.04);}
-.brand-name{font-family:'Noto Serif TC',serif;font-size:14px;font-weight:600;color:var(--gold-pale);letter-spacing:0.08em;}
-.brand-sub{font-size:9px;color:var(--green-light);letter-spacing:0.12em;margin-top:1px;}
+.brand{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:22px;}
+.brand-logo-img{width:100%;max-width:240px;height:auto;display:block;}
+.brand-sub{font-size:9px;color:var(--green-light);letter-spacing:0.22em;text-transform:uppercase;}
 .label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.3em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;}
 .name{font-family:'Noto Serif TC',serif;font-size:30px;font-weight:900;color:#fff;letter-spacing:0.04em;margin-bottom:4px;}
 .status-line{font-size:12px;color:var(--green-light);margin-bottom:22px;}
@@ -52,15 +51,14 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
   <div class="card-top"></div>
   <div class="card-inner">
     <div class="brand">
-      <div class="brand-logo">🌾</div>
-      <div><div class="brand-name">台灣科技農企業發展協會</div><div class="brand-sub">MEMBER BINDING</div></div>
+      <img class="brand-logo-img" src="../assets/logo/tada-logo-gold.png" alt="台灣科技農企業發展協會 Taiwan Advanced Agribusiness Development Association">
+      <div class="brand-sub">Member Binding</div>
     </div>
     <div class="label">綁定會員身分</div>
     <div class="bind-lead">首次使用請先綁定，把您的 LINE 與會員資料對應起來。<br>綁定後即可產生<b>報到用會員證</b>，投票、通知也會對應到您本人。</div>
     <div class="bind-err" id="bind-err"></div>
     <div class="fld"><label>姓名 <span class="req">*</span></label><input type="text" id="b-name" placeholder="您的本名（與入會登記相同）"></div>
-    <div class="fld"><label>公司／單位名稱 <span class="req">*</span></label><input type="text" id="b-company" placeholder="您的公司或單位名稱"></div>
-    <div class="fld"><label>公司統一編號 <span class="req">*</span></label><input type="text" id="b-taxid" inputmode="numeric" maxlength="8" placeholder="8 碼統編"></div>
+    <div class="fld"><label>公司／單位名稱</label><input type="text" id="b-company" placeholder="公司或單位名稱"><div class="or">— 或 —</div><label>公司統一編號</label><input type="text" id="b-taxid" inputmode="numeric" maxlength="8" placeholder="8 碼統編"><div class="hint" style="margin-top:6px;">公司名稱與統編 <b>擇一</b> 填寫即可</div></div>
     <button class="bind-btn" id="bind-btn" onclick="doBind()">確認綁定</button>
   </div>
 </div>
@@ -70,8 +68,8 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
   <div class="card-top"></div>
   <div class="card-inner">
     <div class="brand">
-      <div class="brand-logo">🌾</div>
-      <div><div class="brand-name">台灣科技農企業發展協會</div><div class="brand-sub">TADA MEMBER PASS</div></div>
+      <img class="brand-logo-img" src="../assets/logo/tada-logo-gold.png" alt="台灣科技農企業發展協會 Taiwan Advanced Agribusiness Development Association">
+      <div class="brand-sub">TADA Member Pass</div>
     </div>
     <div class="label">Member</div>
     <div class="name" id="member-name">—</div>
@@ -113,7 +111,12 @@ async function init(){
 function renderCard(m){
   document.getElementById('member-name').textContent = m.name;
   const sl=document.getElementById('status-line');
-  sl.innerHTML = `會員編號 <span class="on">${m.member_no}</span>` + (m.company?`<br><span style="opacity:.85;">${m.company}</span>`:'');
+  const STC={'有效會員':'#66bb6a','永久會員':'#29b6f6','榮譽會員':'#e8b84b','待續約會員':'#e8b84b','退會會員':'#ef5350'};
+  const badge = m.status ? `<span style="display:inline-block;margin-left:8px;font-size:10px;padding:1px 8px;border-radius:99px;border:1px solid ${STC[m.status]||'#9aa'};color:${STC[m.status]||'#9aa'};vertical-align:middle;">${m.status}</span>` : '';
+  const typ = m.member_type==='group' ? '團體會員' : '個人會員';
+  sl.innerHTML = `會員編號 <span class="on">${m.member_no||'—'}</span>${badge}`
+    + (m.company?`<br><span style="opacity:.85;">${m.company}</span>`:'')
+    + `<br><span style="opacity:.6;font-size:11px;">${typ}</span>`;
   // QR 內容：M:會員編號（報到機辨識用）
   document.getElementById('qrcode').innerHTML='';
   new QRCode(document.getElementById('qrcode'), { text:'M:'+m.member_no, width:210, height:210, correctLevel:QRCode.CorrectLevel.M });
@@ -130,8 +133,7 @@ async function doBind(){
   const err=document.getElementById('bind-err');
   function showErr(m){ err.textContent=m; err.style.display=m?'block':'none'; }
   if(!name){ showErr('請輸入姓名'); return; }
-  if(!company){ showErr('請填寫公司／單位名稱'); return; }
-  if(!/^\d{8}$/.test(taxid)){ showErr('請填寫 8 碼公司統一編號'); return; }
+  if(!company && !/^\d{8}$/.test(taxid)){ showErr('請填寫公司名稱，或 8 碼統一編號（擇一）'); return; }
   const btn=document.getElementById('bind-btn'); btn.disabled=true; btn.textContent='比對中…';
   try{
     const r=await rpc('roster_bind',{p_user_id:profile.userId,p_name:name,p_company:company,p_tax_id:taxid});
