@@ -88,6 +88,14 @@ textarea{resize:vertical;min-height:56px;}
         <textarea id="note" placeholder="匯款人姓名不同、金額差異等說明…"></textarea>
       </div>
       <button class="submit" id="submit-btn" onclick="submitPay()">送出回報</button>
+
+      <div id="line-promo" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #eadfce;text-align:center;">
+        <div style="font-size:12px;color:#7a6f5c;margin-bottom:8px;">加入官方 LINE，下次可直接在 LINE 回報並收到會務通知 🐝</div>
+        <a href="https://line.me/R/ti/p/@352ovzeo" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:6px;background:#06C755;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;">
+          <span style="font-size:16px;">＋</span> 加入官方 LINE 回報
+        </a>
+      </div>
     </div>
   </div>
 
@@ -119,6 +127,7 @@ async function init(){
     document.getElementById('payer-name').value = profile.displayName;
   } else {
     document.getElementById('name-field').style.display = '';
+    document.getElementById('line-promo').style.display = '';  // 網頁進入才宣傳加入 LINE
   }
 }
 
