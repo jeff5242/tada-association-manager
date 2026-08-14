@@ -765,6 +765,20 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- 通知繳費 Modal -->
+<div id="notify-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:6px;">📨 通知繳費</div>
+    <div style="font-size:12px;color:var(--gray);margin-bottom:14px;" id="notify-to">寄給：</div>
+    <textarea id="notify-msg" style="width:100%;min-height:210px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="closeNotifyModal()">關閉</button>
+      <button class="btn btn-outline" id="notify-copy-btn" onclick="copyNotifyMsg()">📋 複製訊息</button>
+      <button class="btn btn-gold" id="notify-mail-btn">✉ 用 Email 寄送</button>
+    </div>
+  </div>
+</div>
+
 <!-- 編輯 Modal -->
 <div id="member-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
@@ -1666,10 +1680,46 @@ function buildActionButtons(a) {
   } else if (a.status === 'rejected') {
     btns.push(`<button class="btn btn-sm btn-outline" onclick="openAppModal('${id}','pending')">重置待審</button>`);
   }
+  // 審核通過後：通知繳費（寄送繳費回報連結）
+  if (a.status === 'pending' || a.status === 'payment_confirmed' || a.status === 'approved') {
+    btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;color:var(--gold-lt);border-color:rgba(196,146,42,0.4);" onclick="openNotifyModal('${id}')">📨 通知繳費</button>`);
+  }
   // 通用：檢視／修改、隱藏
   btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="openAppEdit('${id}')">檢視／修改</button>`);
   btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;color:var(--gray);" onclick="hideApp('${id}')">隱藏</button>`);
   return btns.join('');
+}
+
+// ── 通知繳費：產生提醒訊息＋繳費回報連結，供複製或以 Email 寄送 ──
+const PAYMENT_URL = 'https://tada-ai.org.tw/payment/';
+function buildNotifyMessage(a){
+  const name = a.name || a.org_name || '會員';
+  return `【TADA 台灣科技農企業發展協會】\n${name} 您好：\n\n您的入會申請已審核通過 ✅\n請於完成會費匯款後，至下方連結回報繳費資訊（繳費日期＋匯款帳號後 5 碼）：\n${PAYMENT_URL}\n\n匯款資訊：\n・京城銀行 太保分行（代號 0540641）\n・帳號 064125019127\n・戶名 台灣科技農企業發展協會\n\n收到回報後，會務人員將為您核對確認。感謝您的支持 🌾`;
+}
+function openNotifyModal(id){
+  const a = allApps.find(x=>x.id===id); if(!a) return;
+  const msg = buildNotifyMessage(a);
+  document.getElementById('notify-msg').value = msg;
+  const email = a.email || a.contact_email || '';
+  const mailBtn = document.getElementById('notify-mail-btn');
+  if(email){
+    const subject = encodeURIComponent('TADA 入會審核通過 — 會費繳納與回報');
+    mailBtn.style.display = '';
+    mailBtn.onclick = ()=>{ window.location.href = `mailto:${email}?subject=${subject}&body=${encodeURIComponent(msg)}`; };
+    document.getElementById('notify-to').textContent = '寄給：' + email;
+  } else {
+    mailBtn.style.display = 'none';
+    document.getElementById('notify-to').textContent = '（此申請無 Email，請用複製後由 LINE／電話通知）';
+  }
+  document.getElementById('notify-modal').style.display = 'flex';
+}
+function closeNotifyModal(){ document.getElementById('notify-modal').style.display='none'; }
+async function copyNotifyMsg(){
+  const ta = document.getElementById('notify-msg');
+  try { await navigator.clipboard.writeText(ta.value); }
+  catch(e){ ta.select(); document.execCommand('copy'); }
+  const btn = document.getElementById('notify-copy-btn');
+  const t = btn.textContent; btn.textContent = '✓ 已複製'; setTimeout(()=>btn.textContent=t, 1500);
 }
 
 // ── 隱藏／取消隱藏／刪除 ─────────────────────────────

@@ -57,6 +57,10 @@ textarea{resize:vertical;min-height:56px;}
     </div>
 
     <div class="card">
+      <div class="field" id="name-field" style="display:none;">
+        <label class="label">姓名 <span style="color:#c0392b;">*</span></label>
+        <input type="text" id="payer-name" placeholder="請輸入您的姓名">
+      </div>
       <div class="field">
         <label class="label">繳費類別</label>
         <select id="member-type" onchange="updateAmount()">
@@ -70,6 +74,10 @@ textarea{resize:vertical;min-height:56px;}
         <label class="label">匯款金額</label>
         <div class="amount-show" id="amount-show">NT$7,000</div>
         <div class="hint">如與實際金額不同，可於下方備註說明</div>
+      </div>
+      <div class="field">
+        <label class="label">繳費日期 <span style="color:#c0392b;">*</span></label>
+        <input type="date" id="paid-date">
       </div>
       <div class="field">
         <label class="label">匯款帳號後 5 碼 <span style="color:#c0392b;">*</span></label>
@@ -101,20 +109,25 @@ function updateAmount(){
 }
 
 async function init(){
+  document.getElementById('loading').style.display='none';
+  document.getElementById('form-view').style.display='block';
   try{
     profile = await window.tadaInitLiff('payment');
-    if(!profile) return;
-    document.getElementById('loading').style.display='none';
-    document.getElementById('form-view').style.display='block';
-  }catch(e){
-    document.getElementById('loading').style.display='none';
-    document.getElementById('form-view').style.display='block';
-    showErr('初始化失敗，請從 LINE 官方帳號選單開啟。');
+  }catch(e){ profile = null; }
+  // 非 LINE（網頁）進來：顯示姓名欄；LINE 進來：帶入暱稱
+  if(profile && profile.displayName){
+    document.getElementById('payer-name').value = profile.displayName;
+  } else {
+    document.getElementById('name-field').style.display = '';
   }
 }
 
 async function submitPay(){
+  const name = document.getElementById('payer-name').value.trim();
+  const paidDate = document.getElementById('paid-date').value;
   const last5 = document.getElementById('last5').value.trim();
+  if(!name){ showErr('請輸入姓名'); return; }
+  if(!paidDate){ showErr('請選擇繳費日期'); return; }
   if(!/^\d{5}$/.test(last5)){ showErr('請輸入正確的帳號後 5 碼（5 位數字）'); return; }
   const sel = document.getElementById('member-type');
   const btn = document.getElementById('submit-btn');
@@ -123,6 +136,8 @@ async function submitPay(){
   const payload = {
     user_id: profile ? profile.userId : null,
     display_name: profile ? profile.displayName : null,
+    applicant_name: name,
+    paid_date: paidDate,
     member_type: sel.value,
     amount: Number(sel.options[sel.selectedIndex].dataset.amt),
     last5: last5,
