@@ -360,6 +360,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <option value="榮譽會員">榮譽會員</option>
       <option value="退會會員">退會會員</option>
       <option value="__none">未標記</option>
+      <option value="__needinfo">⚠ 需補公司／統編</option>
     </select>
     <select class="filter-select" onchange="filterMemberDirSession(this.value)">
       <option value="">全部屆次</option>
@@ -907,7 +908,7 @@ async function loadMembers(){
   const status = document.getElementById('sb-status');
   if(status){ status.style.color='var(--gray)'; status.textContent='載入中…'; }
   try {
-    const sel = 'id,member_no,member_type,name,company,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name';
+    const sel = 'id,member_no,member_type,name,company,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name,tax_id,line_user_id';
     const res = await fetch(`${SB_URL}/rest/v1/tada_members?select=${sel}&order=member_no.asc.nullslast`, {headers: SB_HEADERS});
     if(!res.ok) throw new Error('HTTP '+res.status);
     memberRows = await res.json();
@@ -1001,7 +1002,8 @@ function renderMemberDir(){
     const okq = !q || hay.includes(q);
     const oks = !dirSession || (m.terms||[]).some(t=>String(t.session)===dirSession);
     const okt = !dirType || (dirType==='board' ? (m.terms||[]).length>0 : (m.member_type||'')===dirType);
-    const okst = !dirStatus || (dirStatus==='__none' ? !m.status : m.status===dirStatus);
+    const needInfo = m.member_type && m.status!=='退會會員' && (!m.company || !m.tax_id);
+    const okst = !dirStatus || (dirStatus==='__none' ? !m.status : dirStatus==='__needinfo' ? needInfo : m.status===dirStatus);
     return okq && oks && okt && okst;
   });
   document.getElementById('dir-count').textContent = data.length;
@@ -1023,7 +1025,7 @@ function memberMainRow(m, seq){
     <td data-label="#" style="color:var(--gray);font-size:11px;text-align:right;">${seq}</td>
     <td data-label="會員編號" style="font-family:'DM Mono',monospace;color:${m.member_no?'var(--gold-lt)':'var(--gray)'};white-space:nowrap;">${m.member_no?escapeHtml(m.member_no):'—'}</td>
     <td data-label="姓名" class="name-cell">${escapeHtml(m.name)} ${mTypeBadge(m.member_type)}</td>
-    <td data-label="服務機關" class="org-cell" style="font-size:12px;">${m.company?escapeHtml(m.company):'<span style="color:var(--gray);font-size:11px;">—</span>'}</td>
+    <td data-label="服務機關" class="org-cell" style="font-size:12px;">${m.company?escapeHtml(m.company)+((m.member_type&&!m.tax_id&&m.status!=='退會會員')?' <span title="缺公司統編" style="color:var(--warn);font-size:10px;white-space:nowrap;">⚠缺統編</span>':''):(m.status==='退會會員'?'<span style="color:var(--gray);font-size:11px;">—</span>':'<span style="color:var(--warn);font-size:11px;">⚠ 需補公司資料</span>')}</td>
     <td data-label="電話" style="font-size:12px;color:var(--gray);white-space:nowrap;">${escapeHtml(phone)||'–'}</td>
     <td data-label="Email" style="font-size:12px;color:var(--gray);">${email?escapeHtml(email):'–'}</td>
     <td data-label="狀態">${statusBadge(m.status)}</td>
