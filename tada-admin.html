@@ -376,7 +376,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>會員編號</th><th>姓名 / 團體</th><th>服務機關 / 團體</th><th>電話</th><th>Email</th><th>狀態</th><th>最後繳費</th><th>職務</th><th>操作</th>
+        <th style="width:40px;">#</th><th>會員編號</th><th>姓名 / 團體</th><th>服務機關 / 團體</th><th>電話</th><th>Email</th><th>狀態</th><th>最後繳費</th><th>職務</th><th>操作</th>
       </tr></thead>
       <tbody id="dir-tbody"></tbody>
     </table>
@@ -991,13 +991,14 @@ function renderMemberDir(){
     return okq && oks && okt && okst;
   });
   document.getElementById('dir-count').textContent = data.length;
-  document.getElementById('dir-tbody').innerHTML = data.map(m=>{
-    if(m.id===editingMemberId && !memberIsGroup(m)) return memberEditRow(m);
-    return memberMainRow(m) + (memberIsGroup(m) ? repSubRows(m) : '');
+  document.getElementById('dir-tbody').innerHTML = data.map((m,i)=>{
+    const seq = i+1;
+    if(m.id===editingMemberId && !memberIsGroup(m)) return memberEditRow(m, seq);
+    return memberMainRow(m, seq) + (memberIsGroup(m) ? repSubRows(m) : '');
   }).join('');
 }
 
-function memberMainRow(m){
+function memberMainRow(m, seq){
   const termBadges = (m.terms||[]).map(t=>
     `<span style="font-size:10px;padding:1px 7px;border:1px solid rgba(196,146,42,0.4);color:var(--gold);border-radius:99px;white-space:nowrap;">${SESSION_NAMES[t.session]||('第'+t.session+'屆')} ${t.role}</span>`
   ).join(' ') || '<span style="color:var(--gray);font-size:11px;">—</span>';
@@ -1005,6 +1006,7 @@ function memberMainRow(m){
   const email = m.email || m.contact_email || '';
   const editFn = memberIsGroup(m) ? `openGroupModal('${m.id}')` : `editMemberRow('${m.id}')`;
   return `<tr>
+    <td data-label="#" style="color:var(--gray);font-size:11px;text-align:right;">${seq}</td>
     <td data-label="會員編號" style="font-family:'DM Mono',monospace;color:${m.member_no?'var(--gold-lt)':'var(--gray)'};white-space:nowrap;">${m.member_no?escapeHtml(m.member_no):'—'}</td>
     <td data-label="姓名" class="name-cell">${escapeHtml(m.name)} ${mTypeBadge(m.member_type)}</td>
     <td data-label="服務機關" class="org-cell" style="font-size:12px;">${m.company?escapeHtml(m.company):'<span style="color:var(--gray);font-size:11px;">—</span>'}</td>
@@ -1025,6 +1027,7 @@ function memberMainRow(m){
 function repSubRows(m){
   return (m.reps||[]).slice(0,3).map((r,i)=>`
     <tr style="background:rgba(255,255,255,0.015);">
+      <td></td>
       <td style="font-family:'DM Mono',monospace;color:var(--gray);white-space:nowrap;padding-left:18px;">${m.member_no?escapeHtml(m.member_no)+'-'+(i+1):'—'}</td>
       <td class="name-cell" style="font-weight:400;padding-left:20px;">↳ ${escapeHtml(r.name||'')} <span style="font-size:9px;color:var(--gray);">代表${i+1}</span></td>
       <td class="org-cell" style="font-size:11px;color:var(--gray);">${escapeHtml(r.title||m.company||'')}</td>
@@ -1035,11 +1038,12 @@ function repSubRows(m){
     </tr>`).join('');
 }
 
-function memberEditRow(m){
+function memberEditRow(m, seq){
   const v = s => escapeHtml(s==null?'':String(s));
   const opt = (val,lbl,cur)=>`<option value="${val}"${cur===val?' selected':''}>${lbl}</option>`;
   const statusOpts = ['<option value="">—</option>'].concat(STATUS_LIST.map(s=>opt(s,s,m.status||''))).join('');
   return `<tr style="background:rgba(196,146,42,0.08);">
+    <td style="color:var(--gray);font-size:11px;text-align:right;">${seq||''}</td>
     <td><input id="me-no" class="search-input" style="width:92px;" placeholder="編號" value="${v(m.member_no)}">
         <input id="me-join" class="search-input" style="width:92px;margin-top:4px;" placeholder="入會日" value="${v(m.join_date)}"></td>
     <td><input id="me-name" class="search-input" style="width:100%;min-width:90px;" value="${v(m.name)}">
