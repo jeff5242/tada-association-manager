@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TADA 報到輪播｜第六屆理監事改選</title>
+<!--
+  ── 報到人資訊輪播（投影／大螢幕用）──────────────────────────────
+  開法：chromium --kiosk --password-store=basic https://tada-ai.org.tw/carousel/
+
+  一次放大顯示「一位」報到者，依報到時間倒序自動輪播。
+  和報到牆 /wall/ 共用 checkin_wall RPC 與首字徽章邏輯：
+  - 沒有 logo 時用公司名首字＋依名稱雜湊的固定配色（不等 logo 就能上）。
+  - 資料一律走 checkin_wall，不直讀 tada_members。
+  新報到者會插到最前、亮金框顯示「剛報到」，數秒後回到正常輪播。
+-->
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#b8913a;--gold-light:#d4a853;
+  --green-mid:#2d5235;--green-light:#7fae86;--cream:#f8f4ea;
+}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:'Noto Sans TC',sans-serif;
+  background:radial-gradient(ellipse at top,#1e3320,#0b140e 70%);
+  color:var(--cream);user-select:none;cursor:none;
+  display:flex;flex-direction:column;
+}
+.bar{height:6px;flex:0 0 6px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+
+/* ── 頂列 ── */
+.head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:2.4vmin 4vmin 0;}
+.head .kick{font-size:1.6vmin;letter-spacing:.4em;color:var(--gold-light);font-weight:700;}
+.head h1{font-family:'Noto Serif TC',serif;font-size:3vmin;font-weight:900;color:#fff;line-height:1.2;}
+.count{text-align:right;line-height:1;}
+.count b{font-family:'Noto Serif TC',serif;font-size:6.5vmin;font-weight:900;color:var(--gold-light);display:block;}
+.count span{font-size:1.6vmin;color:var(--green-light);letter-spacing:.1em;}
+
+/* ── 舞台 ── */
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative;padding:2vmin;}
+.card{
+  display:flex;flex-direction:column;align-items:center;gap:3.2vmin;text-align:center;
+  opacity:0;transform:translateY(3vmin) scale(.97);
+  transition:opacity .5s ease,transform .5s cubic-bezier(.2,1.3,.4,1);
+}
+.card.show{opacity:1;transform:none;}
+
+/* logo / 首字徽章 */
+.badge{
+  width:40vmin;height:40vmin;border-radius:6vmin;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2vmin 6vmin rgba(0,0,0,.45);position:relative;
+}
+.badge img{width:100%;height:100%;object-fit:contain;background:#fff;padding:8%;}
+.badge .mono{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-family:'Noto Serif TC',serif;font-weight:900;color:#fff;font-size:22vmin;}
+.card.fresh .badge{box-shadow:0 0 0 .6vmin var(--gold-light),0 0 9vmin rgba(212,168,83,.7);}
+
+.name{font-family:'Noto Serif TC',serif;font-weight:900;color:#fff;font-size:9vmin;line-height:1.05;}
+.company{font-size:3.4vmin;font-weight:700;color:var(--gold-light);max-width:88vw;}
+.meta{font-size:2vmin;color:var(--green-light);letter-spacing:.08em;}
+.fresh-tag{
+  display:none;margin-top:.4vmin;font-size:2.2vmin;font-weight:900;color:#14231a;
+  background:var(--gold-light);padding:.5vmin 2vmin;border-radius:99px;letter-spacing:.15em;
+}
+.card.fresh .fresh-tag{display:inline-block;animation:blink 1.2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* 進度點 */
+.dots{flex:0 0 auto;display:flex;gap:1vmin;justify-content:center;flex-wrap:wrap;padding:1.6vmin 4vmin 2.6vmin;max-height:9vmin;overflow:hidden;}
+.dots i{width:1vmin;height:1vmin;border-radius:50%;background:rgba(255,255,255,.22);transition:all .3s;}
+.dots i.on{background:var(--gold-light);transform:scale(1.5);}
+
+.idle{font-size:3vmin;color:var(--green-light);font-weight:400;}
+.err{position:fixed;left:0;right:0;bottom:0;padding:1vmin;text-align:center;background:#7a2318;font-size:1.6vmin;display:none;}
+.err.on{display:block;}
+</style>
+</head>
+<body>
+<div class="bar"></div>
+
+<div class="head">
+  <div>
+    <div class="kick">TADA 理監事選舉 · 報到實況</div>
+    <h1 id="e-title">—</h1>
+  </div>
+  <div class="count">
+    <b id="c-num">0</b>
+    <span>已報到 ／ <span id="c-total">0</span> 人</span>
+  </div>
+</div>
+
+<div class="stage" id="stage">
+  <div class="idle" id="idle">等待報到中…</div>
+  <div class="card" id="card" style="display:none;">
+    <div class="badge" id="badge"></div>
+    <div class="name" id="name">—</div>
+    <div class="company" id="company"></div>
+    <div class="meta" id="meta"></div>
+    <div class="fresh-tag">剛　報　到</div>
+  </div>
+</div>
+
+<div class="dots" id="dots"></div>
+<div class="err" id="err"></div>
+
+<script>
+const POLL_MS    = 4000;   // 多久抓一次報到資料
+const ADVANCE_MS = 5000;   // 每位停留秒數
+const FRESH_MS   = 8000;   // 新報到者「剛報到」放大顯示時間
+
+let election = null;
+let people = [];           // 報到者（依時間倒序，一人一筆）
+let idx = 0;
+let seen = new Set();
+let firstLoad = true;
+let freshKey = null, freshUntil = 0;
+let advanceTimer = null;
+
+const $ = (id) => document.getElementById(id);
+const keyOf = (e) => (e.display_name||'') + '|' + (e.company||'') + '|' + (e.checked_at||'');
+function showErr(m){ const e=$('err'); if(m){e.textContent=m;e.classList.add('on');} else e.classList.remove('on'); }
+
+async function rpc(fn, body){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`,
+    { method:'POST', headers:window.tadaSbHeaders(), body:JSON.stringify(body) });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+/** 同一家公司固定同色（名稱雜湊，不用隨機） */
+function hueOf(name){ let h=0; for(const ch of String(name)) h=(h*31+ch.charCodeAt(0))%360; return h; }
+
+function fillBadge(entry){
+  const b = $('badge'); b.innerHTML='';
+  if(entry.logo_url){
+    const img=document.createElement('img'); img.src=entry.logo_url; img.alt=entry.company||'';
+    img.onerror=()=>{ img.remove(); b.appendChild(mono(entry.company)); };
+    b.appendChild(img);
+  } else {
+    b.appendChild(mono(entry.company));
+  }
+}
+function mono(company){
+  const d=document.createElement('div'); d.className='mono';
+  const h=hueOf(company||'?');
+  d.style.background=`linear-gradient(150deg,hsl(${h} 42% 34%),hsl(${(h+40)%360} 40% 20%))`;
+  d.textContent=String(company||'?').trim().charAt(0);
+  return d;
+}
+function fmtTime(ts){
+  if(!ts) return '';
+  try{ return new Date(ts).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; }
+}
+
+function renderDots(){
+  const d=$('dots');
+  if(people.length<=1){ d.innerHTML=''; return; }
+  const cap=Math.min(people.length,40);
+  d.innerHTML='';
+  for(let i=0;i<cap;i++){ const s=document.createElement('i'); if(i===idx) s.className='on'; d.appendChild(s); }
+}
+
+function show(i){
+  if(!people.length){ return; }
+  idx = ((i % people.length) + people.length) % people.length;
+  const e = people[idx];
+  const card=$('card');
+  card.classList.remove('show');
+  // 淡出後換內容再淡入
+  setTimeout(()=>{
+    fillBadge(e);
+    $('name').textContent = e.display_name || '—';
+    $('company').textContent = e.company || '';
+    $('meta').textContent = (e.kind==='guest' ? '貴賓　' : '') + (fmtTime(e.checked_at) ? ('報到 '+fmtTime(e.checked_at)) : '');
+    const isFresh = (keyOf(e)===freshKey) && (Date.now()<freshUntil);
+    card.classList.toggle('fresh', isFresh);
+    card.classList.add('show');
+    renderDots();
+  }, 260);
+}
+
+function scheduleAdvance(){
+  clearTimeout(advanceTimer);
+  advanceTimer = setTimeout(()=>{ show(idx+1); scheduleAdvance(); }, ADVANCE_MS);
+}
+
+async function loadElection(){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election`
+    + `?status=in.(checkin,open)&order=created_at.desc&limit=1`, { headers:window.tadaSbHeaders() });
+  const list = r.ok ? await r.json() : [];
+  if(!list.length){ $('e-title').textContent='目前無開放報到的場次'; return false; }
+  election = list[0]; $('e-title').textContent = election.title; return true;
+}
+
+async function tick(){
+  if(!election) return;
+  try{
+    const [wall, prog] = await Promise.all([
+      rpc('checkin_wall', { p_election: election.id }),
+      rpc('checkin_progress', { p_election: election.id }),
+    ]);
+    showErr('');
+    $('c-num').textContent = (prog.members_checked||0)+(prog.guests_checked||0);
+    $('c-total').textContent = (prog.members_total||0)+(prog.guests_total||0);
+
+    // wall 已依時間倒序；一人一筆（不依公司去重，因為要輪播每位報到者）
+    const fresh = wall.filter(e=>!seen.has(keyOf(e)));
+    people = wall;
+
+    if(!people.length){
+      $('idle').style.display=''; $('card').style.display='none'; $('dots').innerHTML='';
+    } else {
+      $('idle').style.display='none'; $('card').style.display='';
+      if(fresh.length && !firstLoad){
+        // 有新報到 → 跳到最前放大顯示「剛報到」
+        freshKey = keyOf(fresh[0]); freshUntil = Date.now()+FRESH_MS;
+        show(0); scheduleAdvance();
+      } else if(firstLoad){
+        show(0); scheduleAdvance();
+      }
+    }
+    wall.forEach(e=>seen.add(keyOf(e)));
+    firstLoad = false;
+  }catch(e){ showErr('連線異常，重試中… '+e.message); }
+}
+
+(async ()=>{
+  if(await loadElection()){ await tick(); setInterval(tick, POLL_MS); }
+})();
+</script>
+</body>
+</html>
