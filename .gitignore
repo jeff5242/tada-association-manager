@@ -4,7 +4,11 @@ supabase/*_seed.sql
 
 # 協會內部文件（入會申請書、會費通知、領票名冊、委託書等含個資）
 # 僅限 repo 根目錄的 docs/，不誤傷 supabase/functions/docs/
-/docs/
+#
+# 必須寫 /docs/* 而不是 /docs/：git 規則是「父目錄被排除後，裡面的檔案
+# 無法再被重新納入」，寫成 /docs/ 會讓下一行的 !/docs/*.md 完全失效，
+# 連純文字的規格文件都加不進來。
+/docs/*
 !/docs/*.md
 
 # Supabase 本機暫存
