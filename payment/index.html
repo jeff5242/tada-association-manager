@@ -57,6 +57,7 @@ textarea{resize:vertical;min-height:56px;}
     </div>
 
     <div class="card">
+      <div id="bound-info" style="display:none;background:#eef6ee;border:1px solid #cfe6cf;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#2d5235;"></div>
       <div class="field" id="name-field" style="display:none;">
         <label class="label">姓名 <span style="color:#c0392b;">*</span></label>
         <input type="text" id="payer-name" placeholder="請輸入您的姓名">
@@ -116,18 +117,41 @@ function updateAmount(){
   document.getElementById('amount-show').textContent = 'NT$' + Number(amt).toLocaleString();
 }
 
+async function rosterBound(uid){
+  try{
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/roster_bound`,{method:'POST',headers:window.tadaSbHeaders(),body:JSON.stringify({p_user_id:uid})});
+    return r.ok ? await r.json() : null;
+  }catch(e){ return null; }
+}
+
 async function init(){
   document.getElementById('loading').style.display='none';
   document.getElementById('form-view').style.display='block';
   try{
     profile = await window.tadaInitLiff('payment');
   }catch(e){ profile = null; }
-  // 非 LINE（網頁）進來：顯示姓名欄；LINE 進來：帶入暱稱
-  if(profile && profile.displayName){
-    document.getElementById('payer-name').value = profile.displayName;
+
+  if(profile && profile.userId){
+    // 從 LINE 進來 → 查是否已綁定會員，是則自動帶入身份
+    const b = await rosterBound(profile.userId);
+    if(b && b.bound){
+      document.getElementById('payer-name').value = b.name;
+      const info = document.getElementById('bound-info');
+      info.innerHTML = `✓ 已綁定會員：<b>${b.name}</b>` + (b.member_no?`（會員編號 ${b.member_no}）`:'') + (b.company?`<br><span style="opacity:.8;">${b.company}</span>`:'');
+      info.style.display = '';
+      // 既有會員繳費多為續約 → 預選續約類別
+      const sel = document.getElementById('member-type');
+      sel.value = b.member_type==='group' ? 'group_renew' : 'personal_renew';
+      updateAmount();
+    } else {
+      // LINE 但未綁定 → 帶暱稱，顯示姓名欄可自填
+      document.getElementById('payer-name').value = profile.displayName || '';
+      document.getElementById('name-field').style.display = '';
+    }
   } else {
+    // 網頁進入：顯示姓名欄 + 宣傳加入 LINE
     document.getElementById('name-field').style.display = '';
-    document.getElementById('line-promo').style.display = '';  // 網頁進入才宣傳加入 LINE
+    document.getElementById('line-promo').style.display = '';
   }
 }
 

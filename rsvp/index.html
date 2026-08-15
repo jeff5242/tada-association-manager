@@ -179,6 +179,15 @@ async function init(){
       profile = await liff.getProfile();
       userId = profile.userId;
       document.getElementById('rsvp-name').value = profile.displayName || '';
+      // 已綁定會員 → 帶入真實姓名與公司（下方若有既有回覆會再覆蓋）
+      try{
+        const br = await fetch(`${SB_URL}/rest/v1/rpc/roster_bound`,{method:'POST',headers:SB_HEADERS,body:JSON.stringify({p_user_id:userId})});
+        const b = br.ok ? await br.json() : null;
+        if(b && b.bound){
+          document.getElementById('rsvp-name').value = b.name;
+          if(b.company) document.getElementById('rsvp-org').value = b.company;
+        }
+      }catch(e){}
     } else {
       userId = getWebId();   // 網頁模式：以瀏覽器識別碼記住這台裝置的回覆
     }
