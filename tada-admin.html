@@ -606,15 +606,16 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 
     <div id="el-cat-proxy" style="display:none;">
       <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:10px;">
-        不克出席會員的代理出席委託書。填寫連結：<code style="color:var(--gold-lt);">tada-ai.org.tw/proxy/</code>（可放進 LINE 選單）。系統自動擋「一人受多人委託」。
+        會員於<b style="color:var(--gold-lt);">電子會員證</b>頁面自助委託出席／投票；系統自動擋「一人受多人委託」與「轉委託」。
+        受託人報到時，本人票＋每筆受託投票各發一張選票。<b>已報到者</b>委託即鎖定。
       </p>
       <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;">
-        <a class="btn btn-outline btn-sm" href="/proxy/" target="_blank">🤝 開啟委託書填寫頁</a>
         <button class="btn btn-outline btn-sm" onclick="renderProxy()">↻ 重新載入</button>
+        <button class="btn btn-outline btn-sm" onclick="exportProxyCSV()">匯出 CSV</button>
         <span id="proxy-count" style="font-size:12px;color:var(--gray);align-self:center;"></span>
       </div>
-      <div class="tbl-wrap"><table><thead><tr><th>委託人</th><th></th><th>受委託人（代表出席）</th><th>時間</th><th>列印</th></tr></thead>
-        <tbody id="proxy-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無委託書</td></tr></tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th>委託人</th><th></th><th>受委託人</th><th>範圍</th><th>狀態</th><th>報到</th><th>時間</th><th>列印</th></tr></thead>
+        <tbody id="proxy-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray);padding:20px;">尚無委託書</td></tr></tbody></table></div>
     </div>
   </div>
 </div>
@@ -2608,17 +2609,46 @@ function switchElCat(cat,btn){
   if(show==='proxy'){ renderProxy(); }
 }
 
+let proxyRows = [];
+const PROXY_ST = { active:['生效','#66bb6a'], cancelled:['已取消','#9aa'], rejected:['已批退','#ef5350'] };
+function proxyScope(p){ return [p.proxy_attend?'出席':null, p.proxy_vote?'投票':null].filter(Boolean).join('、')||'—'; }
+
 async function renderProxy(){
-  const r=await sbEl(`tada_v_proxy?election_id=eq.${election.id}&order=created_at.desc&select=id,principal_name,principal_no,delegate_name,delegate_no,created_at`); const arr=r.ok?await r.json():[];
-  document.getElementById('proxy-count').textContent=`已委託 ${arr.length} 件`;
+  const r=await sbEl(`rpc/proxy_list`, { method:'POST', headers:{...SB_HEADERS,'Content-Type':'application/json'}, body:JSON.stringify({p_election:election.id}) });
+  const data=r.ok?await r.json():{proxies:[]}; const arr=(data&&data.proxies)||[];
+  proxyRows=arr;
+  const active=arr.filter(p=>p.status==='active').length;
+  document.getElementById('proxy-count').textContent=`生效 ${active} 件（含歷史共 ${arr.length} 筆）`;
   const tb=document.getElementById('proxy-tbody');
-  if(!arr.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無委託書</td></tr>'; return; }
-  tb.innerHTML=arr.map(p=>`<tr>
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:20px;">尚無委託書</td></tr>'; return; }
+  tb.innerHTML=arr.map(p=>{
+    const st=PROXY_ST[p.status]||[p.status,'#9aa'];
+    const ci=[p.principal_checked_in?'委託人✓':null,p.delegate_checked_in?'受託人✓':null].filter(Boolean).join(' ')||'—';
+    const dim=p.status!=='active'?'opacity:.5;':'';
+    return `<tr style="${dim}">
     <td class="name-cell">${escapeHtml(p.principal_name)}${p.principal_no?'<span style="color:var(--gray);font-size:11px;"> #'+escapeHtml(p.principal_no)+'</span>':''}</td>
     <td>→</td>
     <td class="name-cell">${escapeHtml(p.delegate_name)}${p.delegate_no?'<span style="color:var(--gray);font-size:11px;"> #'+escapeHtml(p.delegate_no)+'</span>':''}</td>
+    <td style="font-size:12px;">${proxyScope(p)}</td>
+    <td><span style="font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid ${st[1]};color:${st[1]};">${st[0]}</span></td>
+    <td style="font-size:11px;color:var(--gray);">${ci}</td>
     <td style="font-size:11px;color:var(--gray);">${new Date(p.created_at).toLocaleString('zh-TW',{hour12:false})}</td>
-    <td><a class="btn btn-outline btn-sm" href="/print/?doc=proxy&id=${p.id}" target="_blank">🖨️ PDF</a></td></tr>`).join('');
+    <td>${p.status==='active'?`<a class="btn btn-outline btn-sm" href="/print/?doc=proxy&id=${p.id}" target="_blank">🖨️ PDF</a>`:'–'}</td></tr>`;
+  }).join('');
+}
+
+function exportProxyCSV(){
+  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const head=['委託人','委託人編號','受託人','受託人編號','出席','投票','狀態','委託人已報到','受託人已報到','建立時間','結束時間','結束方'];
+  const lines=proxyRows.map(p=>[p.principal_name,p.principal_no,p.delegate_name,p.delegate_no,
+    p.proxy_attend?'是':'否',p.proxy_vote?'是':'否',(PROXY_ST[p.status]||[p.status])[0],
+    p.principal_checked_in?'是':'否',p.delegate_checked_in?'是':'否',
+    p.created_at?new Date(p.created_at).toLocaleString('zh-TW',{hour12:false}):'',
+    p.ended_at?new Date(p.ended_at).toLocaleString('zh-TW',{hour12:false}):'',
+    p.ended_by==='principal'?'委託人取消':p.ended_by==='delegate'?'受託人批退':''].map(esc).join(','));
+  const csv='﻿'+[head.map(esc).join(','),...lines].join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`TADA_委託清單_${new Date().toISOString().slice(0,10)}.csv`; a.click();
 }
 
 const POS_LB = { director:'理事', supervisor:'監事', executive:'常務理事' };

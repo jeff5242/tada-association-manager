@@ -109,6 +109,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
       <div class="px-opt" id="opt-attend" onclick="togOpt('attend')">☐ 委託出席</div>
       <div class="px-opt" id="opt-vote" onclick="togOpt('vote')">☐ 委託投票</div>
     </div>
+    <button class="px-btn" id="px-scan" onclick="scanDelegate()" style="background:transparent;color:var(--gold-pale);border:1px solid rgba(184,145,58,0.4);margin-top:2px;">📷 掃描對方會員證帶入</button>
     <label class="px-lb">受委託人姓名</label>
     <input type="text" id="px-dname" placeholder="請填本會會員姓名">
     <label class="px-lb">受委託人會員編號</label>
@@ -184,33 +185,72 @@ async function setupProxy(m){
     if(!list.length) return;              // 沒有開放中的場次 → 不顯示委託
     pxElection = list[0];
     const mine = await rpc('proxy_mine', { p_election:pxElection.id, p_user_id:profile.userId, p_name:m.name, p_no:m.member_no||'' });
+    if(!mine.eligible) return;            // 不在投票名冊（無委託資格）→ 不顯示委託區
     renderProxy(mine);
     document.getElementById('proxy-sec').style.display='block';
   }catch(e){ /* 靜默：委託非必要功能 */ }
 }
 
+const SCOPE_TXT = (a,v)=>[a?'出席':null, v?'投票':null].filter(Boolean).join('、');
+
 function renderProxy(mine){
   const form = document.getElementById('px-form');
   const status = document.getElementById('px-status');
   const recv = document.getElementById('px-recv');
-  // 我已委託出去 → 顯示狀態＋取消
+  const locked = !!(mine && mine.me_checked_in);
+
+  // ① 我已委託出去 → 顯示狀態（＋取消，未鎖定時）
   if(mine && mine.delegated){
     form.style.display='none';
-    const scope = [mine.proxy_attend?'出席':null, mine.proxy_vote?'投票':null].filter(Boolean).join('、');
     status.style.display='block';
-    status.innerHTML = `<div class="px-done">✓ 您已委託 <b>${mine.delegate_name}</b>${mine.delegate_no?`（${mine.delegate_no}）`:''} 代表您<b>${scope}</b>。</div>`
-      + `<button class="px-btn cancel" onclick="cancelProxy()">取消委託</button>`;
+    const scope = SCOPE_TXT(mine.proxy_attend, mine.proxy_vote);
+    let html = `<div class="px-done">✓ 您已委託 <b>${mine.delegate_name}</b>${mine.delegate_no?`（${mine.delegate_no}）`:''} 代表您<b>${scope}</b>。</div>`;
+    if(mine.mine_locked){
+      html += `<div class="px-note">您或受託人已完成報到，委託已鎖定、無法取消。</div>`;
+    } else {
+      html += `<button class="px-btn cancel" onclick="cancelProxy()">取消委託</button>`;
+    }
+    status.innerHTML = html;
   } else {
-    form.style.display='block';
     status.style.display='none';
+    // 已報到者不得再設定委託
+    if(locked){
+      form.style.display='none';
+    } else {
+      form.style.display='block';
+    }
   }
-  // 我受他人委託 → 提示
+
+  // ② 我受他人委託 → 提示（＋批退，未鎖定時）
   if(mine && mine.is_delegate_for){
     recv.style.display='block';
-    recv.textContent = `🤝 您受 ${mine.is_delegate_for} 委託，將代表其行使權利。`;
+    const scope = SCOPE_TXT(mine.delegate_attend, mine.delegate_vote);
+    let html = `<div>🤝 您受 <b>${mine.is_delegate_for}</b> 委託，將代表其行使<b>${scope}</b>。</div>`;
+    if(mine.recv_locked){
+      html += `<div class="px-note">您或委託人已完成報到，委託已鎖定、無法批退。</div>`;
+    } else {
+      html += `<div class="px-note">若您無法代為出席，可批退此委託，權利將回歸委託人。</div>`
+        + `<button class="px-btn cancel" style="margin-top:8px;" onclick="rejectProxy()">批退委託</button>`;
+    }
+    recv.innerHTML = html;
   } else {
     recv.style.display='none';
   }
+}
+
+async function scanDelegate(){
+  try{
+    if(!(window.liff && liff.scanCodeV2)){ alert('此環境不支援掃碼，請手動輸入會員編號。'); return; }
+    const res = await liff.scanCodeV2();
+    const raw = (res && res.value || '').trim();
+    const no = raw.replace(/^M:/,'').trim();          // 會員證 QR 為 M:會員編號
+    if(!/^\d+$/.test(no)){ alert('這不是有效的會員證 QR。'); return; }
+    document.getElementById('px-dno').value = no;
+    // 依編號帶出姓名
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_members?election_id=eq.${pxElection.id}&member_no=eq.${no}&select=name`, { headers: window.tadaSbHeaders() });
+    const rows = r.ok ? await r.json() : [];
+    if(rows.length){ document.getElementById('px-dname').value = rows[0].name; }
+  }catch(e){ /* 使用者取消掃碼 */ }
 }
 
 async function submitProxy(){
@@ -226,27 +266,51 @@ async function submitProxy(){
       p_principal_no:boundMember.member_no||'', p_delegate_name:dn, p_delegate_no:dno,
       p_attend:pxOpts.attend, p_vote:pxOpts.vote, p_user_id:profile.userId });
     if(r.ok){
-      renderProxy({ delegated:true, delegate_name:r.delegate_name, delegate_no:r.delegate_no, proxy_attend:r.proxy_attend, proxy_vote:r.proxy_vote });
+      renderProxy({ eligible:true, delegated:true, delegate_name:r.delegate_name, delegate_no:r.delegate_no, proxy_attend:r.proxy_attend, proxy_vote:r.proxy_vote });
       show('');
     } else {
       const M = { delegate_not_member:'查無此會員，受委託人必須是本會會員（請確認姓名與會員編號）。',
+        principal_not_member:'您目前不在本屆投票名冊，無委託資格，請洽秘書處。',
         self:'不能委託給自己。', already_delegated:'您已送出過委託，如需更改請先取消或洽秘書處。',
         delegate_taken:'此會員已受其他人委託，依規定每人僅能受一位委託，請改委託他人。',
+        is_delegate:'您已受他人委託，不得再將自己的權利轉委託出去。',
+        checked_in:'您或對方已完成報到，無法再設定委託。',
         no_scope:'請至少勾選一項委託。', missing_name:'請填寫受委託人姓名。' };
       show(M[r.error] || ('送出失敗：'+r.error)); btn.disabled=false; btn.textContent='送出委託';
     }
   }catch(e){ show('連線異常，請稍後再試。'); btn.disabled=false; btn.textContent='送出委託'; }
 }
 
+function resetProxyForm(){
+  pxOpts.attend=false; pxOpts.vote=false;
+  ['attend','vote'].forEach(k=>{ const el=document.getElementById('opt-'+k); el.classList.remove('on'); el.textContent=(k==='attend'?'☐ 委託出席':'☐ 委託投票'); });
+  document.getElementById('px-dname').value=''; document.getElementById('px-dno').value='';
+}
+
+async function reloadProxy(){
+  try{
+    const mine = await rpc('proxy_mine', { p_election:pxElection.id, p_user_id:profile.userId, p_name:boundMember.name, p_no:boundMember.member_no||'' });
+    renderProxy(mine);
+  }catch(e){}
+}
+
 async function cancelProxy(){
   if(!confirm('確定取消您的委託？')) return;
   try{
-    await rpc('proxy_cancel', { p_election:pxElection.id, p_user_id:profile.userId, p_name:boundMember.name, p_no:boundMember.member_no||'' });
-    pxOpts.attend=false; pxOpts.vote=false;
-    ['attend','vote'].forEach(k=>{ const el=document.getElementById('opt-'+k); el.classList.remove('on'); el.textContent=(k==='attend'?'☐ 委託出席':'☐ 委託投票'); });
-    document.getElementById('px-dname').value=''; document.getElementById('px-dno').value='';
-    renderProxy({ delegated:false });
+    const r = await rpc('proxy_cancel', { p_election:pxElection.id, p_user_id:profile.userId, p_name:boundMember.name, p_no:boundMember.member_no||'' });
+    if(!r.ok && r.error==='checked_in'){ alert('您或受託人已完成報到，委託已鎖定、無法取消。'); await reloadProxy(); return; }
+    resetProxyForm();
+    await reloadProxy();
   }catch(e){ alert('取消失敗，請稍後再試。'); }
+}
+
+async function rejectProxy(){
+  if(!confirm('確定批退此委託？權利將回歸委託人。')) return;
+  try{
+    const r = await rpc('proxy_reject', { p_election:pxElection.id, p_user_id:profile.userId, p_name:boundMember.name, p_no:boundMember.member_no||'' });
+    if(!r.ok && r.error==='checked_in'){ alert('您或委託人已完成報到，委託已鎖定、無法批退。'); await reloadProxy(); return; }
+    await reloadProxy();
+  }catch(e){ alert('批退失敗，請稍後再試。'); }
 }
 
 async function doBind(){
