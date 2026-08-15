@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TADA 會員企業 Logo 牆</title>
+<!--
+  ── 會員企業 Logo 牆（大螢幕／背板用）──────────────────────────────
+  開法：chromium --kiosk https://tada-ai.org.tw/backdrop/members.html
+
+  版位規則（需求原話）：團體會員置中 C 位、每格佔 2 格；個人會員各佔 1 格。
+  沒有 logo 圖檔時用公司名首字徽章（依名稱雜湊固定配色）——不等 logo 即可上。
+  資料走 member_wall RPC（僅回傳 公司/類型，不含個資），不直讀名冊。
+-->
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--gold:#b8913a;--gold-light:#d4a853;--green-mid:#2d5235;--green-light:#7fae86;--cream:#f8f4ea;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at top,#1e3320,#0b140e 70%);color:var(--cream);user-select:none;cursor:none;display:flex;flex-direction:column;}
+.bar{height:6px;flex:0 0 6px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.head{flex:0 0 auto;text-align:center;padding:2.4vmin 3vmin 1.4vmin;}
+.head .kick{font-size:1.5vmin;letter-spacing:.45em;color:var(--gold-light);font-weight:700;}
+.head h1{font-family:'Noto Serif TC',serif;font-size:3.6vmin;font-weight:900;color:#fff;line-height:1.2;margin-top:.4vmin;}
+.head .en{font-size:1.4vmin;letter-spacing:.15em;color:var(--green-light);margin-top:.3vmin;}
+
+.grid{flex:1;display:grid;gap:1.1vmin;padding:0 3vmin 2.4vmin;align-content:center;justify-content:center;min-height:0;grid-auto-flow:dense;}
+.cell{position:relative;border-radius:1.2vmin;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6vmin;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:1vmin;animation:pop .5s cubic-bezier(.2,1.5,.4,1) both;}
+@keyframes pop{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+/* 團體會員：C 位、佔 2 格、金框放大 */
+.cell.group{grid-column:span 2;background:linear-gradient(150deg,rgba(184,145,58,.16),rgba(20,35,26,.5));
+  border:1.5px solid rgba(212,168,83,.55);box-shadow:0 0 3vmin rgba(212,168,83,.15);}
+.cell{padding:.7vmin;}
+.cell .badge{width:45%;aspect-ratio:1;border-radius:1.2vmin;display:flex;align-items:center;justify-content:center;
+  font-family:'Noto Serif TC',serif;font-weight:900;color:#fff;font-size:3vmin;flex:0 0 auto;}
+.cell.group .badge{width:34%;font-size:4vmin;}
+.cell .co{font-size:1.15vmin;font-weight:700;text-align:center;line-height:1.3;color:var(--cream);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:98%;}
+.cell.group .co{font-size:1.7vmin;color:#fff;-webkit-line-clamp:2;}
+.cell.group .tag{font-size:1vmin;letter-spacing:.25em;color:var(--gold-light);font-weight:700;}
+.err{position:fixed;left:0;right:0;bottom:0;padding:1vmin;text-align:center;background:#7a2318;font-size:1.6vmin;display:none;}
+.err.on{display:block;}
+</style>
+</head>
+<body>
+<div class="bar"></div>
+<div class="head">
+  <div class="kick">TADA MEMBER ENTERPRISES</div>
+  <h1>台灣科技農企業發展協會　會員企業</h1>
+  <div class="en">Taiwan Advanced Agribusiness Development Association</div>
+</div>
+<div class="grid" id="grid"></div>
+<div class="err" id="err"></div>
+
+<script>
+const $=(id)=>document.getElementById(id);
+function hueOf(name){ let h=0; for(const ch of String(name)) h=(h*31+ch.charCodeAt(0))%360; return h; }
+function badge(company){
+  const d=document.createElement('div'); d.className='badge';
+  const h=hueOf(company||'?');
+  d.style.background=`linear-gradient(150deg,hsl(${h} 44% 34%),hsl(${(h+40)%360} 40% 20%))`;
+  d.textContent=String(company||'?').trim().charAt(0);
+  return d;
+}
+function tile(m){
+  const c=document.createElement('div');
+  const isGroup=m.member_type==='group';
+  c.className='cell'+(isGroup?' group':'');
+  c.appendChild(badge(m.company));
+  if(isGroup){ const t=document.createElement('div'); t.className='tag'; t.textContent='團體會員'; c.appendChild(t); }
+  const co=document.createElement('div'); co.className='co'; co.textContent=m.company; c.appendChild(co);
+  return c;
+}
+let members=[];
+function layout(){
+  // 單位數：團體佔 2、個人佔 1；求欄數讓所有格塞進畫面且格子最大
+  const grid=$('grid');
+  const units=members.reduce((s,m)=>s+(m.member_type==='group'?2:1),0);
+  const availW=grid.clientWidth, availH=grid.clientHeight, gap=availW*0.011;
+  let best=0, bestCols=6;
+  for(let cols=6;cols<=18;cols++){
+    const rows=Math.ceil(units/cols);
+    const w=(availW-gap*(cols-1))/cols;
+    const h=(availH-gap*(rows-1))/rows;
+    const size=Math.min(w,h);
+    if(size>best){ best=size; bestCols=cols; }
+  }
+  grid.style.gridTemplateColumns=`repeat(${bestCols}, ${Math.floor(best)}px)`;
+  grid.style.gridAutoRows=`${Math.floor(best)}px`;
+  grid.innerHTML='';
+  // 團體先排（置頂＝C 位），個人在後
+  members.slice().sort((a,b)=>(b.member_type==='group')-(a.member_type==='group'))
+    .forEach(m=>grid.appendChild(tile(m)));
+}
+async function load(){
+  try{
+    const r=await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/member_wall`,{method:'POST',headers:window.tadaSbHeaders(),body:'{}'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    members=await r.json();
+    if(!Array.isArray(members)||!members.length){ $('err').textContent='目前無會員資料'; $('err').classList.add('on'); return; }
+    layout();
+  }catch(e){ $('err').textContent='載入失敗：'+e.message; $('err').classList.add('on'); }
+}
+window.addEventListener('resize',()=>{ if(members.length) layout(); });
+load();
+</script>
+</body>
+</html>
