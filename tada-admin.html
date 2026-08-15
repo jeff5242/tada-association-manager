@@ -352,16 +352,19 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <option value="group">團體會員</option>
       <option value="board">理監事(有職務者)</option>
     </select>
-    <select class="filter-select" onchange="filterMemberStatus(this.value)">
-      <option value="">全部狀態</option>
-      <option value="有效會員">有效會員</option>
-      <option value="待續約會員">待續約會員</option>
-      <option value="永久會員">永久會員</option>
-      <option value="榮譽會員">榮譽會員</option>
-      <option value="退會會員">退會會員</option>
-      <option value="__none">未標記</option>
-      <option value="__needinfo">⚠ 需補公司／統編</option>
-    </select>
+    <div class="ms-wrap" style="position:relative;display:inline-block;">
+      <button type="button" class="filter-select" id="status-ms-btn" onclick="toggleStatusMenu(event)" style="cursor:pointer;text-align:left;min-width:118px;">全部狀態 ▾</button>
+      <div id="status-ms-menu" style="display:none;position:absolute;z-index:60;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 4px;min-width:186px;box-shadow:0 10px 28px rgba(0,0,0,0.45);">
+        <div style="font-size:10px;color:var(--gray);padding:3px 10px 5px;">可複選（符合任一即顯示）</div>
+        <label class="msopt" style="display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap;"><input type="checkbox" value="有效會員" onchange="onStatusCheck()"> 有效會員</label>
+        <label class="msopt" style="display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap;"><input type="checkbox" value="待續約會員" onchange="onStatusCheck()"> 待續約會員</label>
+        <label class="msopt" style="display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap;"><input type="checkbox" value="永久會員" onchange="onStatusCheck()"> 永久會員</label>
+        <label class="msopt" style="display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap;"><input type="checkbox" value="榮譽會員" onchange="onStatusCheck()"> 榮譽會員</label>
+        <label class="msopt" style="display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap;"><input type="checkbox" value="退會會員" onchange="onStatusCheck()"> 退會會員</label>
+        <label class="msopt" style="display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap;border-top:1px solid var(--border);margin-top:3px;"><input type="checkbox" value="__none" onchange="onStatusCheck()"> 未標記</label>
+        <label class="msopt" style="display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap;"><input type="checkbox" value="__needinfo" onchange="onStatusCheck()"> ⚠ 需補公司／統編</label>
+      </div>
+    </div>
     <select class="filter-select" onchange="filterMemberDirSession(this.value)">
       <option value="">全部屆次</option>
       <option value="6">第六屆</option>
@@ -974,7 +977,8 @@ function switchTab(id){
 const SESSION_NAMES = {1:'第一屆',2:'第二屆',3:'第三屆',4:'第四屆',5:'第五屆',6:'第六屆'};
 
 let memberRows = [];              // 直接讀寫 tada_members
-let dirFilter = '', dirSession = '', dirType = '', dirStatus = '';
+let dirFilter = '', dirSession = '', dirType = '';
+let dirStatus = new Set();   // 會員狀態多選過濾
 let editingMemberId = null;
 const MTYPE = {personal:'個人', group:'團體'};
 const mTypeBadge = t => {
@@ -1004,7 +1008,15 @@ function renderMemberDir(){
     const oks = !dirSession || (m.terms||[]).some(t=>String(t.session)===dirSession);
     const okt = !dirType || (dirType==='board' ? (m.terms||[]).length>0 : (m.member_type||'')===dirType);
     const needInfo = m.member_type && m.status!=='退會會員' && (!m.company || !m.tax_id);
-    const okst = !dirStatus || (dirStatus==='__none' ? !m.status : dirStatus==='__needinfo' ? needInfo : m.status===dirStatus);
+    let okst = true;
+    if(dirStatus.size){
+      okst = false;
+      for(const s of dirStatus){
+        if(s==='__none'){ if(!m.status){ okst=true; break; } }
+        else if(s==='__needinfo'){ if(needInfo){ okst=true; break; } }
+        else if(m.status===s){ okst=true; break; }
+      }
+    }
     return okq && oks && okt && okst;
   });
   document.getElementById('dir-count').textContent = data.length;
@@ -1330,7 +1342,24 @@ async function deleteMemberRow(id){
 function filterMemberDir(q){ dirFilter=q; renderMemberDir(); }
 function filterMemberDirSession(s){ dirSession=s; renderMemberDir(); }
 function filterMemberType(t){ dirType=t; renderMemberDir(); }
-function filterMemberStatus(s){ dirStatus=s; renderMemberDir(); }
+const STATUS_LBL = { __none:'未標記', __needinfo:'需補公司／統編' };
+function onStatusCheck(){
+  dirStatus = new Set([...document.querySelectorAll('#status-ms-menu input:checked')].map(c=>c.value));
+  const btn = document.getElementById('status-ms-btn');
+  if(!dirStatus.size) btn.textContent = '全部狀態 ▾';
+  else if(dirStatus.size===1){ const v=[...dirStatus][0]; btn.textContent = (STATUS_LBL[v]||v) + ' ▾'; }
+  else btn.textContent = `已選 ${dirStatus.size} 種 ▾`;
+  renderMemberDir();
+}
+function toggleStatusMenu(e){
+  e.stopPropagation();
+  const m = document.getElementById('status-ms-menu');
+  m.style.display = m.style.display==='none' ? 'block' : 'none';
+}
+document.addEventListener('click', (e)=>{
+  const m = document.getElementById('status-ms-menu');
+  if(m && m.style.display!=='none' && !e.target.closest('.ms-wrap')) m.style.display='none';
+});
 
 function openAddModal(){
   document.getElementById('modal-title').textContent = '新增會員';
