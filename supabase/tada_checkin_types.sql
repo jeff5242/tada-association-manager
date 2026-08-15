@@ -160,3 +160,78 @@ GRANT EXECUTE ON FUNCTION checkin_manual(TEXT, TEXT, TEXT, TEXT)   TO anon;
 
 -- tada_checkin_pending 不開 anon 讀取：補登名單只有後臺看得到。
 -- 寫入一律經過 checkin_manual（SECURITY DEFINER），不直接開 INSERT。
+
+
+-- ============================================================================
+-- RPC：以「統編 + 手機」驗證會員身分
+--
+-- 為什麼一定要兩個欄位：
+--   統一編號是公開資訊（財政部營業登記資料可查），單憑統編就能領票等於
+--   任何人都能冒領。手機號碼才是只有本人知道的那一項。
+--
+-- 為什麼不先用統編列出該公司的會員讓他選：
+--   那會變成「輸入任一公司統編 → 得到該公司所有會員姓名」的名冊外洩管道。
+--   改成兩個欄位一起送、只回傳唯一一筆，查不到就是查不到。
+--
+-- 團體會員：reps 是最多 3 位代表的 JSON 陣列，各自有 tel；
+--           比對到第 N 位時回傳的會員編號為「會員編號-N」，與後臺的編號規則一致。
+-- ============================================================================
+CREATE OR REPLACE FUNCTION member_lookup(p_tax_id TEXT, p_mobile TEXT)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+DECLARE
+  v_tax    TEXT := regexp_replace(COALESCE(p_tax_id, ''), '\D', '', 'g');
+  v_phone  TEXT := regexp_replace(COALESCE(p_mobile, ''), '\D', '', 'g');
+  v_no     TEXT;
+  v_name   TEXT;
+BEGIN
+  -- 資料庫裡手機存成 09XX-XXX-XXX，比對前兩邊都只留數字
+  IF length(v_tax) <> 8 OR length(v_phone) < 9 THEN
+    RETURN json_build_object('ok', false, 'error', 'input_incomplete');
+  END IF;
+
+  -- 個人會員：比對會員本人的電話欄位
+  SELECT m.member_no, m.name INTO v_no, v_name
+    FROM tada_members m
+   WHERE regexp_replace(COALESCE(m.tax_id, ''), '\D', '', 'g') = v_tax
+     AND v_phone IN (
+           regexp_replace(COALESCE(m.mobile, ''),        '\D', '', 'g'),
+           regexp_replace(COALESCE(m.phone_office, ''),  '\D', '', 'g'),
+           regexp_replace(COALESCE(m.contact_phone, ''), '\D', '', 'g')
+         )
+   LIMIT 1;
+
+  IF v_no IS NOT NULL THEN
+    RETURN json_build_object('ok', true, 'member_no', v_no, 'name', v_name);
+  END IF;
+
+  -- 團體會員代表：比對 reps[N].tel
+  SELECT m.member_no || '-' || r.idx, r.rep_name INTO v_no, v_name
+    FROM tada_members m
+    CROSS JOIN LATERAL (
+      SELECT ordinality AS idx,
+             elem->>'name' AS rep_name,
+             elem->>'tel'  AS tel
+        FROM jsonb_array_elements(COALESCE(m.reps, '[]'::jsonb))
+             WITH ORDINALITY AS t(elem, ordinality)
+    ) r
+   WHERE regexp_replace(COALESCE(m.tax_id, ''), '\D', '', 'g') = v_tax
+     AND regexp_replace(COALESCE(r.tel, ''), '\D', '', 'g') = v_phone
+   LIMIT 1;
+
+  IF v_no IS NOT NULL THEN
+    RETURN json_build_object('ok', true, 'member_no', v_no, 'name', v_name);
+  END IF;
+
+  -- 統編對、手機錯，與統編本身不存在，回傳同一個錯誤：
+  -- 分開回報等於送給對方一支「這個統編是不是會員」的查詢工具。
+  RETURN json_build_object('ok', false, 'error', 'no_match');
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION member_lookup(TEXT, TEXT) TO anon;
+
+-- ⚠️ 這支 RPC 只有在「anon 不能直接讀 tada_members」時才有意義。
+--    目前 supabase/tada_members.sql 裡的 RLS 是 for select using (true)，
+--    而 anon key 就寫在公開的 assets/liff-common.js 裡——等於整份名冊
+--    （姓名、手機、Email、統編、地址）任何人都拿得到，這支驗證形同虛設。
+--    修正方式見 docs/報到機擴充_身分選單與貴賓報到.md 第十節。
