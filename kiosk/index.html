@@ -2,6 +2,8 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
+<!-- 報到機必備：Chromium 的 --disable-features=Translate 旗標擋不住翻譯列，只有這個 meta 有效 -->
+<meta name="google" content="notranslate">
 <meta name="viewport" content="width=1200, initial-scale=1.0">
 <title>TADA 報到機｜會員報到領票</title>
 <!--
@@ -21,11 +23,31 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#14231a;--green-mid:#2d5235;--green-light:#7fae86;--cream:#f8f4ea;--line:#e5ddc8;--red:#c0392b;}
 html,body{width:1200px;height:800px;overflow:hidden;}
+/*
+  ── 小螢幕自動縮放 ──────────────────────────────────────────────────────
+  版面是照 1200×800 設計的（含 80mm 列印版型），直接改成流動式風險太高。
+  改成把整個 1200×800 的畫布等比縮到螢幕裡：版面比例、字級關係、列印
+  版型全部不動，只是整體變小。
+  800×480 的樹莓派 DSI 螢幕縮放後為 0.6，原本 78px 的姓名仍有 47px。
+  只作用於螢幕，@media print 不受影響。
+*/
+@media screen{
+  html{width:100%;height:100%;background:#0d1710;}
+  /*
+    螢幕用的畫布改成 1200×720（比例 1.667），與 800×480 的 DSI 螢幕完全相同，
+    等比縮放後正好滿版、左右不留黑邊、也不裁切、不變形。
+    原本 1200×800（比例 1.5）縮進 1.667 的螢幕，左右必然各留 40px。
+    列印版型不受影響——@media print 另有一套。
+  */
+  /* 用 html 前綴提高權重：原本的 .screen{height:794px} 寫在後面會蓋掉同權重的規則 */
+  html body{height:720px;transform-origin:top left;}
+  html body .screen{height:714px;}
+}
 body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at top,#1e3320,#0d1710);color:var(--cream);user-select:none;-webkit-user-select:none;cursor:default;}
 .bar{height:6px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
 .screen{height:794px;display:flex;flex-direction:column;}
 /* 頂列 */
-.top{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid rgba(255,255,255,.08);}
+.top{display:flex;align-items:center;justify-content:space-between;padding:10px 40px;border-bottom:1px solid rgba(255,255,255,.08);}
 .top .t-title{font-family:'Noto Serif TC',serif;font-size:26px;font-weight:900;color:#fff;}
 .top .t-kick{font-size:13px;letter-spacing:.3em;color:var(--gold-light);font-weight:600;margin-bottom:2px;}
 .top .t-prog{text-align:right;font-size:14px;color:var(--green-light);}
@@ -46,6 +68,9 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
 #v-idle .scan-ic{font-size:150px;line-height:1;margin:6px 0 6px;animation:pulse 1.8s ease-in-out infinite;}
 @keyframes pulse{0%,100%{transform:scale(1);opacity:.9;}50%{transform:scale(1.08);opacity:1;}}
 .idle-p{font-size:19px;color:var(--green-light);line-height:1.8;margin-top:22px;}
+.prog-box{margin-top:20px;padding:14px 34px;border:2px solid rgba(212,168,83,.35);border-radius:14px;text-align:center;}
+.prog-box b{display:block;font-family:'Noto Serif TC',serif;font-size:46px;line-height:1;color:var(--gold-light);}
+.prog-box span{font-size:17px;color:var(--green-light);}
 .kbd-btn{margin-top:26px;padding:14px 30px;font-family:inherit;font-size:18px;font-weight:700;color:var(--gold-light);background:transparent;border:2px solid rgba(212,168,83,.5);border-radius:12px;cursor:pointer;}
 .kbd-btn:active{background:rgba(212,168,83,.15);}
 /* 找到會員 */
@@ -61,22 +86,53 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
 .warn-box{margin-top:30px;background:rgba(192,57,43,.15);border:2px solid rgba(192,57,43,.5);color:#ff9b8f;font-size:24px;font-weight:700;padding:20px 40px;border-radius:14px;}
 /* 列印中 */
 #v-print .p-ic{font-size:130px;margin-bottom:20px;}
+/* 無印表機模式的螢幕選票。白底是必要的——QR 在深色底上掃不到 */
+#v-print .screen-ballot{display:none;background:#fff;padding:18px;border-radius:18px;margin-bottom:18px;}
+#v-print .screen-ballot img,#v-print .screen-ballot canvas{width:230px!important;height:230px!important;display:block;}
 #v-print h1{font-family:'Noto Serif TC',serif;font-size:46px;font-weight:900;color:#fff;margin-bottom:16px;}
 #v-print p{font-size:24px;color:var(--gold-light);}
 /* 提示（查無 / 錯誤） */
 .toast{position:absolute;top:30px;left:50%;transform:translateX(-50%);background:rgba(192,57,43,.92);color:#fff;font-size:22px;font-weight:700;padding:16px 36px;border-radius:12px;display:none;z-index:20;}
 .toast.on{display:block;}
 /* 數字鍵盤 */
-.keypad{position:absolute;inset:0;background:rgba(6,14,9,.97);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;}
+/*
+  鍵盤只佔右半邊：有人在輸入會員編號時，左邊的 LINE QR 仍然看得到、掃得到，
+  兩個人可以同時使用。蓋滿全螢幕會讓排隊的人乾等。
+  待機版面是 max-width:1000px 置中於 1200，左右欄的分界正好落在 50%。
+*/
+.t-status{padding:9px 20px;font-family:inherit;font-size:17px;font-weight:700;color:var(--green-light);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:10px;cursor:pointer;}
+.t-status:active{background:rgba(255,255,255,.15);}
+.statuspanel{position:absolute;inset:0;background:#060e09;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:35;padding:0 60px;}
+.statuspanel.on{display:flex;}
+.statuspanel h2{font-family:'Noto Serif TC',serif;font-size:38px;font-weight:900;color:#fff;margin-bottom:26px;}
+.statuspanel dl{display:grid;grid-template-columns:auto 1fr;gap:14px 30px;font-size:24px;width:100%;max-width:720px;}
+.statuspanel dt{color:var(--green-light);white-space:nowrap;}
+.statuspanel dd{color:#fff;font-weight:700;text-align:right;}
+.statuspanel dd.ok{color:#7fd694;}
+.statuspanel dd.bad{color:#ff8b7a;}
+.st-foot{margin-top:30px;font-size:17px;color:var(--green-light);}
+.keypad{position:absolute;inset:0 0 0 50%;background:#060e09;border-left:1px solid rgba(212,168,83,.25);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;padding:0 28px;}
 .keypad.on{display:flex;}
-.keypad .kp-title{font-size:24px;color:var(--gold-light);margin-bottom:14px;}
-.keypad .kp-display{width:520px;height:78px;background:#fff;color:#111;font-size:40px;font-weight:900;letter-spacing:6px;text-align:center;line-height:78px;border-radius:12px;margin-bottom:22px;min-height:78px;}
-.keypad .kp-grid{display:grid;grid-template-columns:repeat(3,150px);gap:16px;}
-.keypad .kp-grid button{height:88px;font-family:inherit;font-size:38px;font-weight:900;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:14px;cursor:pointer;}
+/* 查詢方式分頁：會員編號／統一編號／手機號碼 */
+.keypad .kp-tabs{display:flex;gap:8px;margin-bottom:12px;}
+.keypad .kp-tabs button{flex:1;padding:14px 6px;font-family:inherit;font-size:21px;font-weight:700;color:var(--green-light);background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.14);border-radius:12px;cursor:pointer;white-space:nowrap;}
+.keypad .kp-tabs button.on{color:#0d1710;background:var(--gold-light);border-color:var(--gold-light);}
+.keypad .kp-hint{font-size:17px;color:var(--green-light);margin-bottom:10px;min-height:22px;text-align:center;}
+.keypad .kp-display{width:100%;max-width:500px;height:74px;background:#fff;color:#111;font-size:40px;font-weight:900;letter-spacing:6px;text-align:center;line-height:74px;border-radius:12px;margin-bottom:16px;min-height:74px;}
+.keypad .kp-grid{display:grid;grid-template-columns:repeat(3,158px);gap:14px;}
+.keypad .kp-pick{display:none;flex-direction:column;gap:10px;width:100%;max-width:500px;max-height:250px;overflow-y:auto;}
+.keypad .kp-pick button{padding:16px;font-family:inherit;font-size:26px;font-weight:900;color:#fff;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.18);border-radius:12px;cursor:pointer;text-align:left;}
+.keypad .kp-pick button small{display:block;font-size:15px;font-weight:400;color:var(--green-light);margin-top:4px;}
+.keypad .kp-grid button{height:86px;font-family:inherit;font-size:38px;font-weight:900;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:12px;cursor:pointer;}
 .keypad .kp-grid button:active{background:rgba(212,168,83,.3);}
 .keypad .kp-grid .ok{background:var(--green-mid);color:#fff;}
 .keypad .kp-grid .clr{background:rgba(192,57,43,.3);}
-.keypad .kp-close{margin-top:20px;font-size:18px;color:var(--green-light);background:none;border:none;cursor:pointer;}
+/* 觸控目標放大：原本 18px 純文字的「關閉」在觸控螢幕上很難按中 */
+.keypad .kp-close{margin-top:16px;padding:14px 46px;font-family:inherit;font-size:23px;font-weight:700;color:var(--cream);background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25);border-radius:14px;cursor:pointer;}
+.keypad .kp-close:active{background:rgba(255,255,255,.18);}
+/* 右上角 X：常見的關閉位置，手指從螢幕邊緣過來最快 */
+.kp-x{position:absolute;top:10px;right:10px;width:62px;height:62px;display:flex;align-items:center;justify-content:center;font-size:32px;line-height:1;font-weight:700;color:var(--cream);background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25);border-radius:14px;cursor:pointer;}
+.kp-x:active{background:rgba(192,57,43,.45);}
 /* 領票單（列印） */
 #receipt{display:none;}
 @media print{
@@ -100,7 +156,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
 <div class="screen">
   <div class="top">
     <div><div class="t-kick">TADA 理監事選舉 · 報到領票</div><div class="t-title" id="e-title">—</div></div>
-    <div class="t-prog"><b id="p-checked">0</b><span>已報到 / <span id="p-total">0</span> 人</span></div>
+    <button class="t-status" onclick="openStatus()" aria-label="機台狀態">狀態</button>
   </div>
   <div class="main">
     <div class="toast" id="toast"></div>
@@ -113,6 +169,10 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
           <div class="idle-h">加入 TADA LINE</div>
           <div class="oa-qr" id="oa-qr"><img src="../assets/line/oa-qr.png" alt="加入 TADA LINE 官方帳號"></div>
           <div class="idle-p">手機掃描加入官方帳號<br>領票、投票、活動通知都在這裡</div>
+          <!-- 報到統計放在 QR 下方：頂列空出來，右邊的輸入面板才放得大 -->
+          <div class="prog-box">
+            <b id="p-checked">0</b><span>已報到 ／ <span id="p-total">0</span> 人</span>
+          </div>
         </div>
         <div class="idle-div"></div>
         <div class="idle-col">
@@ -146,22 +206,41 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
 
     <!-- 列印中 -->
     <div class="view" id="v-print">
-      <div class="p-ic">🖨️</div>
+      <div class="p-ic" id="pr-ic">🖨️</div>
+      <!-- 無印表機模式才顯示：把選票 QR 直接放到螢幕上讓本人掃 -->
+      <div class="screen-ballot" id="pr-qr-wrap"><div id="pr-qr"></div></div>
       <h1 id="pr-name">選票列印中…</h1>
-      <p>請至出票口領取您的選票，掃描選票 QR 即可投票</p>
+      <p id="pr-tip">請至出票口領取您的選票，掃描選票 QR 即可投票</p>
+    </div>
+
+    <!--
+      機台狀態：**唯讀**。這台機器整場無人看管，任何會改資料的動作都不放在這裡——
+      清除報到、取消單筆一律走會務後臺（那邊有密碼驗證）。
+    -->
+    <div class="statuspanel" id="statuspanel">
+      <button class="kp-x" onclick="closeStatus()" aria-label="關閉">×</button>
+      <h2>機台狀態</h2>
+      <dl id="st-list"></dl>
+      <p class="st-foot">此畫面僅供查看。清除報到資料請至會務後臺。</p>
     </div>
 
     <!-- 數字鍵盤 -->
     <div class="keypad" id="keypad">
-      <div class="kp-title">輸入會員編號</div>
+      <button class="kp-x" onclick="closeKeypad()" aria-label="關閉">×</button>
+      <div class="kp-tabs">
+        <button id="tab-no"     class="on" onclick="setKpMode('no')">會員編號</button>
+        <button id="tab-tax"    onclick="setKpMode('tax')">統一編號</button>
+        <button id="tab-mobile" onclick="setKpMode('mobile')">手機號碼</button>
+      </div>
+      <div class="kp-hint" id="kp-hint">請輸入會員編號</div>
       <div class="kp-display" id="kp-display"></div>
-      <div class="kp-grid">
+      <div class="kp-pick" id="kp-pick"></div>
+      <div class="kp-grid" id="kp-grid">
         <button onclick="kp('1')">1</button><button onclick="kp('2')">2</button><button onclick="kp('3')">3</button>
         <button onclick="kp('4')">4</button><button onclick="kp('5')">5</button><button onclick="kp('6')">6</button>
         <button onclick="kp('7')">7</button><button onclick="kp('8')">8</button><button onclick="kp('9')">9</button>
         <button class="clr" onclick="kpClear()">清除</button><button onclick="kp('0')">0</button><button class="ok" onclick="kpOk()">查詢</button>
       </div>
-      <button class="kp-close" onclick="closeKeypad()">關閉</button>
     </div>
   </div>
 </div>
@@ -250,6 +329,14 @@ async function confirmCheckin(){
   }catch(e){ toast('報到失敗，請重試'); }
 }
 
+/*
+  無印表機模式：網址帶 ?noprint=1 就不送印，改成把選票 QR 留在螢幕上讓本人用手機掃。
+  報到與選票 token 都已經寫進資料庫了，列印只是把同一個 QR 印到紙上而已——
+  少了印表機不影響資料正確性，之後接上印表機把參數拿掉即可。
+*/
+const NO_PRINT = new URLSearchParams(location.search).get('noprint') === '1';
+const IDLE_DELAY_MS = NO_PRINT ? 25000 : 6000;   // 螢幕掃碼需要比出紙更久
+
 function printReceipt(res){
   const url=VOTE_BASE+'?t='+res.uuid;
   document.getElementById('rz-qr').innerHTML='';
@@ -258,10 +345,20 @@ function printReceipt(res){
   document.getElementById('rz-date').textContent=new Date().toLocaleString('zh-TW',{hour12:false});
   document.getElementById('rz-name').textContent=res.name+(res.member_type==='group'&&res.rep?'（'+res.rep+'）':'');
   document.getElementById('rz-no').textContent='會員編號 '+res.member_no;
-  document.getElementById('pr-name').textContent=res.name+' 的選票列印中…';
+  document.getElementById('pr-name').textContent =
+    NO_PRINT ? (res.name+' 報到完成') : (res.name+' 的選票列印中…');
+  document.getElementById('pr-tip').textContent =
+    NO_PRINT ? '請用手機掃描上方 QR Code 進入投票' : '請至出票口領取您的選票，掃描選票 QR 即可投票';
+  document.getElementById('pr-ic').style.display = NO_PRINT ? 'none' : '';
+  const wrap = document.getElementById('pr-qr-wrap');
+  wrap.style.display = NO_PRINT ? 'block' : 'none';
+  if(NO_PRINT){
+    document.getElementById('pr-qr').innerHTML='';
+    new QRCode(document.getElementById('pr-qr'),{text:url,width:230,height:230,correctLevel:QRCode.CorrectLevel.M});
+  }
   state='print'; show('v-print');
-  setTimeout(()=>{ window.print(); }, 300);      // --kiosk-printing 會靜默送印
-  setTimeout(()=>{ toIdle(); }, 6000);           // 6 秒後回待機
+  if(!NO_PRINT) setTimeout(()=>{ window.print(); }, 300);   // --kiosk-printing 會靜默送印
+  setTimeout(()=>{ toIdle(); }, IDLE_DELAY_MS);
 }
 
 function toIdle(){ current=null; state='idle'; show('v-idle'); }
@@ -283,12 +380,153 @@ function handleScan(raw){
 }
 
 // ── 數字鍵盤（觸控備援）───────────────────────────────────
-let kpVal='';
-function openKeypad(){ kpVal=''; document.getElementById('kp-display').textContent=''; document.getElementById('keypad').classList.add('on'); }
-function closeKeypad(){ document.getElementById('keypad').classList.remove('on'); }
-function kp(d){ if(kpVal.length<10){ kpVal+=d; document.getElementById('kp-display').textContent=kpVal; } }
-function kpClear(){ kpVal=''; document.getElementById('kp-display').textContent=''; }
-function kpOk(){ if(!kpVal){ return; } closeKeypad(); lookup(kpVal); }
+// 三種查詢方式：會員編號 / 統一編號 / 手機號碼。
+// 統編是公開資訊，所以那條路徑多兩步（選代表 → 手機末 3 碼），
+// 否則任何人查到公司統編就能冒領選票。
+const KP_MODES = {
+  no:     { hint:'請輸入會員編號',        max:10 },
+  tax:    { hint:'請輸入公司統一編號（8 碼）', max:8  },
+  mobile: { hint:'請輸入手機號碼',        max:10 },
+};
+let kpMode='no', kpVal='', kpStage='input', kpTax='', kpPickIdx=null;
+
+function kpEl(id){ return document.getElementById(id); }
+function kpSetDisplay(t){ kpEl('kp-display').textContent=t; }
+function kpSetHint(t){ kpEl('kp-hint').textContent=t; }
+
+function setKpMode(mode){
+  kpMode=mode; kpStage='input'; kpVal=''; kpTax=''; kpPickIdx=null;
+  ['no','tax','mobile'].forEach(m=>kpEl('tab-'+m).classList.toggle('on', m===mode));
+  kpSetDisplay(''); kpSetHint(KP_MODES[mode].hint);
+  kpEl('kp-pick').style.display='none';
+  kpEl('kp-grid').style.display='';
+}
+function openKeypad(){ setKpMode('no'); kpEl('keypad').classList.add('on'); }
+function closeKeypad(){ kpEl('keypad').classList.remove('on'); }
+function kp(d){
+  const max = kpStage==='last3' ? 3 : KP_MODES[kpMode].max;
+  if(kpVal.length<max){ kpVal+=d; kpSetDisplay(kpVal); }
+}
+function kpClear(){ kpVal=''; kpSetDisplay(''); }
+
+/** 呼叫 RPC；SQL 還沒執行時給明確訊息，不要讓人以為是查無此人 */
+async function checkinRpc(fn, body){
+  const r=await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`,
+    {method:'POST',headers:window.tadaSbHeaders(),body:JSON.stringify(body)});
+  if(r.status===404){ throw new Error('NOT_INSTALLED'); }
+  if(!r.ok) throw new Error('HTTP '+r.status);
+
+  return r.json();
+}
+
+async function kpOk(){
+  if(!kpVal) return;
+
+  try{
+    if(kpMode==='no'){ closeKeypad(); lookup(kpVal); return; }
+
+    if(kpMode==='mobile'){
+      const res=await checkinRpc('member_by_mobile',{p_mobile:kpVal});
+      if(!res.ok){ toast('查無此手機號碼的會員'); kpClear(); return; }
+      closeKeypad(); lookup(res.member_no); return;
+    }
+
+    // ── 統一編號 ──
+    if(kpStage==='input'){
+      if(kpVal.length!==8){ toast('統一編號為 8 碼'); return; }
+      const res=await checkinRpc('member_candidates_by_tax',{p_tax_id:kpVal});
+      if(!res.ok){ toast('查無此統一編號的會員'); kpClear(); return; }
+      kpTax=kpVal;
+      renderCandidates(res.candidates);
+      return;
+    }
+    if(kpStage==='last3'){
+      if(kpVal.length!==3){ toast('請輸入手機末 3 碼'); return; }
+      const res=await checkinRpc('member_verify_by_tax',
+        {p_tax_id:kpTax, p_idx:kpPickIdx, p_last3:kpVal});
+      if(!res.ok){ toast('手機末 3 碼不符'); kpClear(); return; }
+      closeKeypad(); lookup(res.member_no); return;
+    }
+  }catch(e){
+    toast(e.message==='NOT_INSTALLED'
+      ? '此查詢方式尚未啟用（資料庫待更新）'
+      : '系統忙碌，請重試');
+  }
+}
+
+/** 列出可選的人。姓名遮蔽由資料庫端處理，前端拿不到完整姓名。 */
+function renderCandidates(list){
+  const box=kpEl('kp-pick');
+  box.innerHTML = list.map(c=>
+    `<button onclick="pickCandidate(${c.idx})">${c.masked}${c.company?`<small>${c.company}</small>`:''}</button>`
+  ).join('');
+  box.style.display='flex';
+  kpEl('kp-grid').style.display='none';
+  kpSetDisplay(''); kpSetHint('請選擇您的姓名');
+}
+
+function pickCandidate(idx){
+  kpPickIdx=idx; kpStage='last3'; kpVal='';
+  kpEl('kp-pick').style.display='none';
+  kpEl('kp-grid').style.display='';
+  kpSetDisplay(''); kpSetHint('請輸入手機末 3 碼');
+}
+
+// 把 1200×800 的畫布等比縮進實際螢幕，並置中
+function fitToScreen(){
+  if(!window.matchMedia('screen').matches) return;
+  const k = Math.min(window.innerWidth/1200, window.innerHeight/720);
+  const b = document.body;
+  b.style.transform = `translate(${(window.innerWidth-1200*k)/2}px, ${(window.innerHeight-720*k)/2}px) scale(${k})`;
+}
+window.addEventListener('resize', fitToScreen);
+fitToScreen();
+
+// ── 機台狀態（唯讀）──────────────────────────────────────
+let lastOkAt = null, lastErrAt = null;
+
+function openStatus(){ document.getElementById('statuspanel').classList.add('on'); refreshStatus(); }
+function closeStatus(){ document.getElementById('statuspanel').classList.remove('on'); }
+
+function ago(t){
+  if(!t) return '—';
+  const s = Math.round((Date.now() - t) / 1000);
+  if(s < 60) return s + ' 秒前';
+  if(s < 3600) return Math.round(s/60) + ' 分鐘前';
+
+  return Math.round(s/3600) + ' 小時前';
+}
+
+async function refreshStatus(){
+  const list = document.getElementById('st-list');
+  const row = (k, v, cls='') => `<dt>${k}</dt><dd class="${cls}">${v}</dd>`;
+  list.innerHTML = row('查詢中…','');
+
+  let prog=null, last=null, latency=null, err=null;
+  const t0 = Date.now();
+  try{
+    prog = await rpc('checkin_progress', { p_election: election ? election.id : null });
+    latency = Date.now() - t0;
+    lastOkAt = Date.now();
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_members?election_id=eq.${election.id}`
+      + `&is_checked_in=eq.true&select=name,rep,check_in_time&order=check_in_time.desc&limit=1`,
+      { headers: window.tadaSbHeaders() });
+    if(r.ok){ last = (await r.json())[0] || null; }
+  }catch(e){ err = e.message; lastErrAt = Date.now(); }
+
+  const online = !err;
+  list.innerHTML = [
+    row('連線', online ? `正常（${latency} ms）` : '無法連線', online ? 'ok' : 'bad'),
+    row('場次', election ? `${election.title}` : '未載入'),
+    row('會員報到', prog ? `${prog.members_checked} / ${prog.members_total}` : '—'),
+    row('貴賓報到', prog ? `${prog.guests_checked} / ${prog.guests_total}` : '—'),
+    row('待補建檔', prog ? `${prog.pending}` : '—'),
+    row('最後一筆', last ? `${last.rep || last.name}　${new Date(last.check_in_time).toLocaleTimeString('zh-TW',{hour12:false})}` : '尚無'),
+    row('最後成功連線', ago(lastOkAt)),
+    row('列印', NO_PRINT ? '停用（螢幕出示 QR）' : '啟用'),
+    row('機台時間', new Date().toLocaleString('zh-TW',{hour12:false})),
+  ].join('');
+}
 
 renderOaQr();
 loadElection();

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TADA 報到牆｜第六屆理監事改選</title>
+<!--
+  ── 報到牆（投影／大螢幕用）────────────────────────────────────────────────
+  開法：chromium --kiosk --password-store=basic https://tada-ai.org.tw/wall/
+
+  格線大小會隨報到人數長大：5×5 → 6×6 → 7×7 …
+  「滿了變 6×6」是需求原話；但在籍會員 90 位加貴賓 32 位，
+  固定 6×6（36 格）裝不下所有人，先到的會被擠掉。
+  報到牆的意義是「誰到了」，把人拿掉會很奇怪，所以改成繼續長大，
+  格子變小但沒有人消失。
+
+  Logo 沒有上傳時用**首字徽章**（公司名第一個字＋依名稱雜湊的固定配色）。
+  90 家公司要備齊 logo 不切實際，徽章保證 100% 有東西可顯示、且同一家
+  每次顏色都一樣。
+
+  資料一律走 checkin_wall RPC，不直接讀 tada_members——
+  之後收回 anon 對名冊的直讀時這面牆不受影響。
+-->
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;
+  --green-deep:#14231a;--green-mid:#2d5235;--green-light:#7fae86;
+  --cream:#f8f4ea;
+}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:'Noto Sans TC',sans-serif;
+  background:radial-gradient(ellipse at top,#1e3320,#0b140e 70%);
+  color:var(--cream);user-select:none;cursor:none;
+  display:flex;flex-direction:column;
+}
+.bar{height:6px;flex:0 0 6px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+
+/* ── 頂列 ── */
+.head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:2.2vmin 3.5vmin 1.6vmin;}
+.head .kick{font-size:1.5vmin;letter-spacing:.4em;color:var(--gold-light);font-weight:700;}
+.head h1{font-family:'Noto Serif TC',serif;font-size:3.4vmin;font-weight:900;color:#fff;line-height:1.2;}
+.count{text-align:right;line-height:1;}
+.count b{font-family:'Noto Serif TC',serif;font-size:7.5vmin;font-weight:900;color:var(--gold-light);display:block;
+         transition:transform .4s cubic-bezier(.2,1.6,.4,1);}
+.count b.pop{transform:scale(1.18);}
+.count span{font-size:1.7vmin;color:var(--green-light);letter-spacing:.1em;}
+
+/* ── Logo 格線 ── */
+.grid{flex:1;display:grid;gap:1.1vmin;padding:0 3.5vmin;align-content:start;min-height:0;}
+.cell{
+  position:relative;aspect-ratio:1;border-radius:1.2vmin;overflow:hidden;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+  display:flex;align-items:center;justify-content:center;
+  animation:pop .5s cubic-bezier(.2,1.5,.4,1) both;
+}
+@keyframes pop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+.cell img{width:100%;height:100%;object-fit:contain;padding:12%;background:#fff;}
+/* 首字徽章：沒有 logo 時的替代 */
+.cell .mono{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-family:'Noto Serif TC',serif;font-weight:900;color:#fff;
+}
+.cell .cap{
+  position:absolute;left:0;right:0;bottom:0;padding:.5vmin .6vmin;
+  background:linear-gradient(transparent,rgba(0,0,0,.82) 45%);
+  font-size:1.15vmin;line-height:1.35;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.cell.fresh{box-shadow:0 0 0 .35vmin var(--gold-light),0 0 4vmin rgba(212,168,83,.6);}
+
+/* ── 最新報到跑馬燈 ── */
+.ticker{
+  flex:0 0 auto;margin:1.4vmin 3.5vmin 2.4vmin;padding:1.5vmin 2.5vmin;
+  border:1px solid rgba(212,168,83,.3);border-radius:1.2vmin;
+  background:rgba(212,168,83,.07);
+  display:flex;align-items:center;gap:1.6vmin;min-height:7vmin;
+}
+.ticker .dot{width:1.1vmin;height:1.1vmin;border-radius:50%;background:var(--gold-light);flex:0 0 auto;animation:blink 1.6s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.ticker .txt{font-size:2.6vmin;font-weight:700;color:#fff;}
+.ticker .txt em{font-style:normal;font-family:'Noto Serif TC',serif;font-size:3.2vmin;color:var(--gold-light);margin:0 .4vmin;}
+.ticker .txt small{display:block;font-size:1.6vmin;font-weight:400;color:var(--green-light);margin-top:.3vmin;}
+.ticker.idle .txt{color:var(--green-light);font-weight:400;font-size:2.1vmin;}
+
+.err{position:fixed;left:0;right:0;bottom:0;padding:1vmin;text-align:center;background:#7a2318;font-size:1.6vmin;display:none;}
+.err.on{display:block;}
+</style>
+</head>
+<body>
+<div class="bar"></div>
+
+<div class="head">
+  <div>
+    <div class="kick">TADA 理監事選舉 · 報到實況</div>
+    <h1 id="e-title">—</h1>
+  </div>
+  <div class="count">
+    <b id="c-num">0</b>
+    <span>已報到 ／ <span id="c-total">0</span> 人</span>
+  </div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="ticker idle" id="ticker">
+  <div class="dot"></div>
+  <div class="txt" id="tick-txt">等待報到中…</div>
+</div>
+
+<div class="err" id="err"></div>
+
+<script>
+const POLL_MS = 4000;
+/** 低於這個格數就維持 5×5，之後才隨人數長大 */
+const MIN_COLS = 5;
+
+let election = null;
+let seen = new Set();       // 已經上牆的人，用來判斷哪一筆是新的
+let firstLoad = true;
+
+const $ = (id) => document.getElementById(id);
+
+function showErr(msg){ const e=$('err'); if(msg){ e.textContent=msg; e.classList.add('on'); } else e.classList.remove('on'); }
+
+async function rpc(fn, body){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`,
+    { method:'POST', headers:window.tadaSbHeaders(), body:JSON.stringify(body) });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+
+  return r.json();
+}
+
+/** 同一家公司每次都要是同一個顏色，所以用名稱雜湊而不是隨機 */
+function hueOf(name){
+  let h = 0;
+  for(const ch of String(name)) h = (h*31 + ch.charCodeAt(0)) % 360;
+
+  return h;
+}
+
+function tile(entry, isFresh){
+  const cell = document.createElement('div');
+  cell.className = 'cell' + (isFresh ? ' fresh' : '');
+  if(entry.logo_url){
+    const img = document.createElement('img');
+    img.src = entry.logo_url; img.alt = entry.company;
+    // 圖掛掉就退回首字徽章，不要留一個破圖在牆上
+    img.onerror = () => { img.remove(); cell.prepend(monogram(entry.company)); };
+    cell.appendChild(img);
+  } else {
+    cell.appendChild(monogram(entry.company));
+  }
+  const cap = document.createElement('div');
+  cap.className = 'cap';
+  cap.textContent = entry.display_name;
+  cell.appendChild(cap);
+
+  return cell;
+}
+
+function monogram(company){
+  const d = document.createElement('div');
+  d.className = 'mono';
+  const h = hueOf(company);
+  d.style.background = `linear-gradient(150deg,hsl(${h} 42% 32%),hsl(${(h+40)%360} 38% 20%))`;
+  d.style.fontSize = 'clamp(1rem, 5vmin, 5rem)';
+  d.textContent = String(company || '?').trim().charAt(0);
+
+  return d;
+}
+
+function render(list){
+  const grid = $('grid');
+  // 一家公司一格：多位代表共用同一個 logo
+  const byCompany = new Map();
+  for(const e of list){
+    if(!byCompany.has(e.company)) byCompany.set(e.company, e);
+  }
+  const items = [...byCompany.values()];
+
+  // 格子是正方形，所以欄數不能只看數量——還要讓 rows × 邊長塞得進可用高度。
+  // 逐一試欄數，取「邊長最大」的那個；不這樣算會直接溢出畫面外，
+  // 而 body 是 overflow:hidden，溢出時不會有捲軸、scrollHeight 也不會變大，
+  // 只會靜靜把最後幾列裁掉。
+  const style = getComputedStyle(grid);
+  const gap = parseFloat(style.gap) || 0;
+  const availW = grid.clientWidth;
+  const availH = grid.clientHeight;
+  const n = items.length;
+
+  // 欄數維持方形格局：5×5 → 6×6 → 7×7…（需求指定的樣子）。
+  // 若改成「讓格子最大」，16:9 螢幕會算出 9 欄 3 列的寬條，
+  // 數學上格子較大但完全不是要的視覺。
+  const cols = Math.max(MIN_COLS, Math.ceil(Math.sqrt(n)));
+  const rows = Math.ceil(n / cols);
+  const best = Math.min((availW - gap*(cols-1)) / cols, (availH - gap*(rows-1)) / rows);
+
+  grid.style.gridTemplateColumns = `repeat(${cols}, ${Math.floor(best)}px)`;
+  grid.style.justifyContent = 'center';
+
+  grid.innerHTML = '';
+  for(const e of items){
+    const key = e.display_name + '|' + e.company;
+    grid.appendChild(tile(e, !firstLoad && !seen.has(key)));
+  }
+}
+
+function announce(entry){
+  const t = $('ticker');
+  t.classList.remove('idle');
+  $('tick-txt').innerHTML =
+    `<em>${entry.display_name}</em> 報到了<small>${entry.company}</small>`;
+}
+
+function bump(n){
+  const el = $('c-num');
+  if(el.textContent !== String(n)){
+    el.textContent = n;
+    el.classList.add('pop');
+    setTimeout(() => el.classList.remove('pop'), 420);
+  }
+}
+
+async function loadElection(){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election`
+    + `?status=in.(checkin,open)&order=created_at.desc&limit=1`, { headers:window.tadaSbHeaders() });
+  const list = r.ok ? await r.json() : [];
+  if(!list.length){ $('e-title').textContent = '目前無開放報到的場次'; return false; }
+  election = list[0];
+  $('e-title').textContent = election.title;
+
+  return true;
+}
+
+async function tick(){
+  if(!election) return;
+  try{
+    const [wall, prog] = await Promise.all([
+      rpc('checkin_wall', { p_election: election.id }),
+      rpc('checkin_progress', { p_election: election.id }),
+    ]);
+    showErr('');
+
+    const total = (prog.members_total || 0) + (prog.guests_total || 0);
+    const done  = (prog.members_checked || 0) + (prog.guests_checked || 0);
+    bump(done);
+    $('c-total').textContent = total;
+
+    // 找出這一輪新出現的人（wall 已依時間倒序）
+    const fresh = wall.filter((e) => !seen.has(e.display_name + '|' + e.company));
+    lastList = wall;
+    render(wall);
+    if(fresh.length && !firstLoad) announce(fresh[0]);
+    wall.forEach((e) => seen.add(e.display_name + '|' + e.company));
+    firstLoad = false;
+  }catch(e){
+    showErr('連線異常，重試中… ' + e.message);
+  }
+}
+
+let lastList = [];
+window.addEventListener('resize', () => { if(lastList.length) render(lastList); });
+
+(async () => {
+  if(await loadElection()){
+    await tick();
+    setInterval(tick, POLL_MS);
+  }
+})();
+</script>
+</body>
+</html>

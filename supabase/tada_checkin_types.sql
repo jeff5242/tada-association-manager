@@ -38,9 +38,17 @@ VALUES
 ON CONFLICT (code) DO NOTHING;   -- 已存在就不覆蓋現場調過的設定
 
 
--- ── 貴賓報到時間（tada_guests.checked_in 已存在，補一個時間欄位）──────────
+-- ── 貴賓名冊補三個欄位 ────────────────────────────────────────────────────
+-- 實查（2026-08-15）tada_guests 目前只有 id, name, org, train, meal, note,
+-- status, sort —— **沒有任何報到欄位**，status 全部是 RSVP 的 'pending'，
+-- 不是報到狀態。貴賓報到需要自己的欄位，不能沿用 status。
+-- tax_id 供「輸入統編報到」使用；貴賓名冊原本也沒有統編。
 ALTER TABLE tada_guests
-  ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ;
+  ADD COLUMN IF NOT EXISTS checked_in    BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS tax_id        TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_guests_tax_id ON tada_guests (tax_id) WHERE tax_id IS NOT NULL;
 
 
 -- ── 現場補登 ──────────────────────────────────────────────────────────────
@@ -68,7 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_checkin_pending_open
 -- 悲觀鎖住該貴賓列，防止手機與現場螢幕同時報到造成重複。
 -- 不核發選票——貴賓沒有投票權。
 -- ============================================================================
-CREATE OR REPLACE FUNCTION guest_checkin(p_guest_id BIGINT)
+CREATE OR REPLACE FUNCTION guest_checkin(p_guest_id UUID)
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   v_guest tada_guests%ROWTYPE;
@@ -81,15 +89,15 @@ BEGIN
   -- 已報到不是錯誤，回傳原本的資料讓畫面顯示「您已完成報到」
   IF v_guest.checked_in THEN
     RETURN json_build_object('ok', false, 'error', 'already_checked_in',
-                             'name', v_guest.name, 'org', v_guest.org);
+                             'name', v_guest.name, 'org', v_guest.org,
+                             'checked_in_at', v_guest.checked_in_at);
   END IF;
 
   UPDATE tada_guests
      SET checked_in = TRUE, checked_in_at = NOW()
    WHERE id = v_guest.id;
 
-  RETURN json_build_object('ok', true, 'name', v_guest.name,
-                           'org', v_guest.org, 'class', v_guest.class);
+  RETURN json_build_object('ok', true, 'name', v_guest.name, 'org', v_guest.org);
 END;
 $$;
 
@@ -154,7 +162,7 @@ CREATE POLICY p_checkin_types_read ON tada_checkin_types
   FOR SELECT TO anon USING (is_active);
 
 GRANT SELECT  ON tada_checkin_types TO anon;
-GRANT EXECUTE ON FUNCTION guest_checkin(BIGINT)                    TO anon;
+GRANT EXECUTE ON FUNCTION guest_checkin(UUID)                      TO anon;
 GRANT EXECUTE ON FUNCTION checkin_progress(UUID)                   TO anon;
 GRANT EXECUTE ON FUNCTION checkin_manual(TEXT, TEXT, TEXT, TEXT)   TO anon;
 
@@ -235,3 +243,148 @@ GRANT EXECUTE ON FUNCTION member_lookup(TEXT, TEXT) TO anon;
 --    而 anon key 就寫在公開的 assets/liff-common.js 裡——等於整份名冊
 --    （姓名、手機、Email、統編、地址）任何人都拿得到，這支驗證形同虛設。
 --    修正方式見 docs/報到機擴充_身分選單與貴賓報到.md 第十節。
+
+
+-- ============================================================================
+-- 報到機的三種查詢方式：會員編號 / 統一編號 / 手機號碼
+--
+-- 會員編號走既有路徑（會員證 QR 就是編號），這裡補另外兩種。
+--
+-- 統編為什麼還要多一道：
+--   統一編號是公開資訊，只憑統編就能領票等於任何人都能冒領。團體會員又有
+--   多位代表，所以流程是「統編 → 選代表（姓名遮蔽）→ 手機末 3 碼」。
+--   姓名遮蔽讓本人認得出自己、旁人看不出是誰；末 3 碼則讓「隨便選一個」失效。
+-- ============================================================================
+
+/** 王小明 → 王○明；只留頭尾，本人認得、旁人猜不到 */
+CREATE OR REPLACE FUNCTION tada_mask_name(p_name TEXT)
+RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE
+    WHEN COALESCE(p_name,'') = '' THEN ''
+    WHEN char_length(p_name) <= 1 THEN p_name
+    WHEN char_length(p_name) = 2 THEN left(p_name,1) || '○'
+    ELSE left(p_name,1) || repeat('○', char_length(p_name)-2) || right(p_name,1)
+  END;
+$$;
+
+-- 統編 → 可選的人（本人 + 各代表），姓名遮蔽、不回傳會員編號
+CREATE OR REPLACE FUNCTION member_candidates_by_tax(p_tax_id TEXT)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+DECLARE
+  v_tax  TEXT := regexp_replace(COALESCE(p_tax_id,''), '\D', '', 'g');
+  v_list JSON;
+BEGIN
+  IF length(v_tax) <> 8 THEN
+    RETURN json_build_object('ok', false, 'error', 'bad_tax_id');
+  END IF;
+
+  SELECT COALESCE(json_agg(t ORDER BY t.idx), '[]'::json) INTO v_list
+  FROM (
+    -- 會員本人
+    SELECT 0 AS idx, tada_mask_name(m.name) AS masked, m.company
+      FROM tada_members m
+     WHERE regexp_replace(COALESCE(m.tax_id,''), '\D','','g') = v_tax
+       AND NOT COALESCE(m.status,'') ~ '退會|退出|停權|註銷'
+    UNION ALL
+    -- 團體代表
+    SELECT r.ordinality::int AS idx, tada_mask_name(r.elem->>'name') AS masked, m.company
+      FROM tada_members m
+      CROSS JOIN LATERAL jsonb_array_elements(COALESCE(m.reps,'[]'::jsonb))
+             WITH ORDINALITY AS r(elem, ordinality)
+     WHERE regexp_replace(COALESCE(m.tax_id,''), '\D','','g') = v_tax
+       AND NOT COALESCE(m.status,'') ~ '退會|退出|停權|註銷'
+       AND COALESCE(r.elem->>'name','') <> ''
+  ) t;
+
+  IF json_array_length(v_list) = 0 THEN
+    RETURN json_build_object('ok', false, 'error', 'no_match');
+  END IF;
+
+  RETURN json_build_object('ok', true, 'candidates', v_list);
+END;
+$$;
+
+-- 統編 + 選到的序號 + 手機末 3 碼 → 換到真正的會員編號
+CREATE OR REPLACE FUNCTION member_verify_by_tax(p_tax_id TEXT, p_idx INT, p_last3 TEXT)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+DECLARE
+  v_tax   TEXT := regexp_replace(COALESCE(p_tax_id,''), '\D','','g');
+  v_last3 TEXT := right(regexp_replace(COALESCE(p_last3,''), '\D','','g'), 3);
+  v_no    TEXT;
+  v_name  TEXT;
+BEGIN
+  IF length(v_tax) <> 8 OR length(v_last3) <> 3 THEN
+    RETURN json_build_object('ok', false, 'error', 'input_incomplete');
+  END IF;
+
+  IF p_idx = 0 THEN
+    SELECT m.member_no, m.name INTO v_no, v_name
+      FROM tada_members m
+     WHERE regexp_replace(COALESCE(m.tax_id,''),'\D','','g') = v_tax
+       AND v_last3 IN (
+             right(regexp_replace(COALESCE(m.mobile,''),'\D','','g'), 3),
+             right(regexp_replace(COALESCE(m.phone_office,''),'\D','','g'), 3),
+             right(regexp_replace(COALESCE(m.contact_phone,''),'\D','','g'), 3))
+     LIMIT 1;
+  ELSE
+    SELECT m.member_no || '-' || p_idx, r.elem->>'name' INTO v_no, v_name
+      FROM tada_members m
+      CROSS JOIN LATERAL jsonb_array_elements(COALESCE(m.reps,'[]'::jsonb))
+             WITH ORDINALITY AS r(elem, ordinality)
+     WHERE regexp_replace(COALESCE(m.tax_id,''),'\D','','g') = v_tax
+       AND r.ordinality = p_idx
+       AND right(regexp_replace(COALESCE(r.elem->>'tel',''),'\D','','g'), 3) = v_last3
+     LIMIT 1;
+  END IF;
+
+  IF v_no IS NULL THEN
+    RETURN json_build_object('ok', false, 'error', 'verify_failed');
+  END IF;
+
+  RETURN json_build_object('ok', true, 'member_no', v_no, 'name', v_name);
+END;
+$$;
+
+-- 手機號碼 → 會員編號。手機不是公開資訊，本身就足以識別，不必再加一道。
+CREATE OR REPLACE FUNCTION member_by_mobile(p_mobile TEXT)
+RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+DECLARE
+  v_phone TEXT := regexp_replace(COALESCE(p_mobile,''), '\D','','g');
+  v_no    TEXT;
+  v_name  TEXT;
+BEGIN
+  IF length(v_phone) < 9 THEN
+    RETURN json_build_object('ok', false, 'error', 'input_incomplete');
+  END IF;
+
+  SELECT m.member_no, m.name INTO v_no, v_name
+    FROM tada_members m
+   WHERE NOT COALESCE(m.status,'') ~ '退會|退出|停權|註銷'
+     AND v_phone IN (
+           regexp_replace(COALESCE(m.mobile,''),'\D','','g'),
+           regexp_replace(COALESCE(m.phone_office,''),'\D','','g'),
+           regexp_replace(COALESCE(m.contact_phone,''),'\D','','g'))
+   LIMIT 1;
+
+  IF v_no IS NULL THEN
+    SELECT m.member_no || '-' || r.ordinality, r.elem->>'name' INTO v_no, v_name
+      FROM tada_members m
+      CROSS JOIN LATERAL jsonb_array_elements(COALESCE(m.reps,'[]'::jsonb))
+             WITH ORDINALITY AS r(elem, ordinality)
+     WHERE NOT COALESCE(m.status,'') ~ '退會|退出|停權|註銷'
+       AND regexp_replace(COALESCE(r.elem->>'tel',''),'\D','','g') = v_phone
+     LIMIT 1;
+  END IF;
+
+  IF v_no IS NULL THEN
+    RETURN json_build_object('ok', false, 'error', 'no_match');
+  END IF;
+
+  RETURN json_build_object('ok', true, 'member_no', v_no, 'name', v_name);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION tada_mask_name(TEXT)                        TO anon;
+GRANT EXECUTE ON FUNCTION member_candidates_by_tax(TEXT)              TO anon;
+GRANT EXECUTE ON FUNCTION member_verify_by_tax(TEXT, INT, TEXT)       TO anon;
+GRANT EXECUTE ON FUNCTION member_by_mobile(TEXT)                      TO anon;
