@@ -775,7 +775,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">
       <button class="btn btn-outline" onclick="closeNotifyModal()">關閉</button>
       <button class="btn btn-outline" id="notify-copy-btn" onclick="copyNotifyMsg()">📋 複製訊息</button>
-      <button class="btn btn-gold" id="notify-mail-btn">✉ 用 Email 寄送</button>
+      <button class="btn btn-outline" id="notify-mail-btn" title="用你自己的信箱開信寄出">✉ 用我的信箱</button>
+      <button class="btn btn-gold" id="notify-assoc-btn" onclick="sendViaAssoc()" title="以 service@tada-ai.org.tw 名義伺服器寄出">📧 協會名義寄送</button>
     </div>
   </div>
 </div>
@@ -1770,22 +1771,43 @@ function buildNotifyMessage(a){
   const name = a.name || a.org_name || '會員';
   return `【TADA 台灣科技農企業發展協會】\n${name} 您好：\n\n您的入會申請已審核通過 ✅\n請於完成會費匯款後，至下方連結回報繳費資訊（繳費日期＋匯款帳號後 5 碼）：\n${PAYMENT_URL}\n\n匯款資訊：\n・京城銀行 太保分行（代號 0540641）\n・帳號 064125019127\n・戶名 台灣科技農企業發展協會\n\n收到回報後，會務人員將為您核對確認。感謝您的支持 🌾`;
 }
+let notifyEmail = '', notifySubject = 'TADA 入會審核通過 — 會費繳納與回報';
 function openNotifyModal(id){
   const a = allApps.find(x=>x.id===id); if(!a) return;
   const msg = buildNotifyMessage(a);
   document.getElementById('notify-msg').value = msg;
   const email = a.email || a.contact_email || '';
+  notifyEmail = email;
   const mailBtn = document.getElementById('notify-mail-btn');
+  const assocBtn = document.getElementById('notify-assoc-btn');
   if(email){
-    const subject = encodeURIComponent('TADA 入會審核通過 — 會費繳納與回報');
-    mailBtn.style.display = '';
-    mailBtn.onclick = ()=>{ window.location.href = `mailto:${email}?subject=${subject}&body=${encodeURIComponent(msg)}`; };
+    mailBtn.style.display = ''; assocBtn.style.display = '';
+    mailBtn.onclick = ()=>{ window.location.href = `mailto:${email}?subject=${encodeURIComponent(notifySubject)}&body=${encodeURIComponent(document.getElementById('notify-msg').value)}`; };
     document.getElementById('notify-to').textContent = '寄給：' + email;
   } else {
-    mailBtn.style.display = 'none';
+    mailBtn.style.display = 'none'; assocBtn.style.display = 'none';
     document.getElementById('notify-to').textContent = '（此申請無 Email，請用複製後由 LINE／電話通知）';
   }
   document.getElementById('notify-modal').style.display = 'flex';
+}
+// 以協會名義（service@tada-ai.org.tw）伺服器端寄出
+async function sendViaAssoc(){
+  if(!notifyEmail) return;
+  const btn = document.getElementById('notify-assoc-btn');
+  const txt = document.getElementById('notify-msg').value;
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = '寄送中…';
+  try{
+    const res = await fetch(`${SB_URL}/functions/v1/send-email`, {
+      method:'POST', headers:{...SB_HEADERS}, body: JSON.stringify({ to: notifyEmail, subject: notifySubject, text: txt }) });
+    const r = await res.json().catch(()=>({}));
+    if(r.ok){ btn.textContent = '✓ 已寄出'; setTimeout(()=>{ btn.textContent=orig; btn.disabled=false; }, 2000); }
+    else {
+      const M = { not_configured:'協會寄信尚未設定（需在 Supabase 設定 RESEND_API_KEY 並驗證網域）。可先用「用 Email 寄送」。',
+        recipient_not_member:'此 Email 不在名冊/申請資料中，為防濫用暫不寄送。', bad_recipient:'Email 格式有誤。',
+        send_failed:'寄送失敗，請檢查 Resend 設定與網域驗證。' };
+      alert(M[r.error] || ('寄送失敗：'+(r.error||res.status))); btn.textContent=orig; btn.disabled=false;
+    }
+  }catch(e){ alert('連線失敗：'+e.message); btn.textContent=orig; btn.disabled=false; }
 }
 function closeNotifyModal(){ document.getElementById('notify-modal').style.display='none'; }
 async function copyNotifyMsg(){
