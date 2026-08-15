@@ -146,7 +146,12 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
   #receipt .rqr img,#receipt .rqr canvas{width:52mm!important;height:52mm!important;}
   #receipt .rname{font-size:20px;font-weight:900;margin-top:4px;}
   #receipt .rno{font-size:12px;color:#333;}
-  #receipt .rtip{font-size:10px;color:#333;margin-top:10px;line-height:1.7;border-top:1px dashed #999;padding-top:8px;}
+  #receipt .rcands{margin-top:8px;border-top:1px dashed #999;padding-top:6px;text-align:left;}
+  #receipt .rc-h{font-size:11px;font-weight:900;color:#000;margin:6px 0 3px;text-align:center;letter-spacing:.1em;}
+  #receipt .rc-row{display:flex;align-items:baseline;gap:5px;font-size:11px;line-height:1.65;color:#111;}
+  #receipt .rc-no{display:inline-block;min-width:16px;text-align:right;font-weight:900;}
+  #receipt .rc-nm{font-weight:700;}
+  #receipt .rc-co{color:#555;font-size:9px;}
   @page{size:80mm auto;margin:3mm;}
 }
 </style>
@@ -253,6 +258,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
   <div class="rqr" id="rz-qr"></div>
   <div class="rname" id="rz-name"></div>
   <div class="rno" id="rz-no"></div>
+  <div class="rcands" id="rz-cands"></div>
   <div class="rtip">請以手機掃描上方 QR Code 進入投票。<br>本票為匿名選票，恕不重發，請妥善保管。</div>
 </div>
 
@@ -283,6 +289,26 @@ async function loadElection(){
   election=list[0];
   document.getElementById('e-title').textContent=election.title;
   refreshProg(); setInterval(refreshProg, 10000);
+  loadCandidates();
+}
+
+// 領票單上的候選人名單（一次載入、印在票券上供圈選參考）
+async function loadCandidates(){
+  try{
+    const r=await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_candidates?election_id=eq.${election.id}&order=position.asc,sort.asc,no.asc`,{headers:window.tadaSbHeaders()});
+    const cands=r.ok?await r.json():[];
+    if(!cands.length) return;
+    const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    const block=(pos,label,seats)=>{
+      const list=cands.filter(c=>c.position===pos);
+      if(!list.length) return '';
+      const rows=list.map(c=>`<div class="rc-row"><span class="rc-no">${c.no}</span><span class="rc-nm">${esc(c.name)}</span>${c.company?`<span class="rc-co">${esc(c.company)}</span>`:''}</div>`).join('');
+      return `<div class="rc-h">${label}候選人（應選 ${seats} 席）</div>${rows}`;
+    };
+    document.getElementById('rz-cands').innerHTML =
+      block('director','理事',election.director_seats||'') +
+      block('supervisor','監事',election.supervisor_seats||'');
+  }catch(e){}
 }
 async function refreshProg(){
   if(!election) return;
