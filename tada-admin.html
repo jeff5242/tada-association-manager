@@ -912,7 +912,7 @@ async function loadMembers(){
   const status = document.getElementById('sb-status');
   if(status){ status.style.color='var(--gray)'; status.textContent='載入中…'; }
   try {
-    const sel = 'id,member_no,member_type,name,company,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name,tax_id,id_number,line_user_id';
+    const sel = 'id,member_no,member_type,name,company,company_status,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name,tax_id,id_number,line_user_id';
     const res = await fetch(`${SB_URL}/rest/v1/tada_members?select=${sel}&order=member_no.asc.nullslast`, {headers: SB_HEADERS});
     if(!res.ok) throw new Error('HTTP '+res.status);
     memberRows = await res.json();
@@ -1033,12 +1033,13 @@ function memberMainRow(m, seq){
   ).join(' ') || '<span style="color:var(--gray);font-size:11px;">—</span>';
   const phone = m.mobile || m.phone_office || m.contact_phone || '';
   const email = m.email || m.contact_email || '';
+  const coStatus = m.company_status ? ` <span title="公司登記狀態" style="color:#ef5350;font-size:10px;border:1px solid rgba(239,83,80,.5);border-radius:3px;padding:0 4px;white-space:nowrap;">已${escapeHtml(m.company_status)}</span>` : '';
   const editFn = memberIsGroup(m) ? `openGroupModal('${m.id}')` : `editMemberRow('${m.id}')`;
   return `<tr>
     <td data-label="#" style="color:var(--gray);font-size:11px;text-align:right;">${seq}</td>
     <td data-label="會員編號" style="font-family:'DM Mono',monospace;color:${m.member_no?'var(--gold-lt)':'var(--gray)'};white-space:nowrap;">${m.member_no?escapeHtml(m.member_no):'—'}</td>
     <td data-label="姓名" class="name-cell">${escapeHtml(m.name)} ${mTypeBadge(m.member_type)}</td>
-    <td data-label="服務機關" class="org-cell" style="font-size:12px;">${m.company?escapeHtml(m.company)+((m.member_type&&!m.tax_id&&m.status!=='退會會員')?' <span title="缺公司統編" style="color:var(--warn);font-size:10px;white-space:nowrap;">⚠缺統編</span>':''):(m.status==='退會會員'?'<span style="color:var(--gray);font-size:11px;">—</span>':'<span style="color:var(--warn);font-size:11px;">⚠ 需補公司資料</span>')}</td>
+    <td data-label="服務機關" class="org-cell" style="font-size:12px;">${m.company?escapeHtml(m.company)+coStatus+((m.member_type&&!m.tax_id&&m.status!=='退會會員')?' <span title="缺公司統編" style="color:var(--warn);font-size:10px;white-space:nowrap;">⚠缺統編</span>':''):(m.status==='退會會員'?'<span style="color:var(--gray);font-size:11px;">—</span>':'<span style="color:var(--warn);font-size:11px;">⚠ 需補公司資料</span>')}</td>
     <td data-label="統編" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray);white-space:nowrap;">${(m.tax_id||m.cert_no)?escapeHtml(m.tax_id||m.cert_no):'–'}</td>
     <td data-label="電話" style="font-size:12px;color:var(--gray);white-space:nowrap;">${escapeHtml(phone)||'–'}</td>
     <td data-label="Email" style="font-size:12px;color:var(--gray);">${email?escapeHtml(email):'–'}</td>
@@ -1190,6 +1191,7 @@ async function deleteGroupFromModal(){
 const DETAIL_FIELDS = [
   ['member_no','會員編號','text'], ['member_type','類型','type'], ['status','會員狀態','status'],
   ['name','姓名／團體','text'], ['company','服務機關／團體','text'],
+  ['company_status','公司登記狀態（撤銷/停業/解散；正常請留空）','text'],
   ['gender','性別','text'], ['birthday','出生年月日','text'],
   ['id_number','身分證字號（個人）','text'], ['tax_id','公司統一編號','text'],
   ['mobile','手機','text'], ['phone_office','公司電話','text'], ['email','Email','text'],
@@ -1447,12 +1449,12 @@ async function lookupCompany(){
 }
 
 function exportMemberCSV(){
-  const rows = [['會員編號','類型','姓名/團體','服務機關/團體','統一編號','身分證字號','電話','Email','會員狀態','最後繳費','入會日','代表(團體)','屆次職務']];
+  const rows = [['會員編號','類型','姓名/團體','服務機關/團體','公司登記狀態','統一編號','身分證字號','電話','Email','會員狀態','最後繳費','入會日','代表(團體)','屆次職務']];
   memberRows.forEach(m=>{
     const termsStr = (m.terms||[]).map(t=>`${SESSION_NAMES[t.session]||('第'+t.session+'屆')}${t.role}`).join('；');
     const type = m.member_type==='personal'?'個人':(m.member_type==='group'?'團體':'理監事');
     const repsStr = (m.reps||[]).map((r,i)=>`${(m.member_no||'')+'-'+(i+1)} ${r.name||''}`).join('；');
-    rows.push([m.member_no||'', type, m.name, m.company||'', m.tax_id||m.cert_no||'', m.id_number||'', m.mobile||m.phone_office||m.contact_phone||'', m.email||m.contact_email||'', m.status||'', m.last_paid||'', m.join_date||'', repsStr, termsStr]);
+    rows.push([m.member_no||'', type, m.name, m.company||'', m.company_status||'', m.tax_id||m.cert_no||'', m.id_number||'', m.mobile||m.phone_office||m.contact_phone||'', m.email||m.contact_email||'', m.status||'', m.last_paid||'', m.join_date||'', repsStr, termsStr]);
   });
   const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
