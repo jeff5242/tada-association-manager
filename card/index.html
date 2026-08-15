@@ -11,7 +11,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--gold:#b8913a;--gold-light:#d4a853;--gold-pale:#f5ecd4;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--red:#e88;}
-body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 18px;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px 18px;}
+.proxy{width:100%;max-width:420px;background:linear-gradient(160deg,#22392a,#151f18);border:1px solid rgba(184,145,58,0.3);border-radius:18px;padding:20px 22px;color:var(--cream);display:none;}
+.proxy h3{font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;color:var(--gold-light);margin-bottom:4px;letter-spacing:.05em;}
+.proxy .px-sub{font-size:11px;color:var(--green-light);margin-bottom:14px;line-height:1.6;}
+.proxy .px-chk{display:flex;gap:10px;margin-bottom:12px;}
+.proxy .px-opt{flex:1;border:1px solid rgba(184,145,58,0.3);border-radius:10px;padding:11px 8px;text-align:center;font-size:13px;font-weight:700;color:var(--gold-pale);cursor:pointer;transition:all .15s;user-select:none;}
+.proxy .px-opt.on{background:var(--gold);color:#1a1a14;border-color:var(--gold);}
+.proxy label.px-lb{font-size:11px;color:var(--green-light);display:block;margin:8px 0 4px;}
+.proxy input{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(184,145,58,0.3);border-radius:8px;padding:11px 12px;color:var(--cream);font-size:14px;outline:none;font-family:inherit;}
+.proxy input::placeholder{color:rgba(245,236,212,0.35);}
+.proxy .px-btn{width:100%;margin-top:14px;background:var(--gold);color:#1a1a14;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;letter-spacing:.05em;}
+.proxy .px-btn.cancel{background:transparent;color:var(--red);border:1px solid rgba(238,136,136,0.4);}
+.proxy .px-err{color:#f0a;font-size:12px;margin-top:10px;display:none;line-height:1.5;}
+.proxy .px-done{background:rgba(102,187,106,0.12);border:1px solid rgba(102,187,106,0.35);border-radius:10px;padding:14px;font-size:13px;color:#bfe6c0;line-height:1.7;}
+.proxy .px-done b{color:var(--gold-light);}
+.proxy .px-recv{background:rgba(41,182,246,0.1);border:1px solid rgba(41,182,246,0.3);border-radius:10px;padding:12px;font-size:12px;color:#9fd8f5;margin-top:12px;line-height:1.6;}
+.proxy .px-note{font-size:10px;color:var(--green-light);margin-top:10px;line-height:1.5;}
 .loading{color:var(--gold-pale);font-size:14px;}
 .card{width:100%;max-width:420px;background:linear-gradient(160deg,#24402a,#16241a);border:1px solid rgba(184,145,58,0.35);border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.5);display:none;}
 .card-top{height:5px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
@@ -83,8 +99,33 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
   </div>
 </div>
 
+<!-- 委託（出席／投票）-->
+<div class="proxy" id="proxy-sec">
+  <h3>委　託</h3>
+  <div class="px-sub" id="px-sub">若您無法親自出席，可委託另一位<b>本會會員</b>代表。一位會員僅能受一人委託。</div>
+
+  <div id="px-form">
+    <div class="px-chk">
+      <div class="px-opt" id="opt-attend" onclick="togOpt('attend')">☐ 委託出席</div>
+      <div class="px-opt" id="opt-vote" onclick="togOpt('vote')">☐ 委託投票</div>
+    </div>
+    <label class="px-lb">受委託人姓名</label>
+    <input type="text" id="px-dname" placeholder="請填本會會員姓名">
+    <label class="px-lb">受委託人會員編號</label>
+    <input type="text" id="px-dno" inputmode="numeric" placeholder="對方的會員編號">
+    <button class="px-btn" id="px-submit" onclick="submitProxy()">送出委託</button>
+    <div class="px-err" id="px-err"></div>
+    <div class="px-note">依人民團體選舉罷免辦法，每一會員僅能受一位會員之委託。</div>
+  </div>
+
+  <div id="px-status" style="display:none;"></div>
+  <div id="px-recv" class="px-recv" style="display:none;"></div>
+</div>
+
 <script>
 let profile = null, election = null;
+let boundMember = null, pxElection = null;
+const pxOpts = { attend:false, vote:false };
 
 async function rpc(fn, body){
   const r=await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`,{method:'POST',headers:window.tadaSbHeaders(),body:JSON.stringify(body)});
@@ -124,6 +165,88 @@ function renderCard(m){
   document.getElementById('loading').style.display='none';
   document.getElementById('bind-card').style.display='none';
   document.getElementById('card').style.display='block';
+  boundMember = m;
+  setupProxy(m);
+}
+
+// ── 委託 ─────────────────────────────────────────
+function togOpt(k){
+  pxOpts[k] = !pxOpts[k];
+  const el = document.getElementById('opt-'+k);
+  el.classList.toggle('on', pxOpts[k]);
+  el.textContent = (pxOpts[k]?'☑':'☐') + (k==='attend'?' 委託出席':' 委託投票');
+}
+
+async function setupProxy(m){
+  try{
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election?status=in.(checkin,open)&order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
+    const list = r.ok ? await r.json() : [];
+    if(!list.length) return;              // 沒有開放中的場次 → 不顯示委託
+    pxElection = list[0];
+    const mine = await rpc('proxy_mine', { p_election:pxElection.id, p_user_id:profile.userId, p_name:m.name, p_no:m.member_no||'' });
+    renderProxy(mine);
+    document.getElementById('proxy-sec').style.display='block';
+  }catch(e){ /* 靜默：委託非必要功能 */ }
+}
+
+function renderProxy(mine){
+  const form = document.getElementById('px-form');
+  const status = document.getElementById('px-status');
+  const recv = document.getElementById('px-recv');
+  // 我已委託出去 → 顯示狀態＋取消
+  if(mine && mine.delegated){
+    form.style.display='none';
+    const scope = [mine.proxy_attend?'出席':null, mine.proxy_vote?'投票':null].filter(Boolean).join('、');
+    status.style.display='block';
+    status.innerHTML = `<div class="px-done">✓ 您已委託 <b>${mine.delegate_name}</b>${mine.delegate_no?`（${mine.delegate_no}）`:''} 代表您<b>${scope}</b>。</div>`
+      + `<button class="px-btn cancel" onclick="cancelProxy()">取消委託</button>`;
+  } else {
+    form.style.display='block';
+    status.style.display='none';
+  }
+  // 我受他人委託 → 提示
+  if(mine && mine.is_delegate_for){
+    recv.style.display='block';
+    recv.textContent = `🤝 您受 ${mine.is_delegate_for} 委託，將代表其行使權利。`;
+  } else {
+    recv.style.display='none';
+  }
+}
+
+async function submitProxy(){
+  const err = document.getElementById('px-err');
+  const show = (m)=>{ err.textContent=m; err.style.display=m?'block':'none'; };
+  if(!pxOpts.attend && !pxOpts.vote){ show('請至少勾選「委託出席」或「委託投票」'); return; }
+  const dn = document.getElementById('px-dname').value.trim();
+  const dno = document.getElementById('px-dno').value.trim();
+  if(!dn){ show('請填寫受委託人姓名'); return; }
+  const btn = document.getElementById('px-submit'); btn.disabled=true; btn.textContent='送出中…';
+  try{
+    const r = await rpc('proxy_submit', { p_election:pxElection.id, p_principal_name:boundMember.name,
+      p_principal_no:boundMember.member_no||'', p_delegate_name:dn, p_delegate_no:dno,
+      p_attend:pxOpts.attend, p_vote:pxOpts.vote, p_user_id:profile.userId });
+    if(r.ok){
+      renderProxy({ delegated:true, delegate_name:r.delegate_name, delegate_no:r.delegate_no, proxy_attend:r.proxy_attend, proxy_vote:r.proxy_vote });
+      show('');
+    } else {
+      const M = { delegate_not_member:'查無此會員，受委託人必須是本會會員（請確認姓名與會員編號）。',
+        self:'不能委託給自己。', already_delegated:'您已送出過委託，如需更改請先取消或洽秘書處。',
+        delegate_taken:'此會員已受其他人委託，依規定每人僅能受一位委託，請改委託他人。',
+        no_scope:'請至少勾選一項委託。', missing_name:'請填寫受委託人姓名。' };
+      show(M[r.error] || ('送出失敗：'+r.error)); btn.disabled=false; btn.textContent='送出委託';
+    }
+  }catch(e){ show('連線異常，請稍後再試。'); btn.disabled=false; btn.textContent='送出委託'; }
+}
+
+async function cancelProxy(){
+  if(!confirm('確定取消您的委託？')) return;
+  try{
+    await rpc('proxy_cancel', { p_election:pxElection.id, p_user_id:profile.userId, p_name:boundMember.name, p_no:boundMember.member_no||'' });
+    pxOpts.attend=false; pxOpts.vote=false;
+    ['attend','vote'].forEach(k=>{ const el=document.getElementById('opt-'+k); el.classList.remove('on'); el.textContent=(k==='attend'?'☐ 委託出席':'☐ 委託投票'); });
+    document.getElementById('px-dname').value=''; document.getElementById('px-dno').value='';
+    renderProxy({ delegated:false });
+  }catch(e){ alert('取消失敗，請稍後再試。'); }
 }
 
 async function doBind(){
