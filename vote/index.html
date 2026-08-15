@@ -52,6 +52,11 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--i
     </div>
     <div id="ballot-err"></div>
 
+    <div id="rec-box" style="display:none;align-items:center;gap:12px;background:rgba(212,168,83,0.12);border:1px solid rgba(212,168,83,0.45);border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+      <div style="flex:1;font-size:12px;color:#d4a853;line-height:1.5;">協會推薦名單，可一鍵帶入後再自行增減</div>
+      <button onclick="pickRecommended()" style="flex:0 0 auto;background:#d4a853;color:#1a1a14;border:none;border-radius:8px;padding:11px 16px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;white-space:nowrap;">✓ 由協會推薦</button>
+    </div>
+
     <div class="card" id="card-director">
       <div class="sec-title">
         <b>理事票 <span class="rule" id="d-rule"></span></b>
@@ -121,6 +126,9 @@ async function init(){
     pick.supervisor = election.supervisor_pick;
     const dcands = r.candidates.filter(c=>c.position==='director');
     const scands = r.candidates.filter(c=>c.position==='supervisor');
+    catCands.director = dcands; catCands.supervisor = scands;
+    if(dcands.some(c=>c.recommended) || scands.some(c=>c.recommended))
+      document.getElementById('rec-box').style.display='flex';
     document.getElementById('v-title').textContent = election.title;
     document.getElementById('d-rule').textContent = `應選 ${election.director_seats} 席・限圈選 ${pick.director} 人`;
     document.getElementById('s-rule').textContent = `應選 ${election.supervisor_seats} 席・限圈選 ${pick.supervisor} 人`;
@@ -133,6 +141,24 @@ async function init(){
   }catch(e){
     document.getElementById('loading').textContent = '載入失敗，請重新掃描 QR Code 或洽工作人員。';
   }
+}
+
+const catCands = { director:[], supervisor:[] };
+
+// 由協會推薦：一鍵帶入推薦候選人（遵守圈選上限），使用者仍可再增減
+function pickRecommended(){
+  ['director','supervisor'].forEach(cat=>{
+    const set = chosen[cat]; set.clear();
+    for(const c of catCands[cat]){
+      if(c.recommended && set.size < pick[cat]) set.add(String(c.id));
+    }
+    document.querySelectorAll(`.opt[data-cat="${cat}"]`).forEach(el=>{
+      const sel = set.has(el.dataset.id);
+      el.classList.toggle('sel', sel);
+      el.classList.toggle('disabled', !sel && set.size >= pick[cat]);
+    });
+    updateCounter(cat);
+  });
 }
 
 function renderList(cat, arr, elId){

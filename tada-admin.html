@@ -569,8 +569,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <button class="btn btn-outline btn-sm" onclick="copyFifthCandidates()" title="把第五屆此職位的候選人複製進本場次">⧉ 帶入第五屆</button>
       </div>
       <p id="el-cat-hint" style="font-size:12px;color:var(--gray);margin:4px 2px 10px;line-height:1.7;"></p>
-      <div class="tbl-wrap"><table><thead><tr><th>票號</th><th>姓名</th><th>公司</th><th>得票</th><th>操作</th></tr></thead>
-        <tbody id="cand-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr></tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th>票號</th><th>姓名</th><th>公司</th><th>得票</th><th>協會推薦</th><th>操作</th></tr></thead>
+        <tbody id="cand-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr></tbody></table></div>
     </div>
 
     <div id="el-cat-roster" style="display:none;">
@@ -2574,12 +2574,18 @@ async function renderCandidates(){
     ? '常務理事由當選理事於第二階段互選產生，通常不在會員票上；此處僅供第二階段登錄使用。' : '';
   const r=await sbEl(`tada_v_candidates?election_id=eq.${election.id}&position=eq.${elCat}&order=sort,no`); const arr=r.ok?await r.json():[];
   const tb=document.getElementById('cand-tbody');
-  if(!arr.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr>'; return; }
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr>'; return; }
   tb.innerHTML=arr.map((c)=>`<tr>
     <td>${c.no??'–'}</td><td class="name-cell">${escapeHtml(c.name)}</td>
     <td style="color:var(--gray);font-size:12px;">${escapeHtml(c.company||'–')}</td>
     <td style="font-weight:700;color:var(--gold);">${votesFor(c.id)}</td>
+    <td><button class="btn btn-sm ${c.recommended?'':'btn-outline'}" style="${c.recommended?'background:var(--gold);color:#1a1a14;border:1px solid var(--gold);':''}" onclick="toggleRecommend('${c.id}',${c.recommended?'true':'false'})">${c.recommended?'★ 推薦':'☆ 設推薦'}</button></td>
     <td><button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="delCandidate('${c.id}')">刪除</button></td></tr>`).join('');
+}
+
+async function toggleRecommend(id, cur){
+  const r=await sbEl(`tada_v_candidates?id=eq.${id}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({recommended:!cur})});
+  if(r.ok) renderCandidates(); else alert('更新失敗：'+await r.text());
 }
 
 async function addCandidate(){
