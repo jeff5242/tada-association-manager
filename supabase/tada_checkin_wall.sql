@@ -44,3 +44,26 @@ RETURNS JSON LANGUAGE sql SECURITY DEFINER STABLE AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION checkin_wall(UUID) TO anon;
+
+
+-- ============================================================================
+-- Storage：member-logos bucket 的寫入政策
+--
+-- bucket 本身要在 Dashboard → Storage → New bucket 建立（名稱 member-logos、
+-- 勾 Public）。建好之後執行下面這段，後臺才上傳得了。
+--
+-- ⚠️ 這會讓持有 anon key 的人都能往這個 bucket 寫檔——而 anon key 就在公開的
+--    assets/liff-common.js 裡。與本專案既有的作法一致（tada_members 目前也是
+--    anon 可寫），但這是一筆技術債：正確做法是後臺改用需要登入的金鑰。
+--    在那之前，至少把它限制在單一 bucket、且不開刪除。
+-- ============================================================================
+
+DROP POLICY IF EXISTS "anon upload member logos" ON storage.objects;
+CREATE POLICY "anon upload member logos" ON storage.objects
+  FOR INSERT TO anon
+  WITH CHECK (bucket_id = 'member-logos');
+
+DROP POLICY IF EXISTS "public read member logos" ON storage.objects;
+CREATE POLICY "public read member logos" ON storage.objects
+  FOR SELECT TO anon
+  USING (bucket_id = 'member-logos');

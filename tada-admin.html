@@ -1182,6 +1182,7 @@ const DETAIL_FIELDS = [
   ['cert_no','證照字號／統編','text'], ['cert_org','發證機關','text'], ['business','業務項目','textarea'],
   ['contact_name','本案聯絡人','text'], ['contact_phone','聯絡電話','text'], ['contact_email','聯絡 Email','text'],
   ['recommenders','推薦人','text'], ['source','資料來源','text'], ['note','備註','textarea'],
+  ['logo_url','公司 Logo（報到牆用）','logo'],
   ['terms','屆次職務（JSON）','json'], ['reps','團體代表（JSON）','json'],
 ];
 
@@ -1201,6 +1202,22 @@ async function openDetailModal(id){
       field = `<select data-key="${k}" class="filter-select" style="width:100%;"><option value="personal"${row[k]==='personal'?' selected':''}>個人</option><option value="group"${row[k]==='group'?' selected':''}>團體</option><option value=""${!row[k]?' selected':''}>理監事／無</option></select>`;
     } else if(type==='status'){
       field = `<select data-key="${k}" class="filter-select" style="width:100%;"><option value="">—</option>`+STATUS_LIST.map(s=>`<option${row[k]===s?' selected':''}>${s}</option>`).join('')+`</select>`;
+    } else if(type==='logo'){
+      // 上傳後把公開網址填進同一個 data-key，saveDetail 才收得到
+      const cur = row[k] ? esc(row[k]) : '';
+      field = `<div style="display:flex;gap:10px;align-items:flex-start;">
+        <div id="d-logo-prev" style="width:64px;height:64px;flex:0 0 64px;border:1px solid var(--line,#ddd);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+          ${cur?`<img src="${cur}" style="width:100%;height:100%;object-fit:contain;">`:'<span style="font-size:10px;color:#999;">無</span>'}
+        </div>
+        <div style="flex:1;">
+          <input data-key="${k}" id="d-logo-url" class="search-input" style="width:100%;" value="${cur}" placeholder="上傳後自動填入，或直接貼圖片網址">
+          <div style="margin-top:6px;display:flex;gap:8px;align-items:center;">
+            <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onchange="uploadLogo(this)" style="font-size:11px;">
+            <button type="button" onclick="clearLogo()" style="font-size:11px;">清除</button>
+          </div>
+          <div id="d-logo-msg" style="margin-top:4px;font-size:11px;color:var(--gray,#888);">沒有 Logo 時，報到牆會用公司名首字徽章。</div>
+        </div>
+      </div>`;
     } else if(type==='json'){
       const val = (row[k]==null)?'':JSON.stringify(row[k]);
       field = `<textarea data-key="${k}" data-json="1" class="search-input" style="width:100%;min-height:52px;font-family:monospace;font-size:11px;">${esc(val)}</textarea>`;
@@ -1213,6 +1230,61 @@ async function openDetailModal(id){
     return `<label style="font-size:11px;color:var(--gray);${span}">${label}<div style="margin-top:4px;">${field}</div></label>`;
   }).join('');
   document.getElementById('detail-modal').style.display = 'flex';
+}
+
+/**
+ * 上傳公司 Logo 到 Supabase Storage 的 member-logos bucket。
+ *
+ * 兩個常見失敗要分開講，否則現場只會看到「上傳失敗」：
+ *   404 → bucket 還沒建（Dashboard → Storage → New bucket，勾 Public）
+ *   403 → bucket 建了但沒開 anon 寫入政策（見 supabase/tada_checkin_wall.sql）
+ */
+const LOGO_BUCKET = 'member-logos';
+const LOGO_MAX_BYTES = 512 * 1024;
+
+async function uploadLogo(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const msg = document.getElementById('d-logo-msg');
+  const say = (t, err) => { msg.textContent = t; msg.style.color = err ? '#c0392b' : 'var(--gray,#888)'; };
+
+  if(!/^image\//.test(file.type)){ say('請選擇圖片檔', true); input.value=''; return; }
+  if(file.size > LOGO_MAX_BYTES){
+    say(`圖片請小於 ${Math.round(LOGO_MAX_BYTES/1024)} KB（目前 ${Math.round(file.size/1024)} KB）`, true);
+    input.value=''; return;
+  }
+
+  const id = document.getElementById('d-id').value;
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const path = `${id}-${Date.now()}.${ext}`;
+  say('上傳中…');
+
+  try{
+    const res = await fetch(`${SB_URL}/storage/v1/object/${LOGO_BUCKET}/${path}`, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': file.type },
+      body: file,
+    });
+    if(res.status === 404) throw new Error(`bucket「${LOGO_BUCKET}」不存在，請先在 Supabase Dashboard 建立並勾選 Public`);
+    if(res.status === 403 || res.status === 401) throw new Error('沒有上傳權限，請執行 supabase/tada_checkin_wall.sql 裡的 storage 政策');
+    if(!res.ok) throw new Error(await res.text());
+
+    const url = `${SB_URL}/storage/v1/object/public/${LOGO_BUCKET}/${path}`;
+    document.getElementById('d-logo-url').value = url;
+    document.getElementById('d-logo-prev').innerHTML =
+      `<img src="${url}" style="width:100%;height:100%;object-fit:contain;">`;
+    say('已上傳，記得按下方「儲存」才會寫入名冊');
+  }catch(e){
+    say('上傳失敗：' + e.message, true);
+  }finally{
+    input.value = '';
+  }
+}
+
+function clearLogo(){
+  document.getElementById('d-logo-url').value = '';
+  document.getElementById('d-logo-prev').innerHTML = '<span style="font-size:10px;color:#999;">無</span>';
+  document.getElementById('d-logo-msg').textContent = '已清除，按「儲存」後生效。';
 }
 
 function closeDetailModal(){ document.getElementById('detail-modal').style.display='none'; }
