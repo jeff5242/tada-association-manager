@@ -92,9 +92,25 @@ function queryCandidates(raw) {
   const noParen = norm.replace(/[（(][^）)]*[）)]/g, '')
   if (noParen && noParen !== norm) out.push(noParen, noParen.replace(/臺/g, '台'))
 
+  // 去掉公司型態後綴，只留核心關鍵字（找不到完整名稱時的退路，之後用人名收斂）
+  const bare = norm.replace(/(股份有限公司|有限公司|股份公司|企業有限公司|公司|商行|企業社|工作室|農場|牧場|合作社|農會)$/, '')
+  if (bare && bare.length >= 2 && bare !== norm) out.push(bare, bare.replace(/臺/g, '台'))
+
   out.push(String(raw).trim())                   // 最後才試原始字串
 
   return [...new Set(out.filter((x) => x && x.length >= 2))]
+}
+
+/** 會員姓名是否出現在該公司的代表人／董監事／經理人名單（多筆時用來收斂） */
+function personMatch(it, memberName) {
+  const n = String(memberName ?? '').replace(/\s+/g, '')
+  if (n.length < 2) return false
+  const names = [it['代表人姓名'], it['公司名稱'], it['商業名稱']]
+  for (const key of ['董監事名單', '經理人名單']) {
+    const arr = it[key]
+    if (Array.isArray(arr)) for (const d of arr) names.push(d?.['姓名'] ?? d?.['姓名 '] ?? '')
+  }
+  return names.some((f) => String(f ?? '').replace(/\s+/g, '').includes(n))
 }
 
 async function main() {
@@ -121,17 +137,19 @@ async function main() {
     const company = String(m.company).trim()
     const candidates = queryCandidates(company)
 
-    // 逐個候選字串試，一有完全相符就停；避免為了一筆打太多次 API
-    let hits = [], exactHits = [], usedQuery = '', error = null
+    // 逐個候選字串試，累積候選公司（依統編去重）；一有乾淨的單一完全相符就停
+    const pool = new Map()
+    let usedQuery = '', error = null, cleanExact = null
     for (const q of candidates) {
       const r = await searchCompany(q)
       await sleep(DELAY_MS)
       if (r.error) { error = r.error; break }
 
       const found = (r.items ?? []).filter((it) => digits(it['統一編號']).length === 8)
+      for (const it of found) if (!pool.has(it['統一編號'])) pool.set(it['統一編號'], it)
       const exactly = found.filter((it) => candidates.some((c) => cmpKey(entryName(it)) === cmpKey(c)))
-      if (!hits.length && found.length) { hits = found; usedQuery = q }
-      if (exactly.length) { hits = found; exactHits = exactly; usedQuery = q; break }
+      if (exactly.length === 1) { cleanExact = exactly[0]; usedQuery = q; break }
+      if (pool.size > 40) break            // 關鍵字撈太多 → 停手，改用人名收斂
     }
 
     if (error) {
@@ -141,16 +159,26 @@ async function main() {
       continue
     }
 
-    if (exactHits.length === 1) {
+    const items = [...pool.values()]
+    const exactHits = items.filter((it) => candidates.some((c) => cmpKey(entryName(it)) === cmpKey(c)))
+    const nameHits = items.filter((it) => personMatch(it, m.name))
+
+    if (cleanExact || exactHits.length === 1) {
+      const hit = cleanExact || exactHits[0]
       exact += 1
-      rows.push({ ...m, company, verdict: 'exact', tax: exactHits[0]['統一編號'],
-                  matched: entryName(exactHits[0]), note: usedQuery === normalize(company) ? '' : `查詢字串：${usedQuery}` })
+      rows.push({ ...m, company, verdict: 'exact', tax: hit['統一編號'],
+                  matched: entryName(hit), note: usedQuery && usedQuery !== normalize(company) ? `查詢字串：${usedQuery}` : '' })
       process.stdout.write('.')
-    } else if (hits.length) {
+    } else if (nameHits.length === 1) {
+      exact += 1                            // 人名對到唯一一家 → 視為可寫回
+      rows.push({ ...m, company, verdict: 'name', tax: nameHits[0]['統一編號'],
+                  matched: entryName(nameHits[0]), note: `姓名比對代表人/董監事：${m.name}` })
+      process.stdout.write('n')
+    } else if (items.length) {
       review += 1
-      rows.push({ ...m, company, verdict: 'review', tax: hits[0]['統一編號'],
-                  matched: entryName(hits[0]),
-                  note: `共 ${hits.length} 筆候選；${hits.slice(0, 3).map((h) => `${h['統一編號']} ${entryName(h)}`).join(' ｜ ')}` })
+      rows.push({ ...m, company, verdict: 'review', tax: items[0]['統一編號'],
+                  matched: entryName(items[0]),
+                  note: `共 ${items.length} 筆候選；${items.slice(0, 4).map((h) => `${h['統一編號']} ${entryName(h)}`).join(' ｜ ')}` })
       process.stdout.write('?')
     } else {
       none += 1
@@ -183,9 +211,9 @@ async function main() {
 
   // ── 寫回：只寫 exact，且只覆蓋原本沒有 8 碼統編的 ──
   const writable = rows.filter(
-    (r) => r.verdict === 'exact' && digits(r.tax_id).length !== 8,
+    (r) => (r.verdict === 'exact' || r.verdict === 'name') && digits(r.tax_id).length !== 8,
   )
-  console.log(`\n開始寫回 ${writable.length} 筆（原本已有正確統編的不動）…`)
+  console.log(`\n開始寫回 ${writable.length} 筆（exact＋人名比對，原本已有正確統編的不動）…`)
 
   let ok = 0, bad = 0
   for (const r of writable) {
