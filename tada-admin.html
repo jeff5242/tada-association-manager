@@ -1825,7 +1825,8 @@ function openNotifyModal(id){
   const a = allApps.find(x=>x.id===id); if(!a) return;
   const msg = buildNotifyMessage(a);
   document.getElementById('notify-msg').value = msg;
-  const email = a.email || a.contact_email || '';
+  // 個人申請用 email；團體申請聯絡信箱多在 contact_email 或代表人 rep_email
+  const email = a.email || a.contact_email || a.rep_email || a.rep2_email || a.rep3_email || '';
   notifyEmail = email;
   const mailBtn = document.getElementById('notify-mail-btn');
   const assocBtn = document.getElementById('notify-assoc-btn');

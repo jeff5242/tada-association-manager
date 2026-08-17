@@ -34,7 +34,8 @@ async function recipientKnown(email: string): Promise<boolean> {
   const h = { apikey: SRK, Authorization: `Bearer ${SRK}` };
   const enc = encodeURIComponent(email);
   const probes: Array<[string, string]> = [
-    ['tada_applications', `or=(email.ilike.${enc},contact_email.ilike.${enc})`],
+    // 團體申請的聯絡信箱多在代表人欄位 rep_email，故一併比對
+    ['tada_applications', `or=(email.ilike.${enc},contact_email.ilike.${enc},rep_email.ilike.${enc},rep2_email.ilike.${enc},rep3_email.ilike.${enc})`],
     ['tada_members', `or=(email.ilike.${enc},contact_email.ilike.${enc})`],
   ];
   for (const [table, filter] of probes) {
