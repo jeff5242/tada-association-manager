@@ -116,11 +116,16 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
     <input type="text" id="px-dno" inputmode="numeric" placeholder="對方的會員編號">
     <button class="px-btn" id="px-submit" onclick="submitProxy()">送出委託</button>
     <div class="px-err" id="px-err"></div>
-    <div class="px-note">依人民團體選舉罷免辦法，每一會員僅能受一位會員之委託。</div>
   </div>
 
   <div id="px-status" style="display:none;"></div>
   <div id="px-recv" class="px-recv" style="display:none;"></div>
+
+  <div class="px-note" style="margin-top:14px;border-top:1px solid rgba(184,145,58,0.2);padding-top:12px;">
+    <b style="color:var(--gold-light);">注意事項</b><br>
+    一、依內政部社會團體法規彙編—人民團體選舉罷免辦法第九條規定：每一會員僅能受一會員（會員代表）之委託代表出席。夥伴會員及團體會員之代表人無法出席，可由同公司他人代表出席，不需填製委託書，但需出示證明文件。<br>
+    二、請持本委託書於開會時向大會報到處報到。
+  </div>
 </div>
 
 <script>
