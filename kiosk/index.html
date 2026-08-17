@@ -152,6 +152,9 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
   #receipt .rc-no{display:inline-block;min-width:16px;text-align:right;font-weight:900;}
   #receipt .rc-nm{font-weight:700;}
   #receipt .rc-co{color:#555;font-size:9px;}
+  #receipt .rslip{page-break-after:always;}
+  #receipt .rslip:last-child{page-break-after:auto;}
+  #receipt .rproxy{font-size:12px;font-weight:900;color:#000;margin:4px 0;border:1.5px solid #000;border-radius:5px;padding:3px 6px;}
   @page{size:80mm auto;margin:3mm;}
 }
 </style>
@@ -197,6 +200,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
         <div class="nm" id="f-name">—</div>
         <div class="no" id="f-no"></div>
         <div class="rep" id="f-rep"></div>
+        <div class="rep" id="f-proxy" style="color:#e8b84b;font-weight:900;line-height:1.5;"></div>
         <div class="btn-row">
           <button class="big go" onclick="confirmCheckin()">✅ 報到並列印選票</button>
           <button class="big cancel" onclick="toIdle()">✕ 取消</button>
@@ -250,17 +254,8 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
   </div>
 </div>
 
-<!-- 列印版面（螢幕隱藏，僅列印時顯示） -->
-<div id="receipt">
-  <div class="rk">TADA 理監事選舉</div>
-  <div class="rt" id="rz-title">選票領票單</div>
-  <div class="rd" id="rz-date"></div>
-  <div class="rqr" id="rz-qr"></div>
-  <div class="rname" id="rz-name"></div>
-  <div class="rno" id="rz-no"></div>
-  <div class="rcands" id="rz-cands"></div>
-  <div class="rtip">請以手機掃描上方 QR Code 進入投票。<br>本票為匿名選票，恕不重發，請妥善保管。</div>
-</div>
+<!-- 列印版面（螢幕隱藏，僅列印時顯示）；多張票時每張各一頁 -->
+<div id="receipt"><div id="rz-slips"></div></div>
 
 <script>
 const VOTE_BASE = 'https://tada-ai.org.tw/vote/';
@@ -305,11 +300,12 @@ async function loadCandidates(){
       const rows=list.map(c=>`<div class="rc-row"><span class="rc-no">${c.no}</span><span class="rc-nm">${esc(c.name)}</span>${c.company?`<span class="rc-co">${esc(c.company)}</span>`:''}</div>`).join('');
       return `<div class="rc-h">${label}候選人（應選 ${seats} 席）</div>${rows}`;
     };
-    document.getElementById('rz-cands').innerHTML =
+    candsHTML =
       block('director','理事',election.director_seats||'') +
       block('supervisor','監事',election.supervisor_seats||'');
   }catch(e){}
 }
+let candsHTML = '';
 async function refreshProg(){
   if(!election) return;
   try{ const p=await rpc('vote_progress',{p_election:election.id});
@@ -335,9 +331,23 @@ async function lookup(memberNo){
       document.getElementById('f-name').textContent=current.name;
       document.getElementById('f-no').textContent='會員編號 '+current.member_no;
       document.getElementById('f-rep').textContent=(current.member_type==='group'&&current.rep)?('代表：'+current.rep):'';
+      proxyPreview(current);
     }
     state='found'; show('v-found');
   }catch(e){ toast('系統忙碌，請重試'); }
+}
+
+// 查到會員時，預覽其委託狀態（供工作人員判讀）
+async function proxyPreview(m){
+  const el=document.getElementById('f-proxy'); if(!el) return; el.innerHTML='';
+  try{
+    const r=await rpc('proxy_mine',{p_election:election.id,p_user_id:'',p_name:m.name,p_no:m.member_no||''});
+    const notes=[];
+    if(r.is_delegate_for){ const s=[r.delegate_attend?'出席':null,r.delegate_vote?'投票':null].filter(Boolean).join('、'); notes.push('🤝 受 '+r.is_delegate_for+' 委託'+(s?'（'+s+'）':'')); }
+    if(r.delegated && r.proxy_attend){ notes.push('⚠ 已委託 '+r.delegate_name+' 出席，本人免報到'); }
+    else if(r.delegated && r.proxy_vote){ notes.push('ℹ 已委託 '+r.delegate_name+' 投票，本人不發選票'); }
+    el.innerHTML=notes.join('<br>');
+  }catch(e){}
 }
 
 // 確認 → 報到 → 產生 token → 列印
@@ -347,6 +357,7 @@ async function confirmCheckin(){
     const res=await rpc('vote_checkin',{p_election:election.id,p_member_no:current.member_no});
     if(!res.ok){
       if(res.error==='already_checked_in') toast('此會員已報到領票');
+      else if(res.error==='delegated_away') toast('此會員已將出席委託給 '+(res.delegate_name||'他人')+'，恕不重複報到');
       else toast('報到失敗：'+res.error);
       return;
     }
@@ -364,26 +375,57 @@ const NO_PRINT = new URLSearchParams(location.search).get('noprint') === '1';
 const IDLE_DELAY_MS = NO_PRINT ? 25000 : 6000;   // 螢幕掃碼需要比出紙更久
 
 function printReceipt(res){
-  const url=VOTE_BASE+'?t='+res.uuid;
-  document.getElementById('rz-qr').innerHTML='';
-  new QRCode(document.getElementById('rz-qr'),{text:url,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
-  document.getElementById('rz-title').textContent=election.title;
-  document.getElementById('rz-date').textContent=new Date().toLocaleString('zh-TW',{hour12:false});
-  document.getElementById('rz-name').textContent=res.name+(res.member_type==='group'&&res.rep?'（'+res.rep+'）':'');
-  document.getElementById('rz-no').textContent='會員編號 '+res.member_no;
-  document.getElementById('pr-name').textContent =
-    NO_PRINT ? (res.name+' 報到完成') : (res.name+' 的選票列印中…');
-  document.getElementById('pr-tip').textContent =
-    NO_PRINT ? '請用手機掃描上方 QR Code 進入投票' : '請至出票口領取您的選票，掃描選票 QR 即可投票';
-  document.getElementById('pr-ic').style.display = NO_PRINT ? 'none' : '';
+  const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const uuids = Array.isArray(res.uuids) && res.uuids.length ? res.uuids : (res.uuid?[res.uuid]:[]);
+  const nameDisp = res.name+(res.member_type==='group'&&res.rep?'（'+res.rep+'）':'');
+  const dt = new Date().toLocaleString('zh-TW',{hour12:false});
+  const selfBallot = res.self_ballot!=null ? res.self_ballot : uuids.length;   // 舊回傳無此欄 → 全視為本人
+  const hasProxy = (res.proxy_vote_count||0) > 0 || selfBallot===0;
+
+  // 產生每一張選票（多張時各自一頁）
+  const slips = document.getElementById('rz-slips');
+  slips.innerHTML='';
+  uuids.forEach((u,i)=>{
+    const url=VOTE_BASE+'?t='+u;
+    const isSelf = (selfBallot===1 && i===0);
+    const tag = hasProxy ? `<div class="rproxy">${isSelf?'本人選票':'代理選票 · 受託投票'}</div>` : '';
+    const div=document.createElement('div');
+    div.className='rslip';
+    div.innerHTML =
+      `<div class="rk">TADA 理監事選舉</div>`+
+      `<div class="rt">${esc(election.title)}</div>`+
+      `<div class="rd">${dt}${uuids.length>1?`　第 ${i+1}/${uuids.length} 張`:''}</div>`+
+      tag+
+      `<div class="rqr"></div>`+
+      `<div class="rname">${esc(nameDisp)}</div>`+
+      `<div class="rno">會員編號 ${esc(res.member_no)}</div>`+
+      `<div class="rcands">${candsHTML}</div>`+
+      `<div class="rtip">請以手機掃描上方 QR Code 進入投票。<br>本票為匿名選票，恕不重發，請妥善保管。</div>`;
+    slips.appendChild(div);
+    new QRCode(div.querySelector('.rqr'),{text:url,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+  });
+
+  // 螢幕提示
+  const attendOnly = uuids.length===0;   // 僅出席（本人票已委託出去且未受託投票）
+  let headline, tip;
+  if(attendOnly){ headline=res.name+' 報到完成'; tip='您已將投票委託他人，本次僅完成出席報到'; }
+  else if(uuids.length>1){ headline=res.name+' 報到完成 · 共 '+uuids.length+' 張選票'; tip=NO_PRINT?'代理票請由工作人員協助列印':'請至出票口領取 '+uuids.length+' 張選票（含代理票）'; }
+  else { headline=NO_PRINT?(res.name+' 報到完成'):(res.name+' 的選票列印中…'); tip=NO_PRINT?'請用手機掃描上方 QR Code 進入投票':'請至出票口領取您的選票，掃描選票 QR 即可投票'; }
+  if(res.attend_rep>0 && !attendOnly) tip += '（另代表 '+res.attend_rep+' 人出席）';
+  document.getElementById('pr-name').textContent = headline;
+  document.getElementById('pr-tip').textContent = tip;
+  document.getElementById('pr-ic').style.display = (NO_PRINT||attendOnly) ? 'none' : '';
+
+  // 螢幕掃碼模式：僅單張時把 QR 放到螢幕上；多張或零張不適用
   const wrap = document.getElementById('pr-qr-wrap');
-  wrap.style.display = NO_PRINT ? 'block' : 'none';
-  if(NO_PRINT){
+  const screenQR = NO_PRINT && uuids.length===1;
+  wrap.style.display = screenQR ? 'block' : 'none';
+  if(screenQR){
     document.getElementById('pr-qr').innerHTML='';
-    new QRCode(document.getElementById('pr-qr'),{text:url,width:230,height:230,correctLevel:QRCode.CorrectLevel.M});
+    new QRCode(document.getElementById('pr-qr'),{text:VOTE_BASE+'?t='+uuids[0],width:230,height:230,correctLevel:QRCode.CorrectLevel.M});
   }
   state='print'; show('v-print');
-  if(!NO_PRINT) setTimeout(()=>{ window.print(); }, 300);   // --kiosk-printing 會靜默送印
+  if(!NO_PRINT && uuids.length) setTimeout(()=>{ window.print(); }, 300);   // --kiosk-printing 會靜默送印
   setTimeout(()=>{ toIdle(); }, IDLE_DELAY_MS);
 }
 
