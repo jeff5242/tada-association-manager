@@ -393,6 +393,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="section-title">入會申請審核</div>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
       <button class="btn btn-outline btn-sm" id="app-view-toggle" onclick="toggleAppView()">🗂 已隱藏 <span id="app-hidden-count">0</span></button>
+      <button class="btn btn-outline btn-sm" onclick="exportApplicationsCSV()">匯出 CSV</button>
       <button class="btn btn-outline btn-sm" onclick="loadApplications()">↻ 重新載入</button>
       <span id="app-sb-status" style="font-size:11px;"></span>
     </div>
@@ -1713,6 +1714,45 @@ async function loadApplications() {
 function filterApps(q) { appFilter = q; renderApps(); }
 function filterAppStatus(s) { appStatusFilter = s; renderApps(); }
 function filterAppType(t) { appTypeFilter = t; renderApps(); }
+
+// 匯出目前篩選出的入會申請為 CSV
+const APP_STATUS_LBL = { pending:'待審核', payment_confirmed:'已確認付款', approved:'已核准', rejected:'婉拒' };
+function exportApplicationsCSV(){
+  const wantHidden = appView === 'hidden';
+  const rows = allApps.filter(a => {
+    if (!!a.hidden !== wantHidden) return false;
+    const name = a.name || a.org_name || '';
+    const email = a.email || a.rep_email || '';
+    const q = !appFilter || name.includes(appFilter) || email.includes(appFilter) || (a.job||'').includes(appFilter);
+    const s = !appStatusFilter || a.status === appStatusFilter;
+    const t = !appTypeFilter || a.type === appTypeFilter;
+    return q && s && t;
+  });
+  if(!rows.length){ alert('目前沒有可匯出的申請'); return; }
+  const esc = v => `"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const head = ['申請時間','類型','續約','狀態','姓名／機構','公司／機構名稱','職稱','性別','Email','電話','代表人','負責人','立案／統編','會員數','通訊地址','備註'];
+  const lines = rows.map(a => {
+    const email = a.email || a.contact_email || a.rep_email || a.rep2_email || a.rep3_email || '';
+    const tel = a.tel_mobile || a.contact_tel || a.rep_tel || a.tel_office || a.org_tel || '';
+    const reps = [a.rep_name, a.rep2_name, a.rep3_name].filter(Boolean).join('、');
+    return [
+      a.created_at ? new Date(a.created_at).toLocaleString('zh-TW',{hour12:false}) : '',
+      a.type === 'group' ? '團體' : '個人',
+      a.is_renewal ? '續約' : '',
+      APP_STATUS_LBL[a.status] || a.status || '',
+      a.name || a.org_name || '',
+      a.org_name || '',
+      a.job || '', a.gender || '', email, tel, reps,
+      a.ceo_name || '', a.license_no || '', a.member_count || '',
+      a.addr_mail || a.org_addr || '', a.admin_notes || ''
+    ].map(esc).join(',');
+  });
+  const csv = '﻿' + [head.map(esc).join(','), ...lines].join('\n');
+  const el = document.createElement('a');
+  el.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  el.download = `TADA_入會申請_${new Date().toISOString().slice(0,10)}.csv`;
+  el.click();
+}
 
 function renderApps() {
   const wantHidden = appView === 'hidden';
