@@ -775,7 +775,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 <!-- 通知繳費 Modal -->
 <div id="notify-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;">
-    <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:6px;">📨 通知繳費</div>
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:6px;">✅ 審核通過通知</div>
+    <div style="font-size:11px;color:var(--gray);margin-bottom:6px;">寄送「審核通過」通知給申請人（內含繳費回報連結）</div>
     <div style="font-size:12px;color:var(--gray);margin-bottom:14px;" id="notify-to">寄給：</div>
     <textarea id="notify-msg" style="width:100%;min-height:210px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">
@@ -1844,9 +1845,9 @@ function buildActionButtons(a) {
   } else if (a.status === 'rejected') {
     btns.push(`<button class="btn btn-sm btn-outline" onclick="openAppModal('${id}','pending')">重置待審</button>`);
   }
-  // 審核通過後：通知繳費（寄送繳費回報連結）
+  // 寄送「審核通過」通知（內含繳費回報連結，繳費為次要）
   if (a.status === 'pending' || a.status === 'payment_confirmed' || a.status === 'approved') {
-    btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;color:var(--gold-lt);border-color:rgba(196,146,42,0.4);" onclick="openNotifyModal('${id}')">📨 通知繳費</button>`);
+    btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;color:var(--gold-lt);border-color:rgba(196,146,42,0.4);" onclick="openNotifyModal('${id}')">✅ 審核通過</button>`);
   }
   // 通用：檢視／修改、隱藏
   btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="openAppEdit('${id}')">檢視／修改</button>`);
@@ -1909,9 +1910,9 @@ async function logNotifySent(id){
   if(!id) return;
   const a = allApps.find(x=>x.id===id); if(!a) return;
   const prev = a.admin_notes || '';
-  const count = (prev.match(/繳費通知第\d+次寄出/g) || []).length + 1;
+  const count = (prev.match(/審核通過通知第\d+次寄出/g) || []).length + 1;
   const stamp = new Date().toLocaleString('zh-TW', {hour12:false});
-  const line = `📧 繳費通知第${count}次寄出 ${stamp}`;
+  const line = `📧 審核通過通知第${count}次寄出 ${stamp}`;
   const notes = prev ? prev + '\n' + line : line;
   try{ await patchApp(id, { admin_notes: notes }); await loadApplications(); }
   catch(e){ /* 記錄失敗不影響已寄出的信 */ }
