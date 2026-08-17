@@ -1814,7 +1814,7 @@ function renderApps() {
       <td data-label="姓名" class="name-cell">${nameDisplay}<br><span style="font-size:11px;color:var(--gray);font-weight:400;">${a.job||a.ceo_name||''}</span>${repTag}</td>
       <td data-label="聯絡" style="font-size:12px;">${contact}</td>
       <td data-label="狀態">${APP_STATUS_HTML[a.status] || a.status}</td>
-      <td data-label="備注" style="font-size:11px;color:var(--gray);max-width:140px;">${a.admin_notes||'–'}</td>
+      <td data-label="備注" style="font-size:11px;color:var(--gray);max-width:180px;line-height:1.6;">${a.admin_notes ? escapeHtml(a.admin_notes).replace(/\n/g,'<br>') : '–'}</td>
       <td data-label="操作" style="white-space:nowrap;">${actions}</td>
     </tr>`;
   }).join('');
@@ -1860,9 +1860,10 @@ function buildNotifyMessage(a){
   const name = a.name || a.org_name || '會員';
   return `【TADA 台灣科技農企業發展協會】\n${name} 您好：\n\n您的入會申請已審核通過 ✅\n請於完成會費匯款後，至下方連結回報繳費資訊（繳費日期＋匯款帳號後 5 碼）：\n${PAYMENT_URL}\n\n匯款資訊：\n・京城銀行 太保分行（代號 0540641）\n・帳號 064125019127\n・戶名 台灣科技農企業發展協會\n\n收到回報後，會務人員將為您核對確認。感謝您的支持 🌾`;
 }
-let notifyEmail = '', notifySubject = 'TADA 入會審核通過 — 會費繳納與回報';
+let notifyEmail = '', notifyAppId = null, notifySubject = 'TADA 入會審核通過 — 會費繳納與回報';
 function openNotifyModal(id){
   const a = allApps.find(x=>x.id===id); if(!a) return;
+  notifyAppId = id;
   const msg = buildNotifyMessage(a);
   document.getElementById('notify-msg').value = msg;
   // 個人申請用 email；團體申請聯絡信箱多在 contact_email 或代表人 rep_email
@@ -1890,7 +1891,11 @@ async function sendViaAssoc(){
     const res = await fetch(`${SB_URL}/functions/v1/send-email`, {
       method:'POST', headers:{...SB_HEADERS}, body: JSON.stringify({ to: notifyEmail, subject: notifySubject, text: txt }) });
     const r = await res.json().catch(()=>({}));
-    if(r.ok){ btn.textContent = '✓ 已寄出'; setTimeout(()=>{ btn.textContent=orig; btn.disabled=false; }, 2000); }
+    if(r.ok){
+      btn.textContent = '✓ 已寄出';
+      await logNotifySent(notifyAppId);
+      setTimeout(()=>{ btn.textContent=orig; btn.disabled=false; }, 2000);
+    }
     else {
       const M = { not_configured:'協會寄信尚未設定（需在 Supabase 設定 RESEND_API_KEY 並驗證網域）。可先用「用 Email 寄送」。',
         recipient_not_member:'此 Email 不在名冊/申請資料中，為防濫用暫不寄送。', bad_recipient:'Email 格式有誤。',
@@ -1898,6 +1903,18 @@ async function sendViaAssoc(){
       alert(M[r.error] || ('寄送失敗：'+(r.error||res.status))); btn.textContent=orig; btn.disabled=false;
     }
   }catch(e){ alert('連線失敗：'+e.message); btn.textContent=orig; btn.disabled=false; }
+}
+// 寄出繳費通知後，於備註累計記錄「第 N 次寄出＋時間」
+async function logNotifySent(id){
+  if(!id) return;
+  const a = allApps.find(x=>x.id===id); if(!a) return;
+  const prev = a.admin_notes || '';
+  const count = (prev.match(/繳費通知第\d+次寄出/g) || []).length + 1;
+  const stamp = new Date().toLocaleString('zh-TW', {hour12:false});
+  const line = `📧 繳費通知第${count}次寄出 ${stamp}`;
+  const notes = prev ? prev + '\n' + line : line;
+  try{ await patchApp(id, { admin_notes: notes }); await loadApplications(); }
+  catch(e){ /* 記錄失敗不影響已寄出的信 */ }
 }
 function closeNotifyModal(){ document.getElementById('notify-modal').style.display='none'; }
 async function copyNotifyMsg(){
