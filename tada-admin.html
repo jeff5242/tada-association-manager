@@ -2128,12 +2128,22 @@ async function executeAppAction() {
   btn.disabled = true; btn.textContent = '處理中…';
 
   const now = new Date().toISOString();
-  const payload = { status: action, admin_notes: notes || null };
-  if (action === 'payment_confirmed') payload.payment_confirmed_at = now;
-  if (action === 'approved')          payload.approved_at = now;
-  if (action === 'rejected')          payload.rejected_at = now;
+  const ACTION_LBL = { payment_confirmed:'✅ 確認付款', approved:'✅ 同意入會', rejected:'✕ 婉拒申請', pending:'↺ 重置為待審核' };
+  const stamp = new Date().toLocaleString('zh-TW', {hour12:false});
 
   try {
+    // 先取現有備註 → 累加，避免把先前的寄信/動作紀錄洗掉
+    let prevNotes = '';
+    try {
+      const gr = await fetch(`${SB_URL}/rest/v1/tada_applications?id=eq.${id}&select=admin_notes`, {headers:SB_HEADERS});
+      prevNotes = ((gr.ok ? await gr.json() : [])[0] || {}).admin_notes || '';
+    } catch(_){}
+    const logLine = `${ACTION_LBL[action]||action} ${stamp}` + (notes ? `（備註：${notes}）` : '');
+    const payload = { status: action, admin_notes: prevNotes ? prevNotes + '\n' + logLine : logLine };
+    if (action === 'payment_confirmed') payload.payment_confirmed_at = now;
+    if (action === 'approved')          payload.approved_at = now;
+    if (action === 'rejected')          payload.rejected_at = now;
+
     const res = await fetch(`${SB_URL}/rest/v1/tada_applications?id=eq.${id}`, {
       method: 'PATCH',
       headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
