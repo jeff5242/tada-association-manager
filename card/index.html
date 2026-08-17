@@ -211,14 +211,14 @@ function renderProxy(mine){
       html += `<button class="px-btn cancel" onclick="cancelProxy()">取消委託</button>`;
     }
     status.innerHTML = html;
+  } else if(locked){
+    // 已報到者不得再設定委託 → 藏表單並說明原因
+    form.style.display='none';
+    status.style.display='block';
+    status.innerHTML = `<div class="px-note">您已完成報到，無法再設定委託。</div>`;
   } else {
+    form.style.display='block';
     status.style.display='none';
-    // 已報到者不得再設定委託
-    if(locked){
-      form.style.display='none';
-    } else {
-      form.style.display='block';
-    }
   }
 
   // ② 我受他人委託 → 提示（＋批退，未鎖定時）
