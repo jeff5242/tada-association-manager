@@ -784,6 +784,22 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- 繳費確認 寄信 Modal -->
+<div id="payconfirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:6px;">💰 繳費確認</div>
+    <div style="font-size:11px;color:var(--gray);margin-bottom:10px;">已確認收款，可寄送「繳費確認」通知信給對方（含繳費確認證明連結）</div>
+    <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">寄給（Email）</label>
+    <input type="email" id="pc-email" placeholder="收件人 Email" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;margin-bottom:10px;">
+    <textarea id="pc-msg" style="width:100%;min-height:190px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="closePayConfirm()">關閉</button>
+      <button class="btn btn-outline" id="pc-copy-btn" onclick="copyPayConfirm()">📋 複製訊息</button>
+      <button class="btn btn-gold" id="pc-send-btn" onclick="sendPayConfirm()" title="以 service@tada-ai.org.tw 名義寄出">📧 協會名義寄送</button>
+    </div>
+  </div>
+</div>
+
 <!-- 入會申請 檢視／修改 Modal -->
 <div id="app-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;">
@@ -2126,6 +2142,13 @@ async function executeAppAction() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     closeAppModal();
     await loadApplications();
+    // 確認付款後 → 跳出繳費確認寄信視窗
+    if (action === 'payment_confirmed') {
+      const a = allApps.find(x=>x.id===id) || {};
+      const email = a.email || a.contact_email || a.rep_email || a.rep2_email || a.rep3_email || '';
+      openPayConfirmModal({ table:'tada_applications', noteField:'admin_notes', reload:loadApplications,
+        id, name:(a.name || a.org_name || ''), amount:null, email, proofUrl:'' });
+    }
   } catch (e) {
     alert('操作失敗：' + e.message);
   }
@@ -2565,7 +2588,79 @@ async function confirmPay(id){
     const res=await fetch(`${SB_URL}/rest/v1/tada_payments?id=eq.${id}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({status:'confirmed',confirmed_at:new Date().toISOString()})});
     if(!res.ok) throw new Error('HTTP '+res.status);
     await loadPayments();
+    // 確認收款後 → 跳出繳費確認寄信視窗
+    const p = allPay.find(x=>x.id===id) || {};
+    const who = p.applicant_name || p.display_name || '';
+    const email = await lookupMemberEmail(who);
+    openPayConfirmModal({ table:'tada_payments', noteField:'note', reload:loadPayments,
+      id, name:who, amount:p.amount, email,
+      proofUrl:`https://tada-ai.org.tw/print/?doc=paymentconfirm&id=${id}` });
   }catch(e){ alert('操作失敗：'+e.message); }
+}
+
+// ── 繳費確認寄信（確認付款／確認收款後可寄，附繳費確認證明）──────────────
+let pcCtx = null;
+// 依姓名於名冊／申請資料找 email（繳費回報無 email 欄）
+async function lookupMemberEmail(name){
+  const n = String(name||'').replace(/\s+/g,''); if(n.length<2) return '';
+  const enc = encodeURIComponent(name);
+  try{
+    let r = await fetch(`${SB_URL}/rest/v1/tada_members?name=eq.${enc}&select=email,contact_email&limit=1`, {headers:SB_HEADERS});
+    let a = r.ok?await r.json():[];
+    if(a[0] && (a[0].email||a[0].contact_email)) return a[0].email||a[0].contact_email;
+    r = await fetch(`${SB_URL}/rest/v1/tada_applications?or=(name.eq.${enc},org_name.eq.${enc})&select=email,contact_email,rep_email&limit=1`, {headers:SB_HEADERS});
+    a = r.ok?await r.json():[];
+    if(a[0]) return a[0].email||a[0].contact_email||a[0].rep_email||'';
+  }catch(e){}
+  return '';
+}
+function buildPayConfirmMsg(ctx){
+  const amt = ctx.amount ? ` 新臺幣 ${Number(ctx.amount).toLocaleString()} 元整` : '';
+  return `【TADA 台灣科技農企業發展協會】\n${ctx.name||''} 您好：\n\n本會已收到並確認您的會費繳納${amt}，特此確認。感謝您的支持與參與 🌾\n`
+    + (ctx.proofUrl ? `\n您可於此查看／下載繳費確認證明：\n${ctx.proofUrl}\n` : '')
+    + `\n如有任何問題，歡迎直接回覆本信與秘書處聯繫。\n\n台灣科技農企業發展協會　敬啟`;
+}
+function openPayConfirmModal(ctx){
+  pcCtx = ctx;
+  document.getElementById('pc-email').value = ctx.email || '';
+  document.getElementById('pc-msg').value = buildPayConfirmMsg(ctx);
+  document.getElementById('payconfirm-modal').style.display = 'flex';
+}
+function closePayConfirm(){ document.getElementById('payconfirm-modal').style.display='none'; pcCtx=null; }
+async function copyPayConfirm(){
+  const ta=document.getElementById('pc-msg');
+  try{ await navigator.clipboard.writeText(ta.value); }catch(e){ ta.select(); document.execCommand('copy'); }
+  const b=document.getElementById('pc-copy-btn'); const t=b.textContent; b.textContent='✓ 已複製'; setTimeout(()=>b.textContent=t,1500);
+}
+async function sendPayConfirm(){
+  if(!pcCtx) return;
+  const email=document.getElementById('pc-email').value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ alert('請填寫正確的收件 Email'); return; }
+  const txt=document.getElementById('pc-msg').value;
+  const btn=document.getElementById('pc-send-btn'); btn.disabled=true; const orig=btn.textContent; btn.textContent='寄送中…';
+  try{
+    const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},body:JSON.stringify({to:email,subject:'TADA 繳費確認通知',text:txt})});
+    const r=await res.json().catch(()=>({}));
+    if(r.ok){
+      btn.textContent='✓ 已寄出';
+      await logPayConfirmSent(pcCtx);
+      setTimeout(()=>{ closePayConfirm(); }, 1200);
+    } else {
+      const M={ not_configured:'協會寄信尚未設定（RESEND_API_KEY）。', recipient_not_member:'此 Email 不在名冊/申請資料中，為防濫用暫不寄送（可改填名冊內的信箱）。', bad_recipient:'Email 格式有誤。', send_failed:'寄送失敗，請檢查 Resend 設定。' };
+      alert(M[r.error]||('寄送失敗：'+(r.error||res.status))); btn.textContent=orig; btn.disabled=false;
+    }
+  }catch(e){ alert('連線失敗：'+e.message); btn.textContent=orig; btn.disabled=false; }
+}
+async function logPayConfirmSent(ctx){
+  try{
+    const tbl=ctx.table, fld=ctx.noteField;
+    const r=await fetch(`${SB_URL}/rest/v1/${tbl}?id=eq.${ctx.id}&select=${fld}`, {headers:SB_HEADERS});
+    const row=(r.ok?await r.json():[])[0]||{};
+    const prev=row[fld]||'';
+    const line=`📧 繳費確認信寄出 ${new Date().toLocaleString('zh-TW',{hour12:false})}`;
+    await fetch(`${SB_URL}/rest/v1/${tbl}?id=eq.${ctx.id}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({[fld]: prev?prev+'\n'+line:line})});
+    if(ctx.reload) await ctx.reload();
+  }catch(e){}
 }
 
 // ── 投票結果 ─────────────────────────────────────────────
