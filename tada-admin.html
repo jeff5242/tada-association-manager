@@ -777,9 +777,10 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:440px;">
     <div style="font-family:'Noto Serif TC',serif;font-size:15px;color:var(--white);margin-bottom:16px;" id="app-modal-title">審核備注</div>
     <textarea id="app-notes-input" style="width:100%;min-height:80px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px;font-family:'Noto Sans TC',sans-serif;font-size:13px;resize:vertical;outline:none;" placeholder="備注（選填）"></textarea>
-    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">
       <button class="btn btn-outline" onclick="closeAppModal()">取消</button>
-      <button class="btn btn-gold" id="app-modal-confirm-btn">確認</button>
+      <button class="btn btn-outline" id="app-modal-confirm-btn">確認</button>
+      <button class="btn btn-gold" id="app-modal-confirm-send-btn" style="display:none;">✅ 確認並寄繳費通知信</button>
     </div>
   </div>
 </div>
@@ -2110,7 +2111,16 @@ function openAppModal(id, action) {
   document.getElementById('app-modal-title').textContent = labels[action] || action;
   document.getElementById('app-notes-input').value = '';
   const confirmBtn = document.getElementById('app-modal-confirm-btn');
-  confirmBtn.onclick = executeAppAction;
+  const sendBtn = document.getElementById('app-modal-confirm-send-btn');
+  confirmBtn.textContent = '確認';
+  confirmBtn.onclick = () => executeAppAction(false);
+  // 只有「確認付款」才提供「確認並寄繳費通知信」
+  if (action === 'payment_confirmed') {
+    sendBtn.style.display = '';
+    sendBtn.onclick = () => executeAppAction(true);
+  } else {
+    sendBtn.style.display = 'none';
+  }
   document.getElementById('app-notes-modal').style.display = 'flex';
   document.getElementById('app-notes-input').focus();
 }
@@ -2120,12 +2130,13 @@ function closeAppModal() {
   pendingAction = null;
 }
 
-async function executeAppAction() {
+async function executeAppAction(thenSend) {
   if (!pendingAction) return;
   const { id, action } = pendingAction;
   const notes = document.getElementById('app-notes-input').value.trim();
   const btn = document.getElementById('app-modal-confirm-btn');
-  btn.disabled = true; btn.textContent = '處理中…';
+  const sendBtn = document.getElementById('app-modal-confirm-send-btn');
+  btn.disabled = true; sendBtn.disabled = true; btn.textContent = '處理中…';
 
   const now = new Date().toISOString();
   const ACTION_LBL = { payment_confirmed:'✅ 確認付款', approved:'✅ 同意入會', rejected:'✕ 婉拒申請', pending:'↺ 重置為待審核' };
@@ -2152,8 +2163,8 @@ async function executeAppAction() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     closeAppModal();
     await loadApplications();
-    // 確認付款後 → 跳出繳費確認寄信視窗
-    if (action === 'payment_confirmed') {
+    // 只有按「確認並寄繳費通知信」才轉到發信環節
+    if (thenSend && action === 'payment_confirmed') {
       const a = allApps.find(x=>x.id===id) || {};
       const email = a.email || a.contact_email || a.rep_email || a.rep2_email || a.rep3_email || '';
       openPayConfirmModal({ table:'tada_applications', noteField:'admin_notes', reload:loadApplications,
@@ -2162,7 +2173,7 @@ async function executeAppAction() {
   } catch (e) {
     alert('操作失敗：' + e.message);
   }
-  btn.disabled = false; btn.textContent = '確認';
+  btn.disabled = false; sendBtn.disabled = false; btn.textContent = '確認';
 }
 
 // ── TADA醬 待回覆 ─────────────────────────────────────────
