@@ -97,6 +97,25 @@ async function render(){
           三、請持本委託書於開會時向大會報到處報到。
         </div>
       `);
+    } else if(DOC==='paymentconfirm'){
+      const p = await fetchRow('tada_payments', ID);
+      if(!p){ fail('查無此繳費紀錄。'); return; }
+      const TYPE = { personal_new:'個人・新入會', group_new:'團體・新入會', personal_renew:'個人・續約', group_renew:'團體・續約' };
+      const who = p.applicant_name || p.display_name || '';
+      const amt = (p.amount||0).toLocaleString();
+      const payDate = p.paid_date ? rocDate(p.paid_date).replace('中華民國','').trim() : '';
+      sheet(`
+        <div class="doc-title">繳費確認證明</div>
+        <div class="body-txt">茲證明　<span class="fill">${esc(who)}</span>　已繳納本會${p.member_type?`（${esc(TYPE[p.member_type]||p.member_type)}）`:''}<br>
+          會費　新臺幣　<span class="fill">${esc(amt)}</span>　元整，經核對入帳無誤，特此確認。</div>
+        <div class="sign-block">
+          繳費日期：<span class="fill">${esc(payDate||'—')}</span>${p.last5?`<br>匯款帳號後五碼：<span class="fill">${esc(p.last5)}</span>`:''}
+        </div>
+        <div class="to" style="margin-top:50px;">此致</div>
+        <div class="org">${esc(who)}　台端</div>
+        <div style="text-align:right;margin-top:50px;" class="org">${esc(ORG)}</div>
+        <div class="date">${rocDate(p.confirmed_at || p.created_at)}</div>
+      `);
     } else { fail('未知的文件類型。'); }
   }catch(e){ fail('載入失敗：'+e.message); }
 }
