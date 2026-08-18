@@ -740,6 +740,12 @@ async function submitRenew(e) {
     btn.disabled = false; btn.textContent = '送出續約申請';
   }
 }
+
+// 深連結：?flow=renew → 舊會員回娘家（續約）；?flow=new → 新會員
+(function(){
+  const f = new URLSearchParams(location.search).get('flow');
+  if(f==='renew') switchFlow('renew');
+})();
 </script>
 </body>
 </html>
