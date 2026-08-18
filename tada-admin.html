@@ -589,6 +589,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <button class="sub-tab" onclick="switchElCat('roster',this)">會員名冊</button>
       <button class="sub-tab" onclick="switchElCat('consent',this)">願任書</button>
       <button class="sub-tab" onclick="switchElCat('proxy',this)">委託書</button>
+      <button class="sub-tab" onclick="switchElCat('tally',this)">🗳️ 紙本開票</button>
     </div>
 
     <div id="el-cat-cand">
@@ -645,6 +646,19 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       </div>
       <div class="tbl-wrap"><table><thead><tr><th>委託人</th><th></th><th>受委託人</th><th>範圍</th><th>狀態</th><th>報到</th><th>時間</th><th>列印</th></tr></thead>
         <tbody id="proxy-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray);padding:20px;">尚無委託書</td></tr></tbody></table></div>
+    </div>
+
+    <div id="el-cat-tally" style="display:none;">
+      <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:10px;">
+        監票人清點<b style="color:var(--gold-lt);">紙本圈選票</b>後，於此輸入各候選人紙本得票數，存檔後<b>併入開票結果</b>（與線上票加總）。可重覆輸入更正。
+      </p>
+      <div style="display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="renderTally()">↻ 重新載入</button>
+        <button class="btn btn-gold btn-sm" onclick="saveTally()">💾 儲存紙本得票</button>
+        <span id="tally-status" style="font-size:12px;color:var(--gray);align-self:center;"></span>
+      </div>
+      <div class="tbl-wrap"><table><thead><tr><th>職位</th><th>號次</th><th>姓名</th><th>線上票</th><th>紙本票</th></tr></thead>
+        <tbody id="tally-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">載入中…</td></tr></tbody></table></div>
     </div>
   </div>
 </div>
@@ -2933,14 +2947,44 @@ async function setElectionStatus(s){
 
 function switchElCat(cat,btn){
   document.querySelectorAll('#page-election .sub-tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
-  const show = ['roster','consent','proxy'].includes(cat) ? cat : 'cand';
+  const show = ['roster','consent','proxy','tally'].includes(cat) ? cat : 'cand';
   document.getElementById('el-cat-cand').style.display    = show==='cand'    ? 'block':'none';
   document.getElementById('el-cat-roster').style.display  = show==='roster'  ? 'block':'none';
   document.getElementById('el-cat-consent').style.display = show==='consent' ? 'block':'none';
   document.getElementById('el-cat-proxy').style.display   = show==='proxy'   ? 'block':'none';
+  document.getElementById('el-cat-tally').style.display   = show==='tally'   ? 'block':'none';
   if(show==='cand'){ elCat=cat; renderCandidates(); }
   if(show==='consent'){ renderConsent(); }
   if(show==='proxy'){ renderProxy(); }
+  if(show==='tally'){ renderTally(); }
+}
+
+// 紙本開票：輸入各候選人紙本得票數，併入結果
+async function renderTally(){
+  const tb=document.getElementById('tally-tbody');
+  const cr=await sbEl(`tada_v_candidates?election_id=eq.${election.id}&order=position.desc,sort,no`); const cands=cr.ok?await cr.json():[];
+  if(!cands.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr>'; return; }
+  // 現有票數（分來源）
+  const vr=await sbEl(`tada_v_votes?election_id=eq.${election.id}&select=candidate_id,source`); const votes=vr.ok?await vr.json():[];
+  const online={}, paper={};
+  votes.forEach(v=>{ const m=(v.source==='paper')?paper:online; m[v.candidate_id]=(m[v.candidate_id]||0)+1; });
+  const POS={director:'理事',supervisor:'監事',executive:'常務理事'};
+  tb.innerHTML=cands.map(c=>`<tr>
+    <td style="font-size:12px;color:var(--gray);">${POS[c.position]||c.position}</td>
+    <td>${c.no??'–'}</td>
+    <td class="name-cell">${escapeHtml(c.name)}</td>
+    <td style="color:var(--gray);">${online[c.id]||0}</td>
+    <td><input type="number" min="0" class="search-input tally-in" data-cid="${c.id}" value="${paper[c.id]||0}" style="width:90px;"></td>
+  </tr>`).join('');
+}
+async function saveTally(){
+  const st=document.getElementById('tally-status');
+  const tallies=[...document.querySelectorAll('.tally-in')].map(i=>({candidate_id:i.dataset.cid, count:Number(i.value)||0}));
+  st.style.color='var(--gray)'; st.textContent='儲存中…';
+  const r=await sbEl('rpc/vote_tally_paper',{method:'POST',headers:{...SB_HEADERS,'Content-Type':'application/json'},body:JSON.stringify({p_election:election.id,p_tallies:tallies})});
+  const d=r.ok?await r.json():null;
+  if(d&&d.ok){ st.style.color='#66bb6a'; st.textContent=`✓ 已存入紙本 ${d.inserted} 票（已併入開票結果）`; renderTally(); }
+  else { st.style.color='#ef5350'; st.textContent='儲存失敗：'+(d&&d.error||await r.text()); }
 }
 
 let proxyRows = [];
