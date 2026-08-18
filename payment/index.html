@@ -58,6 +58,13 @@ textarea{resize:vertical;min-height:56px;}
 
     <div class="card">
       <div id="bound-info" style="display:none;background:#eef6ee;border:1px solid #cfe6cf;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px;color:#2d5235;"></div>
+      <div class="field" id="staff-field" style="display:none;">
+        <label class="label">選擇申請人 <span style="color:#c0392b;">*</span></label>
+        <select id="staff-applicant" onchange="onStaffPick()">
+          <option value="">— 請選擇入會申請人 —</option>
+        </select>
+        <div class="hint">秘書處代填：從入會申請清單選擇繳費人（自動帶入姓名與類別）</div>
+      </div>
       <div class="field" id="name-field" style="display:none;">
         <label class="label">姓名 <span style="color:#c0392b;">*</span></label>
         <input type="text" id="payer-name" placeholder="請輸入您的姓名">
@@ -124,9 +131,46 @@ async function rosterBound(uid){
   }catch(e){ return null; }
 }
 
+const STAFF_MODE = new URLSearchParams(location.search).get('staff')==='1';
+
+async function loadApplicantsForStaff(){
+  const sel = document.getElementById('staff-applicant');
+  try{
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_applications?hidden=eq.false&order=created_at.desc&select=id,type,is_renewal,name,org_name`, { headers: window.tadaSbHeaders() });
+    const apps = r.ok ? await r.json() : [];
+    apps.forEach(a=>{
+      const nm = a.name || a.org_name || '（未填名）';
+      const o = document.createElement('option');
+      o.value = a.id;
+      o.textContent = nm + (a.org_name && a.name ? '（'+a.org_name+'）' : '') + (a.is_renewal?'・續約':'・新入會');
+      o.dataset.name = nm;
+      o.dataset.type = (a.type==='group'?'group':'personal') + '_' + (a.is_renewal?'renew':'new');
+      sel.appendChild(o);
+    });
+  }catch(e){}
+}
+function onStaffPick(){
+  const sel = document.getElementById('staff-applicant');
+  const o = sel.options[sel.selectedIndex];
+  if(!o || !o.value) return;
+  document.getElementById('payer-name').value = o.dataset.name || '';
+  const mt = document.getElementById('member-type');
+  if(o.dataset.type){ mt.value = o.dataset.type; updateAmount(); }
+}
+
 async function init(){
   document.getElementById('loading').style.display='none';
   document.getElementById('form-view').style.display='block';
+
+  if(STAFF_MODE){
+    // 秘書處代填：不綁 LINE，改由清單選擇申請人
+    document.querySelector('.title') && (document.querySelector('.title').textContent = '代填匯款回報');
+    document.getElementById('staff-field').style.display = '';
+    document.getElementById('name-field').style.display = '';
+    await loadApplicantsForStaff();
+    return;
+  }
+
   try{
     profile = await window.tadaInitLiff('payment');
   }catch(e){ profile = null; }
