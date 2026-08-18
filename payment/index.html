@@ -135,18 +135,42 @@ const STAFF_MODE = new URLSearchParams(location.search).get('staff')==='1';
 
 async function loadApplicantsForStaff(){
   const sel = document.getElementById('staff-applicant');
+  const H = window.tadaSbHeaders();
+  // ── 入會申請 ──
   try{
-    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_applications?hidden=eq.false&order=created_at.desc&select=id,type,is_renewal,name,org_name`, { headers: window.tadaSbHeaders() });
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_applications?hidden=eq.false&order=created_at.desc&select=id,type,is_renewal,name,org_name`, { headers: H });
     const apps = r.ok ? await r.json() : [];
-    apps.forEach(a=>{
-      const nm = a.name || a.org_name || '（未填名）';
-      const o = document.createElement('option');
-      o.value = a.id;
-      o.textContent = nm + (a.org_name && a.name ? '（'+a.org_name+'）' : '') + (a.is_renewal?'・續約':'・新入會');
-      o.dataset.name = nm;
-      o.dataset.type = (a.type==='group'?'group':'personal') + '_' + (a.is_renewal?'renew':'new');
-      sel.appendChild(o);
-    });
+    if(apps.length){
+      const g = document.createElement('optgroup'); g.label = '入會申請';
+      apps.forEach(a=>{
+        const nm = a.name || a.org_name || '（未填名）';
+        const o = document.createElement('option');
+        o.value = 'a:'+a.id;
+        o.textContent = nm + (a.org_name && a.name ? '（'+a.org_name+'）' : '') + (a.is_renewal?'・續約':'・新入會');
+        o.dataset.name = nm;
+        o.dataset.type = (a.type==='group'?'group':'personal') + '_' + (a.is_renewal?'renew':'new');
+        g.appendChild(o);
+      });
+      sel.appendChild(g);
+    }
+  }catch(e){}
+  // ── 現有會員（舊會員續約多用此）──
+  try{
+    const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_members?order=member_no&select=member_no,name,member_type,company`, { headers: H });
+    const mems = r.ok ? await r.json() : [];
+    if(mems.length){
+      const g = document.createElement('optgroup'); g.label = '現有會員（續約）';
+      mems.forEach(m=>{
+        const nm = m.name || m.company || '（未填名）';
+        const o = document.createElement('option');
+        o.value = 'm:'+m.member_no;
+        o.textContent = nm + (m.member_no?('（'+m.member_no+'）'):'');
+        o.dataset.name = nm;
+        o.dataset.type = (m.member_type==='group'?'group':'personal') + '_renew';
+        g.appendChild(o);
+      });
+      sel.appendChild(g);
+    }
   }catch(e){}
 }
 function onStaffPick(){
