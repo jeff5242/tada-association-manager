@@ -202,9 +202,10 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
         <div class="rep" id="f-rep"></div>
         <div class="rep" id="f-proxy" style="color:#e8b84b;font-weight:900;line-height:1.5;"></div>
         <div class="btn-row">
-          <button class="big go" onclick="confirmCheckin()">✅ 報到並列印選票</button>
-          <button class="big cancel" onclick="toIdle()">✕ 取消</button>
+          <button class="big go" onclick="confirmCheckin()">🎫 領電子票<br><span style="font-size:16px;font-weight:400;">手機掃描投票</span></button>
+          <button class="big go" style="background:linear-gradient(180deg,#b8913a,#8a6d28);" onclick="confirmCheckinPaper()">📄 領紙本票<br><span style="font-size:16px;font-weight:400;">現場圈選投票</span></button>
         </div>
+        <div class="btn-row" style="margin-top:16px;"><button class="big cancel" onclick="toIdle()">✕ 取消</button></div>
       </div>
       <div id="found-done" style="display:none;">
         <div class="nm" id="fd-name" style="font-size:60px;">—</div>
@@ -362,6 +363,33 @@ async function confirmCheckin(){
       return;
     }
     printReceipt(res);
+    refreshProg();
+  }catch(e){ toast('報到失敗，請重試'); }
+}
+
+// 領紙本票：標記已報到（不發電子票），顯示應圈張數，開啟紙本選票列印
+async function confirmCheckinPaper(){
+  if(!current) return;
+  try{
+    const res=await rpc('vote_checkin_paper',{p_election:election.id,p_member_no:current.member_no});
+    if(!res.ok){
+      if(res.error==='already_checked_in') toast('此會員已報到');
+      else if(res.error==='delegated_away') toast('此會員已將出席委託給 '+(res.delegate_name||'他人')+'，恕不重複報到');
+      else toast('報到失敗：'+res.error);
+      return;
+    }
+    const ballots = res.ballots||1;
+    document.getElementById('pr-ic').style.display='none';
+    document.getElementById('pr-qr-wrap').style.display='none';
+    document.getElementById('pr-name').textContent = res.name+' 已領紙本票';
+    let tip = '請至圈選區以紙本圈選投票';
+    if(ballots>1) tip = '共 '+ballots+' 張（含代理票）· '+tip;
+    if(res.attend_rep>0) tip += '（另代表 '+res.attend_rep+' 人出席）';
+    document.getElementById('pr-tip').textContent = tip;
+    state='print'; show('v-print');
+    // 開啟紙本選票列印（有印表機的報到台可直接印；無則忽略）
+    try{ window.open(VOTE_BASE.replace('/vote/','/print/')+'?doc=ballot&member='+encodeURIComponent(current.member_no), '_blank'); }catch(_){}
+    setTimeout(()=>{ toIdle(); }, IDLE_DELAY_MS);
     refreshProg();
   }catch(e){ toast('報到失敗，請重試'); }
 }

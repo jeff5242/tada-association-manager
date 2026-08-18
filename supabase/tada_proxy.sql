@@ -253,7 +253,7 @@ BEGIN
     FROM tada_v_proxy WHERE election_id = p_election AND status='active'
      AND (delegate_name = v_member.name OR (COALESCE(v_member.member_no,'')<>'' AND delegate_no = v_member.member_no));
 
-  UPDATE tada_v_members SET is_checked_in = TRUE, check_in_time = NOW() WHERE id = v_member.id;
+  UPDATE tada_v_members SET is_checked_in = TRUE, check_in_time = NOW(), vote_method = 'online' WHERE id = v_member.id;
 
   -- 發票：本人票 + 受託投票票
   v_total := v_self_ballot + v_extra;
