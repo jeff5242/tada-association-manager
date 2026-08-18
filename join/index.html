@@ -162,6 +162,14 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--rice);color:var(--in
 
   <!-- ══ 續約會員（簡短表單，秘書處後續查證）══ -->
   <div class="hidden" id="renew-flow">
+    <div class="lookup-box">
+      <div class="lookup-title">🔄 舊會員快速帶入（免重打）</div>
+      <div class="lookup-row">
+        <input type="text" id="rn-lookup" placeholder="輸入統一編號 或 會員編號" inputmode="numeric">
+        <button type="button" class="lookup-btn" onclick="prefillRenew()">查詢帶入</button>
+      </div>
+      <div class="lookup-result" id="rn-lookup-msg"></div>
+    </div>
     <div class="type-toggle rn-toggle" style="margin-bottom:16px;">
       <button type="button" class="type-btn active" id="rn-btn-personal" onclick="switchRenewType('personal')">個人會員</button>
       <button type="button" class="type-btn" id="rn-btn-group" onclick="switchRenewType('group')">團體會員</button>
@@ -649,6 +657,46 @@ function switchRenewType(t){
   document.getElementById('rn-btn-group').classList.toggle('active', t==='group');
   document.getElementById('rn-personal').classList.toggle('hidden', t!=='personal');
   document.getElementById('rn-group').classList.toggle('hidden', t!=='group');
+}
+
+// ── 舊會員快速帶入（統編／會員編號 或 LINE 綁定）─────────────────────
+function cleanCo(s){ return String(s||'').replace(/[-－].*$/,'').replace(/[（(][^）)]*[）)]/g,'').trim(); }
+function applyRenewPrefill(d){
+  const digits=s=>String(s||'').replace(/\D/g,'');
+  if(d.member_type==='group'){
+    switchRenewType('group');
+    document.getElementById('rn-company-g').value = cleanCo(d.company);
+    document.getElementById('rn-taxid-g').value = digits(d.tax_id).slice(0,8);
+    const reps = Array.isArray(d.reps)?d.reps:[];
+    [1,2,3].forEach(i=>{
+      const rp = reps[i-1]||{};
+      const nm=document.getElementById('rn-rep'+i+'-name'), tl=document.getElementById('rn-rep'+i+'-tel');
+      if(nm) nm.value = rp.name||''; if(tl) tl.value = rp.tel||'';
+    });
+  } else {
+    switchRenewType('personal');
+    document.getElementById('rn-name').value = d.name||'';
+    document.getElementById('rn-company-p').value = cleanCo(d.company);
+    document.getElementById('rn-taxid-p').value = digits(d.tax_id).slice(0,8);
+    document.getElementById('rn-tel').value = d.mobile||'';
+  }
+}
+async function memberPrefill(body){
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/member_prefill`, {method:'POST',
+    headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  return r.ok ? await r.json() : {found:false};
+}
+async function prefillRenew(){
+  const q = document.getElementById('rn-lookup').value.trim();
+  const msg = document.getElementById('rn-lookup-msg');
+  if(!q){ msg.className='lookup-result notfound'; msg.textContent='請輸入統一編號或會員編號'; return; }
+  msg.className='lookup-result'; msg.textContent='查詢中…';
+  try{
+    const d = await memberPrefill({p_query:q});
+    if(!d.found){ msg.className='lookup-result notfound'; msg.textContent='查無此統編／會員編號，請確認，或直接手動填寫。'; return; }
+    applyRenewPrefill(d);
+    msg.className='lookup-result found'; msg.textContent='✓ 已帶入 '+(d.name||d.company||'')+'（'+(d.member_type==='group'?'團體':'個人')+'）資料，請確認後送出。';
+  }catch(e){ msg.className='lookup-result notfound'; msg.textContent='查詢失敗，請稍後再試或手動填寫。'; }
 }
 
 async function submitRenew(e) {
