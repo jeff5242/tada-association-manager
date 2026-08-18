@@ -176,6 +176,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <button data-tab="members" onclick="switchTab('members')">會員名冊</button>
         <button data-tab="applications" onclick="switchTab('applications')">入會審核</button>
         <button data-tab="payments" onclick="switchTab('payments')">🏦 繳費回報<span id="pay-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
+        <button data-tab="mailtpl" onclick="switchTab('mailtpl')">✉ 信件範本</button>
         <button data-tab="lineusers" onclick="switchTab('lineusers')">💬 LINE 使用者</button>
       </div>
     </div>
@@ -760,6 +761,45 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ 信件範本 ══════════ -->
+<div class="page" id="page-mailtpl">
+  <div class="section-header" style="margin-bottom:12px;">
+    <div class="section-title">✉ 信件範本</div>
+    <span id="mt-status" style="margin-left:auto;font-size:12px;align-self:center;"></span>
+  </div>
+  <p style="color:var(--gray);font-size:12px;line-height:1.9;margin-bottom:16px;">
+    協會寄信的公版內容，存檔後立即套用。可用變數：
+    <code style="color:var(--gold-lt);">{姓名}</code>
+    <code style="color:var(--gold-lt);">{繳費連結}</code>
+    <code style="color:var(--gold-lt);">{金額}</code>
+    <code style="color:var(--gold-lt);">{證明連結}</code>
+  </p>
+
+  <div class="section-card">
+    <div class="section-title" style="font-size:14px;margin-bottom:4px;">審核通過信 <span style="font-size:11px;color:var(--gray);font-weight:400;">（按「✅ 審核通過」時寄；變數：{姓名}、{繳費連結}）</span></div>
+    <label style="font-size:12px;color:var(--gray);display:block;margin:10px 0 4px;">主旨</label>
+    <input id="mt-approval-subject" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;">
+    <label style="font-size:12px;color:var(--gray);display:block;margin:10px 0 4px;">內文</label>
+    <textarea id="mt-approval-body" style="width:100%;min-height:220px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn btn-gold btn-sm" onclick="saveMailTpl('approval')">儲存</button>
+      <button class="btn btn-outline btn-sm" onclick="resetMailTpl('approval')">還原預設</button>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title" style="font-size:14px;margin-bottom:4px;">繳費確認信 <span style="font-size:11px;color:var(--gray);font-weight:400;">（確認付款／收款後寄；變數：{姓名}、{金額}、{證明連結}）</span></div>
+    <label style="font-size:12px;color:var(--gray);display:block;margin:10px 0 4px;">主旨</label>
+    <input id="mt-payment_confirm-subject" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;">
+    <label style="font-size:12px;color:var(--gray);display:block;margin:10px 0 4px;">內文</label>
+    <textarea id="mt-payment_confirm-body" style="width:100%;min-height:200px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn btn-gold btn-sm" onclick="saveMailTpl('payment_confirm')">儲存</button>
+      <button class="btn btn-outline btn-sm" onclick="resetMailTpl('payment_confirm')">還原預設</button>
+    </div>
+  </div>
+</div>
+
 <!-- TADA醬 答覆 Modal -->
 <div id="unans-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;">
@@ -1014,6 +1054,7 @@ function switchTab(id){
   if(id==='lineusers') loadLineUsers();
   if(id==='rsvp') loadRsvp();
   if(id==='payments') loadPayments();
+  if(id==='mailtpl') loadMailTemplates();
   if(id==='votes') loadVotes();
   if(id==='election') loadElection();
   if(id==='docs') loadDocs();
@@ -1942,16 +1983,64 @@ function buildActionButtons(a) {
   return btns.join('');
 }
 
-// ── 通知繳費：產生提醒訊息＋繳費回報連結，供複製或以 Email 寄送 ──
+// ── 信件公版（tada_mail_templates，可後台編輯）──────────────────────────
 const PAYMENT_URL = 'https://tada-ai.org.tw/payment/';
+const MAIL_TPL_DEFAULT = {
+  approval: {
+    subject: 'TADA 入會審核通過 — 會費繳納與回報',
+    body: '【TADA 台灣科技農企業發展協會】\n{姓名} 您好：\n\n您的入會申請已審核通過 ✅\n請於完成會費匯款後，至下方連結回報繳費資訊（繳費日期＋匯款帳號後 5 碼）：\n{繳費連結}\n\n匯款資訊：\n・京城銀行 太保分行（代號 0540641）\n・帳號 064125019127\n・戶名 台灣科技農企業發展協會\n\n收到回報後，會務人員將為您核對確認。感謝您的支持 🌾'
+  },
+  payment_confirm: {
+    subject: 'TADA 繳費確認通知',
+    body: '【TADA 台灣科技農企業發展協會】\n{姓名} 您好：\n\n本會已收到並確認您的會費繳納 {金額}，特此確認。感謝您的支持與參與 🌾\n\n您可於此查看／下載繳費確認證明：\n{證明連結}\n\n如有任何問題，歡迎直接回覆本信與秘書處聯繫。\n\n台灣科技農企業發展協會　敬啟'
+  }
+};
+let mailTpl = { approval: null, payment_confirm: null };
+function tplOf(key){ return mailTpl[key] || MAIL_TPL_DEFAULT[key]; }
+function applyTpl(body, vars){
+  let s = String(body || '');
+  for(const [k,v] of Object.entries(vars)) s = s.split('{'+k+'}').join(v==null?'':String(v));
+  return s.replace(/\n{3,}/g,'\n\n').trim();   // 空值造成的連續空行收斂
+}
+async function loadMailTemplates(){
+  try{
+    const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?select=key,subject,body`, {headers:SB_HEADERS});
+    const rows = r.ok ? await r.json() : [];
+    rows.forEach(t => { mailTpl[t.key] = { subject:t.subject, body:t.body }; });
+  }catch(e){}
+  // 填入編輯介面（若頁面已存在）
+  ['approval','payment_confirm'].forEach(k=>{
+    const t = tplOf(k);
+    const s=document.getElementById('mt-'+k+'-subject'), b=document.getElementById('mt-'+k+'-body');
+    if(s) s.value = t.subject || ''; if(b) b.value = t.body || '';
+  });
+}
+async function saveMailTpl(key){
+  const subject=document.getElementById('mt-'+key+'-subject').value;
+  const body=document.getElementById('mt-'+key+'-body').value;
+  const st=document.getElementById('mt-status');
+  const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?on_conflict=key`, {
+    method:'POST', headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body: JSON.stringify({ key, subject, body, updated_at:new Date().toISOString() }) });
+  if(r.ok){ mailTpl[key]={subject,body}; st.style.color='#66bb6a'; st.textContent='✓ 已儲存（'+(key==='approval'?'審核通過信':'繳費確認信')+'）'; }
+  else { st.style.color='#ef5350'; st.textContent='儲存失敗：'+await r.text(); }
+}
+function resetMailTpl(key){
+  const d=MAIL_TPL_DEFAULT[key];
+  document.getElementById('mt-'+key+'-subject').value=d.subject;
+  document.getElementById('mt-'+key+'-body').value=d.body;
+  const st=document.getElementById('mt-status'); st.style.color='var(--gray)'; st.textContent='已還原預設（記得按儲存）';
+}
+
 function buildNotifyMessage(a){
   const name = a.name || a.org_name || '會員';
-  return `【TADA 台灣科技農企業發展協會】\n${name} 您好：\n\n您的入會申請已審核通過 ✅\n請於完成會費匯款後，至下方連結回報繳費資訊（繳費日期＋匯款帳號後 5 碼）：\n${PAYMENT_URL}\n\n匯款資訊：\n・京城銀行 太保分行（代號 0540641）\n・帳號 064125019127\n・戶名 台灣科技農企業發展協會\n\n收到回報後，會務人員將為您核對確認。感謝您的支持 🌾`;
+  return applyTpl(tplOf('approval').body, { '姓名':name, '繳費連結':PAYMENT_URL });
 }
-let notifyEmail = '', notifyAppId = null, notifySubject = 'TADA 入會審核通過 — 會費繳納與回報';
+let notifyEmail = '', notifyAppId = null, notifySubject = MAIL_TPL_DEFAULT.approval.subject;
 function openNotifyModal(id){
   const a = allApps.find(x=>x.id===id); if(!a) return;
   notifyAppId = id;
+  notifySubject = tplOf('approval').subject;
   const msg = buildNotifyMessage(a);
   document.getElementById('notify-msg').value = msg;
   // 個人申請用 email；團體申請聯絡信箱多在 contact_email 或代表人 rep_email
@@ -2657,10 +2746,8 @@ async function lookupMemberEmail(name){
   return '';
 }
 function buildPayConfirmMsg(ctx){
-  const amt = ctx.amount ? ` 新臺幣 ${Number(ctx.amount).toLocaleString()} 元整` : '';
-  return `【TADA 台灣科技農企業發展協會】\n${ctx.name||''} 您好：\n\n本會已收到並確認您的會費繳納${amt}，特此確認。感謝您的支持與參與 🌾\n`
-    + (ctx.proofUrl ? `\n您可於此查看／下載繳費確認證明：\n${ctx.proofUrl}\n` : '')
-    + `\n如有任何問題，歡迎直接回覆本信與秘書處聯繫。\n\n台灣科技農企業發展協會　敬啟`;
+  const amt = ctx.amount ? `新臺幣 ${Number(ctx.amount).toLocaleString()} 元整` : '';
+  return applyTpl(tplOf('payment_confirm').body, { '姓名':ctx.name||'', '金額':amt, '證明連結':ctx.proofUrl||'' });
 }
 function openPayConfirmModal(ctx){
   pcCtx = ctx;
@@ -2681,7 +2768,7 @@ async function sendPayConfirm(){
   const txt=document.getElementById('pc-msg').value;
   const btn=document.getElementById('pc-send-btn'); btn.disabled=true; const orig=btn.textContent; btn.textContent='寄送中…';
   try{
-    const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},body:JSON.stringify({to:email,subject:'TADA 繳費確認通知',text:txt})});
+    const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},body:JSON.stringify({to:email,subject:tplOf('payment_confirm').subject,text:txt})});
     const r=await res.json().catch(()=>({}));
     if(r.ok){
       btn.textContent='✓ 已寄出';
@@ -3092,6 +3179,7 @@ async function checkPw(){
 function showApp(){
   document.getElementById('auth-wall').style.display = 'none';
   document.getElementById('main-app').style.display = 'block';
+  loadMailTemplates();      // 預載信件公版，供寄信函式使用
   switchTab('dashboard');   // 預設分頁 + 設定分層選單 active 狀態
 }
 
