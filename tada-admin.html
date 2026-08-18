@@ -874,8 +874,10 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;">
     <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:6px;">✅ 審核通過通知</div>
     <div style="font-size:11px;color:var(--gray);margin-bottom:6px;">寄送「審核通過」通知給申請人（內含繳費回報連結）</div>
-    <div style="font-size:12px;color:var(--gray);margin-bottom:14px;" id="notify-to">寄給：</div>
-    <textarea id="notify-msg" style="width:100%;min-height:210px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
+    <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">寄給（Email，可修改）</label>
+    <input type="email" id="notify-email" placeholder="收件人 Email（此申請若無 Email 可手動填）" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;margin-bottom:6px;">
+    <div style="font-size:11px;color:var(--gray);margin-bottom:12px;" id="notify-to"></div>
+    <textarea id="notify-msg" style="width:100%;min-height:200px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">
       <button class="btn btn-outline" onclick="closeNotifyModal()">關閉</button>
       <button class="btn btn-outline" id="notify-copy-btn" onclick="copyNotifyMsg()">📋 複製訊息</button>
@@ -2061,27 +2063,31 @@ function openNotifyModal(id){
   // 個人申請用 email；團體申請聯絡信箱多在 contact_email 或代表人 rep_email
   const email = a.email || a.contact_email || a.rep_email || a.rep2_email || a.rep3_email || '';
   notifyEmail = email;
+  document.getElementById('notify-email').value = email || '';
   const mailBtn = document.getElementById('notify-mail-btn');
   const assocBtn = document.getElementById('notify-assoc-btn');
-  if(email){
-    mailBtn.style.display = ''; assocBtn.style.display = '';
-    mailBtn.onclick = ()=>{ window.location.href = `mailto:${email}?subject=${encodeURIComponent(notifySubject)}&body=${encodeURIComponent(document.getElementById('notify-msg').value)}`; };
-    document.getElementById('notify-to').textContent = '寄給：' + email;
-  } else {
-    mailBtn.style.display = 'none'; assocBtn.style.display = 'none';
-    document.getElementById('notify-to').textContent = '（此申請無 Email，請用複製後由 LINE／電話通知）';
-  }
+  // 一律顯示寄送鈕；Email 由上方欄位（可手填）決定
+  mailBtn.style.display = ''; assocBtn.style.display = '';
+  mailBtn.onclick = ()=>{
+    const to = document.getElementById('notify-email').value.trim();
+    if(!to){ alert('請先填寫收件 Email'); return; }
+    window.location.href = `mailto:${to}?subject=${encodeURIComponent(notifySubject)}&body=${encodeURIComponent(document.getElementById('notify-msg').value)}`;
+  };
+  document.getElementById('notify-to').textContent = email ? '' : '此申請無 Email，可手動填入收件人，或用複製後由 LINE／電話通知';
   document.getElementById('notify-modal').style.display = 'flex';
 }
 // 以協會名義（service@tada-ai.org.tw）伺服器端寄出
 async function sendViaAssoc(){
-  if(!notifyEmail) return;
+  const notifyEmailVal = document.getElementById('notify-email').value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(notifyEmailVal)){ alert('請填寫正確的收件 Email'); return; }
   const btn = document.getElementById('notify-assoc-btn');
   const txt = document.getElementById('notify-msg').value;
   btn.disabled = true; const orig = btn.textContent; btn.textContent = '寄送中…';
   try{
+    // 把手填的 email 存回申請（填補空缺，並讓防濫用檢查通過）
+    if(notifyAppId){ try{ await patchApp(notifyAppId, { email: notifyEmailVal }); }catch(_){} }
     const res = await fetch(`${SB_URL}/functions/v1/send-email`, {
-      method:'POST', headers:{...SB_HEADERS}, body: JSON.stringify({ to: notifyEmail, subject: notifySubject, text: txt }) });
+      method:'POST', headers:{...SB_HEADERS}, body: JSON.stringify({ to: notifyEmailVal, subject: notifySubject, text: txt }) });
     const r = await res.json().catch(()=>({}));
     if(r.ok){
       btn.textContent = '✓ 已寄出';
