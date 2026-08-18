@@ -887,6 +887,25 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- 會員寄信 Modal -->
+<div id="mmail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:4px;">✉ 寄信給會員</div>
+    <div id="mmail-to-name" style="font-size:12px;color:var(--gold-lt);margin-bottom:10px;"></div>
+    <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">寄給（Email，可修改）</label>
+    <input type="email" id="mmail-email" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;margin-bottom:10px;">
+    <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">主旨</label>
+    <input type="text" id="mmail-subject" placeholder="信件主旨" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;margin-bottom:10px;">
+    <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">內文</label>
+    <textarea id="mmail-body" style="width:100%;min-height:200px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="closeMemberMail()">關閉</button>
+      <button class="btn btn-outline" id="mmail-copy" onclick="copyMemberMail()">📋 複製</button>
+      <button class="btn btn-gold" id="mmail-send" onclick="sendMemberMail()">📧 協會名義寄送</button>
+    </div>
+  </div>
+</div>
+
 <!-- 編輯 Modal -->
 <div id="member-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
@@ -1155,6 +1174,7 @@ function memberMainRow(m, seq){
     <td data-label="操作" style="white-space:nowrap;">
       <button class="btn btn-outline btn-sm" onclick="${editFn}">編輯</button>
       <button class="btn btn-outline btn-sm" style="margin-left:4px;" onclick="openDetailModal('${m.id}')">詳細</button>
+      ${email?`<button class="btn btn-outline btn-sm" style="margin-left:4px;color:var(--gold-lt);border-color:rgba(196,146,42,0.4);" onclick="openMemberMail('${m.id}')">✉ 寄信</button>`:''}
       <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);margin-left:4px;" onclick="deleteMemberRow('${m.id}')">刪除</button>
     </td>
   </tr>`;
@@ -1210,6 +1230,44 @@ function memberEditRow(m, seq){
 }
 
 function editMemberRow(id){ editingMemberId=id; renderMemberDir(); }
+
+// ── 會員名冊寄信 ──────────────────────────────────────────
+let mmailMember = null;
+async function openMemberMail(id){
+  try{
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members?id=eq.${id}&select=name,company,email,contact_email`, {headers:SB_HEADERS});
+    const m = (await res.json())[0]; if(!m) return;
+    mmailMember = m;
+    document.getElementById('mmail-to-name').textContent = '收件：' + (m.name || m.company || '');
+    document.getElementById('mmail-email').value = m.email || m.contact_email || '';
+    document.getElementById('mmail-subject').value = '';
+    document.getElementById('mmail-body').value = `${m.name||''} 您好：\n\n\n\n台灣科技農企業發展協會　敬啟`;
+    document.getElementById('mmail-modal').style.display = 'flex';
+  }catch(e){ alert('讀取失敗：'+e.message); }
+}
+function closeMemberMail(){ document.getElementById('mmail-modal').style.display='none'; mmailMember=null; }
+async function copyMemberMail(){
+  const t=document.getElementById('mmail-body');
+  try{ await navigator.clipboard.writeText(t.value); }catch(e){ t.select(); document.execCommand('copy'); }
+  const b=document.getElementById('mmail-copy'); const o=b.textContent; b.textContent='✓ 已複製'; setTimeout(()=>b.textContent=o,1500);
+}
+async function sendMemberMail(){
+  const email=document.getElementById('mmail-email').value.trim();
+  const subject=document.getElementById('mmail-subject').value.trim();
+  const body=document.getElementById('mmail-body').value;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ alert('請填寫正確的收件 Email'); return; }
+  if(!subject){ alert('請填寫主旨'); return; }
+  const btn=document.getElementById('mmail-send'); btn.disabled=true; const o=btn.textContent; btn.textContent='寄送中…';
+  try{
+    const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},body:JSON.stringify({to:email,subject,text:body})});
+    const r=await res.json().catch(()=>({}));
+    if(r.ok){ btn.textContent='✓ 已寄出'; setTimeout(()=>closeMemberMail(),1200); }
+    else{
+      const M={not_configured:'協會寄信尚未設定（RESEND_API_KEY）。',recipient_not_member:'此 Email 不在名冊/申請中，為防濫用暫不寄送。',bad_recipient:'Email 格式有誤。',send_failed:'寄送失敗，請檢查 Resend 設定。'};
+      alert(M[r.error]||('寄送失敗：'+(r.error||res.status))); btn.textContent=o; btn.disabled=false;
+    }
+  }catch(e){ alert('連線失敗：'+e.message); btn.textContent=o; btn.disabled=false; }
+}
 
 async function saveMemberRow(id){
   const payload = {
