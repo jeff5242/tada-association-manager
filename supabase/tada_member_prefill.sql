@@ -11,13 +11,20 @@ BEGIN
   IF COALESCE(p_user_id,'') <> '' THEN
     SELECT * INTO m FROM tada_members WHERE line_user_id = p_user_id LIMIT 1;
   END IF;
-  -- ② 統編（8碼）或 會員編號
+  -- ② 統編（8碼）／會員編號／手機（皆正規化為純數字比對）
   IF m.id IS NULL AND COALESCE(TRIM(p_query),'') <> '' THEN
-    q := regexp_replace(TRIM(p_query), '\s', '', 'g');
-    SELECT * INTO m FROM tada_members
-     WHERE regexp_replace(COALESCE(tax_id,''), '\D', '', 'g') = q
-        OR member_no = q
-     LIMIT 1;
+    q := regexp_replace(p_query, '\D', '', 'g');   -- 只留數字
+    IF length(q) >= 6 THEN
+      SELECT * INTO m FROM tada_members
+       WHERE regexp_replace(COALESCE(tax_id,''), '\D', '', 'g') = q
+          OR regexp_replace(COALESCE(member_no,''), '\D', '', 'g') = q
+          OR regexp_replace(COALESCE(mobile,''), '\D', '', 'g') = q
+          OR regexp_replace(COALESCE(contact_phone,''), '\D', '', 'g') = q
+          OR EXISTS (
+               SELECT 1 FROM jsonb_array_elements(COALESCE(reps::jsonb,'[]'::jsonb)) r
+                WHERE regexp_replace(COALESCE(r->>'tel',''), '\D', '', 'g') = q)
+       LIMIT 1;
+    END IF;
   END IF;
 
   IF m.id IS NULL THEN RETURN json_build_object('found', false); END IF;
