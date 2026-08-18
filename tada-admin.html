@@ -292,7 +292,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <option value="中衛">中衛</option>
         <option value="其他">其他</option>
       </select>
-      <button class="btn btn-gold" onclick="exportCSV()">匯出 CSV</button>
+      <button class="btn btn-gold" onclick="exportGuestsCSV()">⬇ 匯出貴賓名冊</button>
+      <button class="btn btn-outline" onclick="exportCSV()" title="理監事＋貴賓合併">匯出全部</button>
       <span style="font-size:11px;color:var(--gray);white-space:nowrap;">共 <span id="guest-count">0</span> 筆</span>
     </div>
     <div class="tbl-wrap">
@@ -1718,6 +1719,26 @@ function renderProgBlock(id, data){
 }
 
 // ── EXPORT ────────────────────────────────────────────────
+// 匯出貴賓名冊（依目前篩選）
+const GUEST_ST = { pending:'未邀請', invited:'已邀請', confirmed:'已確認', declined:'婉謝' };
+function exportGuestsCSV(){
+  const data = guestData.filter(g=>{
+    const q=!gFilter||g.name.includes(gFilter)||g.org.includes(gFilter);
+    const s=!gStatus||g.status===gStatus;
+    const c=!gCat||g.org.includes(gCat==='大學'?'大學':gCat==='農業部'?'農業部':gCat==='中衛'?'中衛':gCat);
+    return q&&s&&c;
+  });
+  if(!data.length){ alert('目前沒有可匯出的貴賓'); return; }
+  const trainTxt=v=>v==='x'?'不需':(v==='?'||!v)?'待確認':v;
+  const mealTxt=v=>(v==='x'||v===0||v==null)?'':(v==='?'?'待確認':v);
+  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const head=['姓名／職稱','機關單位','高鐵接送','用餐','邀請狀態','備註'];
+  const lines=data.map(g=>[g.name,g.org,trainTxt(g.train),mealTxt(g.meal),GUEST_ST[g.status]||g.status,g.note||''].map(esc).join(','));
+  const csv='﻿'+[head.map(esc).join(','),...lines].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`TADA_貴賓名冊_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
 function exportCSV(){
   const rows=[['類型','姓名','單位／職稱','邀請狀態','備註']];
   boardData.forEach(m=>rows.push(['理監事',m.name,m.role,m.status,m.note]));
