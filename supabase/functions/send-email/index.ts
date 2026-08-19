@@ -1,10 +1,10 @@
 // ── 協會統一寄信 ─────────────────────────────────────────────
-// 以「臺灣科技農企業發展協會 TADA <service@tada-ai.org.tw>」名義寄出 Email。
+// 以「台灣科技農企業發展協會 TADA <service@tada-ai.org.tw>」名義寄出 Email。
 // 走 Resend（https://resend.com）——需先在 Resend 驗證網域 tada-ai.org.tw。
 //
 // 需要的環境變數（Supabase → Edge Functions → Secrets）：
 //   RESEND_API_KEY   ← 由你的 Resend 帳號取得（機密，不進 repo）
-//   MAIL_FROM        ← 選填，預設「臺灣科技農企業發展協會 TADA <service@tada-ai.org.tw>」
+//   MAIL_FROM        ← 選填，預設「台灣科技農企業發展協會 TADA <service@tada-ai.org.tw>」
 //   SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY ← 專案預設已存在
 //
 // 部署：
@@ -23,7 +23,7 @@ const CORS = {
 const RESEND_KEY = Deno.env.get('RESEND_API_KEY');
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const FROM = Deno.env.get('MAIL_FROM') ?? '臺灣科技農企業發展協會 TADA <service@tada-ai.org.tw>';
+const FROM = Deno.env.get('MAIL_FROM') ?? '台灣科技農企業發展協會 TADA <service@tada-ai.org.tw>';
 // 測試白名單：這些信箱可收測試信（即使不在名冊）。逗號分隔，設於 Secret MAIL_TEST_ALLOW。
 const TEST_ALLOW = (Deno.env.get('MAIL_TEST_ALLOW') ?? '').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
 

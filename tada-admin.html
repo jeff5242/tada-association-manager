@@ -1338,7 +1338,7 @@ async function openMemberMail(id){
     document.getElementById('mmail-to-name').textContent = '收件：' + (m.name || m.company || '');
     document.getElementById('mmail-email').value = m.email || m.contact_email || '';
     document.getElementById('mmail-subject').value = '';
-    document.getElementById('mmail-body').value = `${m.name||''} 您好：\n\n\n\n臺灣科技農企業發展協會　敬啟`;
+    document.getElementById('mmail-body').value = `${m.name||''} 您好：\n\n\n\n台灣科技農企業發展協會　敬啟`;
     document.getElementById('mmail-modal').style.display = 'flex';
   }catch(e){ alert('讀取失敗：'+e.message); }
 }
@@ -2203,11 +2203,11 @@ const PAYMENT_URL = 'https://tada-ai.org.tw/payment/';
 const MAIL_TPL_DEFAULT = {
   approval: {
     subject: 'TADA 入會審核通過 — 會費繳納與回報',
-    body: '【TADA 臺灣科技農企業發展協會】\n{姓名} 您好：\n\n您的入會申請已審核通過 ✅\n請於完成會費匯款後，至下方連結回報繳費資訊（繳費日期＋匯款帳號後 5 碼）：\n{繳費連結}\n\n匯款資訊：\n・京城銀行 太保分行（代號 0540641）\n・帳號 064125019127\n・戶名 台灣科技農企業發展協會\n\n收到回報後，會務人員將為您核對確認。感謝您的支持 🌾'
+    body: '【TADA 台灣科技農企業發展協會】\n{姓名} 您好：\n\n您的入會申請已審核通過 ✅\n請於完成會費匯款後，至下方連結回報繳費資訊（繳費日期＋匯款帳號後 5 碼）：\n{繳費連結}\n\n匯款資訊：\n・京城銀行 太保分行（代號 0540641）\n・帳號 064125019127\n・戶名 台灣科技農企業發展協會\n\n收到回報後，會務人員將為您核對確認。感謝您的支持 🌾'
   },
   payment_confirm: {
     subject: 'TADA 繳費確認通知',
-    body: '【TADA 臺灣科技農企業發展協會】\n{姓名} 您好：\n\n本會已收到並確認您的會費繳納 {金額}，特此確認。感謝您的支持與參與 🌾\n\n您可於此查看／下載繳費確認證明：\n{證明連結}\n\n如有任何問題，歡迎直接回覆本信與秘書處聯繫。\n\n臺灣科技農企業發展協會　敬啟'
+    body: '【TADA 台灣科技農企業發展協會】\n{姓名} 您好：\n\n本會已收到並確認您的會費繳納 {金額}，特此確認。感謝您的支持與參與 🌾\n\n您可於此查看／下載繳費確認證明：\n{證明連結}\n\n如有任何問題，歡迎直接回覆本信與秘書處聯繫。\n\n台灣科技農企業發展協會　敬啟'
   }
 };
 let mailTpl = { approval: null, payment_confirm: null };
