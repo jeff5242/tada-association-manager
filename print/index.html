@@ -39,7 +39,7 @@ body{font-family:'Noto Serif TC',serif;background:#e8e8e0;color:#111;padding:20p
 .b-table th,.b-table td{border:1.5px solid #333;padding:10px 8px;}
 .b-table th{background:#f0efe8;font-family:'Noto Sans TC',sans-serif;font-size:15px;font-weight:700;}
 .b-table td.mark,.b-table th.mark{width:64px;text-align:center;}
-.b-table td.mark{font-size:26px;color:#333;}
+.b-bubble{display:inline-block;width:26px;height:26px;border:2.5px solid #111;border-radius:50%;vertical-align:middle;}
 .b-table td.no,.b-table th.no{width:64px;text-align:center;}
 .b-table td.cn{font-weight:700;white-space:nowrap;}
 .b-table td.co{color:#333;font-size:15px;font-family:'Noto Sans TC',sans-serif;}
@@ -154,7 +154,7 @@ async function render(){
       const html = defs.map(p=>{
         const list = cands.filter(c=>c.position===p.key);
         const rows = list.length
-          ? list.map(c=>`<tr><td class="mark">○</td><td class="no">${c.no??''}</td><td class="cn">${esc(c.name)}</td><td class="co">${esc(c.company||'')}</td></tr>`).join('')
+          ? list.map(c=>`<tr><td class="mark"><span class="b-bubble"></span></td><td class="no">${c.no??''}</td><td class="cn">${esc(c.name)}</td><td class="co">${esc(c.company||'')}</td></tr>`).join('')
           : `<tr><td colspan="4" style="text-align:center;color:#999;padding:20px;">尚無候選人</td></tr>`;
         return `<div class="ballot">
           <div class="b-org">${esc(ORG)}</div>
@@ -162,9 +162,9 @@ async function render(){
           <div class="b-meta">應選 <b>${p.seats}</b> 名${p.reserve?`（另候補 ${p.reserve} 名）`:''}　·　圈選上限 <b>${p.pick}</b> 名，超過即為廢票</div>
           <div style="font-family:'Noto Sans TC',sans-serif;font-size:15px;margin-bottom:10px;">紙本投票　·　會員編號：<span style="display:inline-block;min-width:130px;border-bottom:1.5px solid #111;text-align:center;font-weight:700;">${esc(memberNo)}</span></div>
           <table class="b-table"><thead><tr><th class="mark">圈選</th><th class="no">號次</th><th class="cn">候選人</th><th class="co">服務單位／會員編號</th></tr></thead><tbody>${rows}
-            <tr><td class="mark">○</td><td class="no" style="font-size:13px;color:#555;">自填</td><td class="cn"><span style="font-size:13px;color:#555;">姓名：</span><span style="display:inline-block;min-width:110px;border-bottom:1px solid #333;">&nbsp;</span></td><td class="co"><span style="font-size:13px;color:#555;">會員編號：</span><span style="display:inline-block;min-width:100px;border-bottom:1px solid #333;">&nbsp;</span></td></tr>
+            <tr><td class="mark"><span class="b-bubble"></span></td><td class="no" style="font-size:13px;color:#555;">自填</td><td class="cn"><span style="font-size:13px;color:#555;">姓名：</span><span style="display:inline-block;min-width:110px;border-bottom:1px solid #333;">&nbsp;</span></td><td class="co"><span style="font-size:13px;color:#555;">會員編號：</span><span style="display:inline-block;min-width:100px;border-bottom:1px solid #333;">&nbsp;</span></td></tr>
           </tbody></table>
-          <div class="b-note">圈選須知：請於候選人前「○」框內蓋章或打「✓」。採連記法，圈選超過上限即為廢票。<br>本票為<b>紙本投票</b>；同一會員若另有線上投票，<b>以紙本為準</b>。</div>
+          <div class="b-note">圈選須知：請將您圈選對象前的圓圈<b>塗黑（塗滿）</b>。採連記法，塗黑超過上限即為廢票。<br>本票為<b>紙本投票</b>；同一會員若另有線上投票，<b>以紙本為準</b>。</div>
           <div class="b-seal">選舉委員會蓋章：____________</div>
         </div>`;
       }).join('');
