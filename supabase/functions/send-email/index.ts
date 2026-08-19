@@ -59,6 +59,9 @@ Deno.serve(async (req) => {
   const subject = String(body.subject ?? '').trim();
   const html = String(body.html ?? '').trim();
   const text = String(body.text ?? '').trim();
+  const category = String(body.category ?? 'manual').trim();
+  const rname = String(body.name ?? '').trim();
+  const memberNo = String(body.member_no ?? '').trim();
 
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return json({ ok: false, error: 'bad_recipient' }, 400);
   if (!subject || (!html && !text)) return json({ ok: false, error: 'missing_content' }, 400);
@@ -72,5 +75,16 @@ Deno.serve(async (req) => {
   });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) return json({ ok: false, error: 'send_failed', detail: data }, 502);
-  return json({ ok: true, id: (data as { id?: string }).id ?? null });
+
+  // 寫發信記錄（service role），供「發信中心」統計；失敗不影響已寄出的信
+  const resendId = (data as { id?: string }).id ?? null;
+  try {
+    await fetch(`${SB_URL}/rest/v1/tada_mail_log`, {
+      method: 'POST',
+      headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ category, to_email: to, name: rname || null, member_no: memberNo || null, subject, resend_id: resendId, status: 'sent' }),
+    });
+  } catch (_) { /* 記錄失敗忽略 */ }
+
+  return json({ ok: true, id: resendId });
 });
