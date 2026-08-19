@@ -47,9 +47,25 @@ header .r-btn{background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,
 .row.editing{background:rgba(196,146,42,.09);border-color:rgba(196,146,42,.4);flex-wrap:wrap}
 .row .edit-fields{flex:1;display:flex;gap:10px;flex-wrap:wrap;min-width:0}
 .row .edit-fields label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
-.row .edit-fields input{background:rgba(255,255,255,.08);border:1px solid rgba(196,146,42,.35);border-radius:8px;padding:9px 11px;color:var(--cream);font-size:15px;font-family:inherit;outline:none;min-width:120px}
+.row .edit-fields input,.row .edit-fields select{background:rgba(255,255,255,.08);border:1px solid rgba(196,146,42,.35);border-radius:8px;padding:9px 11px;color:var(--cream);font-size:15px;font-family:inherit;outline:none;min-width:120px}
+.row .edit-fields select{cursor:pointer}
+.row .edit-fields select option,.row .edit-fields select optgroup{background:#1a2f20;color:var(--cream)}
 .row .act{display:flex;gap:8px;align-items:center}
 .empty{text-align:center;color:var(--muted);padding:60px;font-size:17px}
+/* 桌次表 */
+.seating{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;padding-top:10px}
+.table-card{background:rgba(255,255,255,.04);border:1px solid rgba(196,146,42,.28);border-radius:14px;padding:14px 16px}
+.table-card.vacant{opacity:.5}
+.tc-h{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid rgba(196,146,42,.25);padding-bottom:9px;margin-bottom:9px}
+.tc-no{font-family:var(--serif);font-size:22px;font-weight:900;color:var(--gold-lt)}
+.tc-cnt{font-size:12px;color:var(--muted)}
+.seat-p{display:flex;align-items:baseline;gap:8px;padding:5px 0;border-top:1px solid rgba(255,255,255,.05)}
+.seat-p:first-of-type{border-top:none}
+.seat-p .sp-n{font-size:16px;font-weight:700;color:var(--cream)}
+.seat-p.in .sp-n{color:var(--ok)}
+.seat-p .sp-o{font-size:12px;color:var(--muted)}
+.seat-p.in .sp-n::before{content:'✓ ';color:var(--ok);font-size:13px}
+.seat-empty{color:var(--muted);font-size:13px;padding:4px 0}
 @media(max-width:640px){.row{flex-wrap:wrap}.row .st{min-width:0}.row .nm{min-width:120px}}
 </style>
 </head>
@@ -60,7 +76,11 @@ header .r-btn{background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,
   <div class="prog"><b id="p-checked">0</b><span> / <span id="p-total">0</span> 已報到</span></div>
   <button class="r-btn" onclick="load()">↻ 重新載入</button>
 </header>
-<div class="filters">
+<div class="filters" style="padding-bottom:2px">
+  <button class="chip on" id="v-list" onclick="setView('list')">📋 名單</button>
+  <button class="chip" id="v-seat" onclick="setView('seat')">🍽️ 桌次表</button>
+</div>
+<div class="filters" id="list-filters">
   <div class="chips" id="cat-chips" style="display:flex;gap:8px;flex-wrap:wrap"></div>
   <div class="sep"></div>
   <button class="chip on" id="st-all" onclick="setSt('all',this)">全部</button>
@@ -73,6 +93,17 @@ header .r-btn{background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,
 <script>
 const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
 const CATS=['公協會','學校單位','政府單位','農業合作單位'];
+const SEAT_GROUPS=[['主桌',['主桌']],
+  ['V 區',['V01','V02','V03','V04','V05','V06','V07','V08','V09']],
+  ['M 區',['M01','M02','M03','M04','M05','M06','M07','M08','M09']],
+  ['其他',['工作人員']]];
+function seatOptions(cur){
+  cur=String(cur==null?'':cur).trim();
+  let h=`<option value="">— 未定 —</option>`;
+  SEAT_GROUPS.forEach(([grp,arr])=>{ h+=`<optgroup label="${grp}">`+arr.map(s=>`<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('')+`</optgroup>`; });
+  if(cur && !SEAT_GROUPS.some(([,arr])=>arr.includes(cur))) h+=`<option value="${esc(cur)}" selected>${esc(cur)}（自訂）</option>`;
+  return h;
+}
 let guests=[], curCat='__all__', curSt='all';
 function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function clean(v){ v=(v==null?'':String(v)).trim(); return (v===''||v==='?'||v==='？')?'':v; }
@@ -96,7 +127,16 @@ function renderCatChips(){
 }
 function setCat(k){ curCat=k; renderCatChips(); render(); }
 function setSt(s,el){ curSt=s; document.querySelectorAll('#st-all,#st-no,#st-yes').forEach(b=>b.classList.remove('on')); el.classList.add('on'); render(); }
-function render(){
+let viewMode='list';
+function setView(m){
+  viewMode=m;
+  document.getElementById('v-list').classList.toggle('on',m==='list');
+  document.getElementById('v-seat').classList.toggle('on',m==='seat');
+  document.getElementById('list-filters').style.display = m==='seat'?'none':'';
+  render();
+}
+function render(){ if(viewMode==='seat') return renderSeating(); renderListView(); }
+function renderListView(){
   const q=document.getElementById('q').value.trim();
   let arr=guests.filter(g=>{
     if(curCat!=='__all__'&&catFor(g)!==curCat) return false;
@@ -107,12 +147,32 @@ function render(){
   });
   const el=document.getElementById('list');
   if(!arr.length){ el.innerHTML='<div class="empty">沒有符合條件的貴賓。</div>'; return; }
-  // 依類別分組
   const groups={};
   arr.forEach(g=>{ const k=catFor(g); (groups[k]=groups[k]||[]).push(g); });
   const order=['公協會','學校單位','政府單位','農業合作單位'];
   el.innerHTML=order.filter(k=>groups[k]).map(k=>`<div class="grp"><div class="grp-h">${esc(k)}（${groups[k].filter(x=>x.checked_in).length}/${groups[k].length}）</div>`+
     groups[k].map(g=>rowHtml(g)).join('')+`</div>`).join('');
+}
+function renderSeating(){
+  // 依定義順序列出各桌，桌內列出被分配的貴賓
+  const order=[]; SEAT_GROUPS.forEach(([,arr])=>arr.forEach(s=>order.push(s)));
+  const map={}; order.forEach(s=>map[s]=[]);
+  const custom={}; const none=[];
+  guests.forEach(g=>{ const s=clean(g.seat);
+    if(!s) none.push(g);
+    else if(map[s]) map[s].push(g);
+    else (custom[s]=custom[s]||[]).push(g);
+  });
+  const tableCard=(name,arr)=>{
+    const done=arr.filter(x=>x.checked_in).length;
+    const body=arr.length?arr.map(g=>`<div class="seat-p ${g.checked_in?'in':''}"><span class="sp-n">${esc(g.name)}</span><span class="sp-o">${esc(clean(g.org))}</span></div>`).join('')
+      :'<div class="seat-empty">（尚無安排）</div>';
+    return `<div class="table-card ${arr.length?'':'vacant'}"><div class="tc-h"><span class="tc-no">${esc(name)}</span><span class="tc-cnt">${arr.length?`${arr.length} 人 · 報到 ${done}`:'空桌'}</span></div>${body}</div>`;
+  };
+  let html=order.map(s=>tableCard(s,map[s])).join('');
+  html+=Object.keys(custom).map(s=>tableCard(s+'（自訂）',custom[s])).join('');
+  html+=tableCard('未分桌',none);
+  document.getElementById('list').innerHTML=`<div class="seating">${html}</div>`;
 }
 let editId=null;
 function rowHtml(g){
@@ -138,7 +198,7 @@ function editRowHtml(g){
     <div class="nm">${esc(g.name)}</div>
     <div class="edit-fields">
       <label>車號<input id="e-plate" value="${v(g.plate)}" placeholder="例 ABC-1234"></label>
-      <label>桌號<input id="e-seat" value="${v(g.seat)}" placeholder="例 A桌12"></label>
+      <label>桌號<select id="e-seat">${seatOptions(g.seat)}</select></label>
       <label>接送備註<input id="e-note" value="${v(g.note)}" placeholder="接送/備註"></label>
     </div>
     <div class="act">
