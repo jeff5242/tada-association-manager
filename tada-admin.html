@@ -832,12 +832,16 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <textarea id="mc-body" style="width:100%;min-height:260px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-outline btn-sm" onclick="saveAssemblyTpl()">💾 儲存範本</button>
-      <select id="mc-audience" class="filter-select" style="width:auto;">
-        <option value="all">全體會員</option>
-        <option value="active">僅有效會員</option>
-      </select>
+      <span style="font-size:12px;color:var(--gray);align-self:center;">發送對象：</span>
+      <div id="mc-audience" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <label class="msopt" style="display:flex;align-items:center;gap:5px;padding:5px 9px;font-size:12px;color:var(--ink);cursor:pointer;white-space:nowrap;background:var(--surface2);border:1px solid var(--border);border-radius:6px;"><input type="checkbox" value="有效會員" checked onchange="updateSendCount()"> 有效會員</label>
+        <label class="msopt" style="display:flex;align-items:center;gap:5px;padding:5px 9px;font-size:12px;color:var(--ink);cursor:pointer;white-space:nowrap;background:var(--surface2);border:1px solid var(--border);border-radius:6px;"><input type="checkbox" value="待續約會員" checked onchange="updateSendCount()"> 待續約會員</label>
+        <label class="msopt" style="display:flex;align-items:center;gap:5px;padding:5px 9px;font-size:12px;color:var(--ink);cursor:pointer;white-space:nowrap;background:var(--surface2);border:1px solid var(--border);border-radius:6px;"><input type="checkbox" value="永久會員" checked onchange="updateSendCount()"> 永久會員</label>
+        <label class="msopt" style="display:flex;align-items:center;gap:5px;padding:5px 9px;font-size:12px;color:var(--ink);cursor:pointer;white-space:nowrap;background:var(--surface2);border:1px solid var(--border);border-radius:6px;"><input type="checkbox" value="榮譽會員" checked onchange="updateSendCount()"> 榮譽會員</label>
+        <label class="msopt" style="display:flex;align-items:center;gap:5px;padding:5px 9px;font-size:12px;color:var(--ink);cursor:pointer;white-space:nowrap;background:var(--surface2);border:1px solid var(--border);border-radius:6px;"><input type="checkbox" value="退會會員" onchange="updateSendCount()"> 退會會員</label>
+      </div>
       <button class="btn btn-gold btn-sm" onclick="batchSendAssembly()">📤 批次發送開會通知</button>
-      <span id="mc-progress" style="font-size:12px;color:var(--gray);"></span>
+      <span id="mc-progress" style="font-size:12px;color:var(--gold-lt);"></span>
     </div>
   </div>
 
@@ -2242,7 +2246,28 @@ async function loadMailCenter(){
     document.getElementById('mc-subject').value = t.subject || '';
     document.getElementById('mc-body').value = t.body || '';
   }catch(e){}
+  loadMcMembers();
   renderMailLog();
+}
+// 快取有 Email 的會員（含狀態），供對象人數即時預估
+let mcMembers = null;
+async function loadMcMembers(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,email,contact_email,status&order=member_no`, {headers:SB_HEADERS});
+    mcMembers=(r.ok?await r.json():[]).map(m=>({...m,_email:(m.email||m.contact_email||'').trim()}))
+      .filter(m=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m._email));
+  }catch(e){ mcMembers=[]; }
+  updateSendCount();
+}
+function selectedSendStatuses(){
+  return Array.from(document.querySelectorAll('#mc-audience input:checked')).map(c=>c.value);
+}
+function updateSendCount(){
+  const prog=document.getElementById('mc-progress'); if(!prog) return;
+  const statuses=selectedSendStatuses();
+  if(!mcMembers){ prog.textContent=''; return; }
+  const n=mcMembers.filter(m=>statuses.includes(m.status)).length;
+  prog.textContent=statuses.length?`預估收件：${n} 位（有 Email）`:'請勾選至少一種會員狀態';
 }
 async function saveAssemblyTpl(){
   const subject=document.getElementById('mc-subject').value, body=document.getElementById('mc-body').value;
@@ -2255,14 +2280,15 @@ async function saveAssemblyTpl(){
 async function batchSendAssembly(){
   const subject=document.getElementById('mc-subject').value.trim();
   const bodyTpl=document.getElementById('mc-body').value;
-  const aud=document.getElementById('mc-audience').value;
+  const statuses=selectedSendStatuses();
   if(!subject || !bodyTpl){ alert('請填寫主旨與內文'); return; }
+  if(!statuses.length){ alert('請至少勾選一種會員狀態'); return; }
   const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,email,contact_email,status&order=member_no`, {headers:SB_HEADERS});
   let mems=(r.ok?await r.json():[]).map(m=>({...m,_email:(m.email||m.contact_email||'').trim()}))
-    .filter(m=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m._email));
-  if(aud==='active') mems=mems.filter(m=>m.status && m.status!=='退會會員');
-  if(!mems.length){ alert('沒有可寄送的會員（需有 Email）'); return; }
-  if(!confirm(`確定發送「開會通知」給 ${mems.length} 位會員？\n（Resend 免費版每日上限 100 封，超過需分批/隔日）`)) return;
+    .filter(m=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m._email))
+    .filter(m=>statuses.includes(m.status));
+  if(!mems.length){ alert('沒有符合所選狀態且有 Email 的會員'); return; }
+  if(!confirm(`確定發送「開會通知」給 ${mems.length} 位會員？\n對象狀態：${statuses.join('、')}\n（Resend 免費版每日上限 100 封，超過需分批/隔日）`)) return;
   const prog=document.getElementById('mc-progress'); let ok=0,fail=0;
   for(let i=0;i<mems.length;i++){
     const m=mems[i]; const text=bodyTpl.split('{姓名}').join(m.name||'會員');
