@@ -3,6 +3,9 @@
 --   會員編號 = 西元後2碼+月+日+序號（如 26081901）；狀態=有效會員；join_date=民國
 --   團體：name=org_name、reps=代表人(姓名+電話+email)；個人：name=姓名、company=org_name
 -- ============================================================================
+-- 記錄申請已轉成的會員編號（供後台按鈕判斷是否已轉，避免重複按）
+ALTER TABLE tada_applications ADD COLUMN IF NOT EXISTS converted_member_no TEXT;
+
 CREATE OR REPLACE FUNCTION app_to_member(p_app_id UUID)
 RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -56,8 +59,8 @@ BEGIN
     VALUES (v_e, v_no, v_name, v_type)
     ON CONFLICT (election_id, member_no) DO NOTHING;
 
-  -- 申請標記為已核准（已轉會員）
-  UPDATE tada_applications SET status='approved', approved_at=COALESCE(approved_at, now()) WHERE id = p_app_id;
+  -- 申請標記為已核准＋記錄已轉成的會員編號（按鈕據此變灰）
+  UPDATE tada_applications SET status='approved', approved_at=COALESCE(approved_at, now()), converted_member_no=v_no WHERE id = p_app_id;
 
   RETURN json_build_object('ok',true,'member_no',v_no,'name',v_name,'member_type',v_type);
 END $$;

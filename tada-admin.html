@@ -2048,8 +2048,10 @@ function buildActionButtons(a) {
   } else if (a.status === 'rejected') {
     btns.push(`<button class="btn btn-sm btn-outline" onclick="openAppModal('${id}','pending')">重置待審</button>`);
   }
-  // 已付款/已核准 → 轉為正式會員（建立主名冊會員＋加投票名冊，才能綁證/投票）
-  if (a.status === 'payment_confirmed' || a.status === 'approved') {
+  // 已付款/已核准 → 轉為正式會員（建立主名冊會員＋加投票名冊）；已轉則顯示編號、不再提供按鈕
+  if (a.converted_member_no) {
+    btns.push(`<span style="font-size:11px;color:#66bb6a;margin-left:6px;white-space:nowrap;">✓ 已轉會員 ${a.converted_member_no}</span>`);
+  } else if (a.status === 'payment_confirmed' || a.status === 'approved') {
     btns.push(`<button class="btn btn-sm" style="margin-left:4px;background:rgba(196,146,42,0.15);color:var(--gold-lt);border:1px solid rgba(196,146,42,0.5);" onclick="convertToMember('${id}')">✅ 轉正式會員</button>`);
   }
   // 寄送「審核通過」通知（內含繳費回報連結，繳費為次要）
