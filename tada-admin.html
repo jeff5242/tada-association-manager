@@ -178,6 +178,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <button data-tab="payments" onclick="switchTab('payments')">🏦 繳費回報<span id="pay-badge" style="display:none;margin-left:5px;background:#ef5350;color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;">0</span></button>
         <a href="/payment/?staff=1" target="_blank" style="padding:10px 14px;font-size:14px;cursor:pointer;color:var(--gray);text-decoration:none;border-radius:4px;letter-spacing:0.05em;white-space:nowrap;display:block;">✍️ 代填繳費回報 ↗</a>
         <button data-tab="mailtpl" onclick="switchTab('mailtpl')">✉ 信件範本</button>
+        <button data-tab="mailcenter" onclick="switchTab('mailcenter')">📤 發信中心</button>
         <button data-tab="lineusers" onclick="switchTab('lineusers')">💬 LINE 使用者</button>
       </div>
     </div>
@@ -815,6 +816,50 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ 發信中心 ══════════ -->
+<div class="page" id="page-mailcenter">
+  <div class="section-card">
+    <div class="section-header"><div class="section-title">📤 開會通知批次發送</div>
+      <span id="mc-status" style="margin-left:auto;font-size:12px;align-self:center;"></span>
+    </div>
+    <p style="color:var(--gray);font-size:12px;line-height:1.9;margin-bottom:12px;">
+      對<b style="color:var(--gold-lt);">全體會員（有 Email）</b>發送開會通知（含出席回覆、委託投票、委任書下載）。變數 <code style="color:var(--gold-lt);">{姓名}</code>。
+      ⚠️ Resend 免費版每日上限 100 封。
+    </p>
+    <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">主旨</label>
+    <input id="mc-subject" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;margin-bottom:10px;">
+    <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">內文（{姓名} 自動代換）</label>
+    <textarea id="mc-body" style="width:100%;min-height:260px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="saveAssemblyTpl()">💾 儲存範本</button>
+      <select id="mc-audience" class="filter-select" style="width:auto;">
+        <option value="all">全體會員</option>
+        <option value="active">僅有效會員</option>
+      </select>
+      <button class="btn btn-gold btn-sm" onclick="batchSendAssembly()">📤 批次發送開會通知</button>
+      <span id="mc-progress" style="font-size:12px;color:var(--gray);"></span>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header"><div class="section-title">📊 發信記錄</div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <select class="filter-select" id="mc-cat" style="width:auto;" onchange="renderMailLog()">
+          <option value="">全部類別</option>
+          <option value="assembly">開會通知</option>
+          <option value="approval">審核通過</option>
+          <option value="payment_confirm">繳費確認</option>
+          <option value="manual">個別寄信</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="renderMailLog()">↻ 重新載入</button>
+      </div>
+    </div>
+    <div id="mc-summary" style="font-size:12px;color:var(--gray);margin-bottom:10px;"></div>
+    <div class="tbl-wrap"><table><thead><tr><th>時間</th><th>類別</th><th>收件人</th><th>主旨</th><th>狀態</th></tr></thead>
+      <tbody id="mc-log-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">載入中…</td></tr></tbody></table></div>
+  </div>
+</div>
+
 <!-- TADA醬 答覆 Modal -->
 <div id="unans-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;">
@@ -1091,6 +1136,7 @@ function switchTab(id){
   if(id==='rsvp') loadRsvp();
   if(id==='payments') loadPayments();
   if(id==='mailtpl') loadMailTemplates();
+  if(id==='mailcenter') loadMailCenter();
   if(id==='votes') loadVotes();
   if(id==='election') loadElection();
   if(id==='docs') loadDocs();
@@ -1259,7 +1305,7 @@ async function sendMemberMail(){
   if(!subject){ alert('請填寫主旨'); return; }
   const btn=document.getElementById('mmail-send'); btn.disabled=true; const o=btn.textContent; btn.textContent='寄送中…';
   try{
-    const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},body:JSON.stringify({to:email,subject,text:body})});
+    const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},body:JSON.stringify({to:email,subject,text:body,category:'manual',name:(mmailMember&&mmailMember.name)||''})});
     const r=await res.json().catch(()=>({}));
     if(r.ok){ btn.textContent='✓ 已寄出'; setTimeout(()=>closeMemberMail(),1200); }
     else{
@@ -2127,6 +2173,70 @@ function resetMailTpl(key){
   const st=document.getElementById('mt-status'); st.style.color='var(--gray)'; st.textContent='已還原預設（記得按儲存）';
 }
 
+// ── 發信中心（批次發送＋發信記錄）──────────────────────────────
+const MAIL_CAT_LBL = { assembly:'開會通知', approval:'審核通過', payment_confirm:'繳費確認', manual:'個別寄信' };
+const MAIL_STATUS_LBL = { sent:['已送出','#9aa'], delivered:['已送達','#66bb6a'], opened:['已開信','#29b6f6'], clicked:['已點擊','#e8b84b'], bounced:['退信','#ef5350'], failed:['失敗','#ef5350'] };
+
+async function loadMailCenter(){
+  try{
+    const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?key=eq.assembly&select=subject,body`, {headers:SB_HEADERS});
+    const t = (r.ok ? await r.json() : [])[0] || {};
+    document.getElementById('mc-subject').value = t.subject || '';
+    document.getElementById('mc-body').value = t.body || '';
+  }catch(e){}
+  renderMailLog();
+}
+async function saveAssemblyTpl(){
+  const subject=document.getElementById('mc-subject').value, body=document.getElementById('mc-body').value;
+  const st=document.getElementById('mc-status');
+  const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?on_conflict=key`, {method:'POST',
+    headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({key:'assembly',subject,body,updated_at:new Date().toISOString()})});
+  if(r.ok){ st.style.color='#66bb6a'; st.textContent='✓ 已儲存範本'; } else { st.style.color='#ef5350'; st.textContent='儲存失敗'; }
+}
+async function batchSendAssembly(){
+  const subject=document.getElementById('mc-subject').value.trim();
+  const bodyTpl=document.getElementById('mc-body').value;
+  const aud=document.getElementById('mc-audience').value;
+  if(!subject || !bodyTpl){ alert('請填寫主旨與內文'); return; }
+  const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,email,contact_email,status&order=member_no`, {headers:SB_HEADERS});
+  let mems=(r.ok?await r.json():[]).map(m=>({...m,_email:(m.email||m.contact_email||'').trim()}))
+    .filter(m=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m._email));
+  if(aud==='active') mems=mems.filter(m=>m.status && m.status!=='退會會員');
+  if(!mems.length){ alert('沒有可寄送的會員（需有 Email）'); return; }
+  if(!confirm(`確定發送「開會通知」給 ${mems.length} 位會員？\n（Resend 免費版每日上限 100 封，超過需分批/隔日）`)) return;
+  const prog=document.getElementById('mc-progress'); let ok=0,fail=0;
+  for(let i=0;i<mems.length;i++){
+    const m=mems[i]; const text=bodyTpl.split('{姓名}').join(m.name||'會員');
+    try{
+      const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},
+        body:JSON.stringify({to:m._email,subject,text,category:'assembly',name:m.name,member_no:m.member_no})});
+      const d=await res.json().catch(()=>({})); d.ok?ok++:fail++;
+    }catch(e){ fail++; }
+    prog.textContent=`發送中… ${i+1}/${mems.length}（成功 ${ok}／失敗 ${fail}）`;
+    await new Promise(res=>setTimeout(res,350));
+  }
+  prog.textContent=`✓ 完成：成功 ${ok}、失敗 ${fail}`;
+  renderMailLog();
+}
+async function renderMailLog(){
+  const cat=document.getElementById('mc-cat').value;
+  let path='tada_mail_log?order=created_at.desc&limit=300'; if(cat) path+=`&category=eq.${cat}`;
+  const r=await fetch(`${SB_URL}/rest/v1/${path}`, {headers:SB_HEADERS});
+  const rows=r.ok?await r.json():[];
+  const byS={}; rows.forEach(x=>byS[x.status]=(byS[x.status]||0)+1);
+  document.getElementById('mc-summary').textContent='共 '+rows.length+' 封'+(Object.keys(byS).length?'　｜　'+Object.entries(byS).map(([s,n])=>((MAIL_STATUS_LBL[s]&&MAIL_STATUS_LBL[s][0])||s)+' '+n).join('、'):'');
+  const tb=document.getElementById('mc-log-tbody');
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無發信記錄</td></tr>'; return; }
+  tb.innerHTML=rows.map(x=>{ const st=MAIL_STATUS_LBL[x.status]||[x.status,'#9aa'];
+    return `<tr><td style="font-size:11px;color:var(--gray);white-space:nowrap;">${new Date(x.created_at).toLocaleString('zh-TW',{hour12:false})}</td>
+      <td style="font-size:12px;">${MAIL_CAT_LBL[x.category]||x.category||'–'}</td>
+      <td style="font-size:12px;">${escapeHtml(x.name||'')} <span style="color:var(--gray);">${escapeHtml(x.to_email||'')}</span></td>
+      <td style="font-size:11px;color:var(--gray);max-width:220px;">${escapeHtml(x.subject||'')}</td>
+      <td><span style="font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid ${st[1]};color:${st[1]};">${st[0]}</span></td></tr>`;
+  }).join('');
+}
+
 function buildNotifyMessage(a){
   const name = a.name || a.org_name || '會員';
   return applyTpl(tplOf('approval').body, { '姓名':name, '繳費連結':PAYMENT_URL });
@@ -2165,7 +2275,7 @@ async function sendViaAssoc(){
     // 把手填的 email 存回申請（填補空缺，並讓防濫用檢查通過）
     if(notifyAppId){ try{ await patchApp(notifyAppId, { email: notifyEmailVal }); }catch(_){} }
     const res = await fetch(`${SB_URL}/functions/v1/send-email`, {
-      method:'POST', headers:{...SB_HEADERS}, body: JSON.stringify({ to: notifyEmailVal, subject: notifySubject, text: txt }) });
+      method:'POST', headers:{...SB_HEADERS}, body: JSON.stringify({ to: notifyEmailVal, subject: notifySubject, text: txt, category:'approval', name:(allApps.find(x=>x.id===notifyAppId)||{}).name||'' }) });
     const r = await res.json().catch(()=>({}));
     if(r.ok){
       btn.textContent = '✓ 已寄出';
@@ -2867,7 +2977,7 @@ async function sendPayConfirm(){
   const txt=document.getElementById('pc-msg').value;
   const btn=document.getElementById('pc-send-btn'); btn.disabled=true; const orig=btn.textContent; btn.textContent='寄送中…';
   try{
-    const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},body:JSON.stringify({to:email,subject:tplOf('payment_confirm').subject,text:txt})});
+    const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},body:JSON.stringify({to:email,subject:tplOf('payment_confirm').subject,text:txt,category:'payment_confirm',name:(pcCtx&&pcCtx.name)||''})});
     const r=await res.json().catch(()=>({}));
     if(r.ok){
       btn.textContent='✓ 已寄出';
