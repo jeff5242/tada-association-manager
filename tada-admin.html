@@ -867,7 +867,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
           <option value="payment_confirm">繳費確認</option>
           <option value="manual">個別寄信</option>
         </select>
-        <select class="filter-select" id="mc-status" style="width:auto;" onchange="renderMailLog()">
+        <select class="filter-select" id="mc-status-filter" style="width:auto;" onchange="renderMailLog()">
           <option value="">全部狀態</option>
           <option value="sent">已送出</option>
           <option value="delivered">已送達</option>
@@ -2345,7 +2345,7 @@ async function batchSendAssembly(){
 let mcLogRows=[];  // 目前過濾後的發信記錄（供匯出）
 async function renderMailLog(){
   const cat=document.getElementById('mc-cat').value;
-  const stf=document.getElementById('mc-status').value;
+  const stf=document.getElementById('mc-status-filter').value;
   let path='tada_mail_log?order=created_at.desc&limit=2000'; if(cat) path+=`&category=eq.${cat}`;
   const r=await fetch(`${SB_URL}/rest/v1/${path}`, {headers:SB_HEADERS});
   const all=r.ok?await r.json():[];
@@ -2378,7 +2378,7 @@ function exportMailLog(){
   ].map(q).join(',')));
   const csv='﻿'+lines.join('\r\n');  // BOM 讓 Excel 正確辨識 UTF-8
   const cat=document.getElementById('mc-cat').value||'全部';
-  const stf=document.getElementById('mc-status').value;
+  const stf=document.getElementById('mc-status-filter').value;
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   a.download=`發信記錄_${cat}${stf?'_'+stf:''}_${new Date().toISOString().slice(0,10)}.csv`;
