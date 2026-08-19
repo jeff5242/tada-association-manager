@@ -204,7 +204,7 @@ function renderCats(){
   html+=CATS.map(c=>`<div class="unit cat ${curCat===c?'on':''}" onclick="pickCat('${c}')"><div class="u-name">${esc(c)}</div><div class="u-cnt"><b>${cnt[c].c}</b> / ${cnt[c].t}</div></div>`).join('');
   document.getElementById('cats').innerHTML=html;
 }
-function pickCat(c){ curCat=c; curOrg='__all__'; searchQ=''; document.getElementById('search').value=''; renderCats(); renderUnits(); renderList(); }
+function pickCat(c){ curCat=c; curOrg='__all__'; searchQ=''; renderCats(); renderUnits(); renderList(); }
 function renderProg(){
   document.getElementById('p-total').textContent=guests.length;
   document.getElementById('p-checked').textContent=guests.filter(g=>g.checked_in).length;
@@ -220,8 +220,7 @@ function renderUnits(){
   html+=orgs.map(([k,m])=>`<div class="unit ${curOrg===k?'on':''}" onclick="pickOrg('${esc(k).replace(/'/g,"\\'")}')"><div class="u-name">${esc(k)}</div><div class="u-cnt"><b>${m.c}</b> / ${m.t}</div></div>`).join('');
   document.getElementById('units').innerHTML=html;
 }
-function pickOrg(k){ curOrg=k; searchQ=''; document.getElementById('search').value=''; renderUnits(); renderList(); }
-function onSearch(){ searchQ=document.getElementById('search').value.trim(); renderList(); }
+function pickOrg(k){ curOrg=k; searchQ=''; renderUnits(); renderList(); }
 function renderList(){
   let arr=guests.slice();
   if(searchQ){ arr=arr.filter(g=>(g.name||'').includes(searchQ)); }
