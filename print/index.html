@@ -80,7 +80,7 @@ async function fetchRow(table, id){
 
 async function render(){
   if(!DOC){ fail('缺少文件參數。'); return; }
-  if(DOC!=='ballot' && !ID){ fail('缺少文件參數。'); return; }   // ballot 的場次 id 選填
+  if(!['ballot','proxy'].includes(DOC) && !ID){ fail('缺少文件參數。'); return; }   // ballot/空白委任書(proxy) 免 id
   try{
     if(DOC==='consent'){
       const c = await fetchRow('tada_v_consent', ID);
@@ -96,8 +96,10 @@ async function render(){
         <div class="date">${rocDate(c.created_at)}</div>
       `);
     } else if(DOC==='proxy'){
-      const p = await fetchRow('tada_v_proxy', ID);
-      if(!p){ fail('查無此委託書。'); return; }
+      // 帶 id → 印該筆委託；不帶 id → 空白委託書供會員下載手填
+      let p = null;
+      if(ID){ p = await fetchRow('tada_v_proxy', ID); if(!p){ fail('查無此委託書。'); return; } }
+      const blank = !p; p = p || {};
       sheet(`
         <div class="doc-title">代理出席委託書</div>
         <div class="body-txt">本人因故不克出席本會　<b>${rocYear(p.created_at)}年度會員大會暨${esc(p.meeting||'第六屆理監事改選')}</b>。<br>
@@ -108,7 +110,7 @@ async function render(){
           委託人：<span class="fill">${esc(p.principal_name)}</span>　（簽章）<br>
           受委託人：<span class="fill">${esc(p.delegate_name)}</span>　（簽章）
         </div>
-        <div class="date">${rocDate(p.created_at)}</div>
+        <div class="date">${blank ? '中華民國　　　年　　月　　日' : rocDate(p.created_at)}</div>
         <div class="notes">
           注意事項：<br>
           一、依內政部社會團體法規彙編—人民團體選舉罷免辦法第九條規定，<b>每一會員僅能受一會員（會員代表）之委託代表出席</b>。<br>
