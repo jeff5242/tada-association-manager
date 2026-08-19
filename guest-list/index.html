@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>貴賓報到一覽｜工作人員</title>
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@700;900&display=swap');
+:root{--green-deep:#12241a;--green:#1e3320;--gold:#c4922a;--gold-lt:#e0b458;--cream:#f5ecd4;--muted:#8f9789;--ok:#66bb6a;
+  --serif:'Noto Serif TC',serif;--sans:'Noto Sans TC',"PingFang TC",system-ui,sans-serif;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--sans);color:var(--cream);height:100%;display:flex;flex-direction:column;
+  background:radial-gradient(120% 80% at 50% -10%, #24402b 0%, #0c160f 60%);-webkit-tap-highlight-color:transparent}
+header{display:flex;align-items:center;gap:16px;padding:16px 24px;border-bottom:1px solid rgba(196,146,42,.25);flex:none;flex-wrap:wrap}
+header .logo{height:36px}
+header .t{font-family:var(--serif);font-size:20px;font-weight:900;color:var(--gold-lt);letter-spacing:.08em}
+header .t small{display:block;font-family:var(--sans);font-size:11px;color:var(--muted);font-weight:400;letter-spacing:.05em}
+header .prog{margin-left:auto;font-family:var(--serif);font-size:22px;font-weight:900}
+header .prog b{color:var(--gold-lt)} header .prog span{font-size:13px;color:var(--muted);font-family:var(--sans)}
+header .r-btn{background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.3);color:var(--gold-lt);border-radius:10px;padding:9px 14px;font-size:13px;font-family:inherit;cursor:pointer}
+.filters{display:flex;gap:8px;padding:12px 24px 6px;flex-wrap:wrap;align-items:center;flex:none}
+.chip{background:rgba(255,255,255,.05);border:1px solid rgba(196,146,42,.28);color:var(--cream);border-radius:99px;padding:8px 15px;font-size:14px;font-family:inherit;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--gold);color:#1a1a12;border-color:var(--gold);font-weight:700}
+.sep{width:1px;height:22px;background:rgba(196,146,42,.3);margin:0 4px}
+.search{margin-left:auto;background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.28);border-radius:10px;padding:8px 14px;display:flex;gap:8px;align-items:center}
+.search input{background:none;border:none;outline:none;color:var(--cream);font-size:15px;font-family:inherit;width:160px}
+.search input::placeholder{color:var(--muted)}
+.list{flex:1;min-height:0;overflow-y:auto;padding:8px 24px 40px}
+.grp{margin-top:14px}
+.grp-h{font-size:13px;letter-spacing:.1em;color:var(--gold);font-weight:700;padding:6px 4px;position:sticky;top:0;background:#152a1d}
+.row{display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(196,146,42,.14);margin-top:8px}
+.row.done{background:rgba(102,187,106,.08);border-color:rgba(102,187,106,.28)}
+.row .nm{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--cream);flex:0 0 auto;min-width:150px}
+.row .meta{font-size:13px;color:var(--muted);flex:1;min-width:0;display:flex;gap:14px;flex-wrap:wrap}
+.row .meta b{color:var(--gold-lt);font-weight:600}
+.row .st{flex:0 0 auto;font-size:13px;text-align:right;min-width:120px}
+.row .st .done-t{color:var(--ok);font-weight:700}
+.row .st .no-t{color:var(--muted)}
+.row .act{flex:0 0 auto}
+.row .btn-ci{background:var(--gold);border:none;color:#1a1a12;border-radius:10px;padding:12px 20px;font-size:15px;font-weight:900;font-family:inherit;cursor:pointer}
+.row .btn-undo{background:transparent;border:1px solid rgba(238,136,136,.4);color:#e69a9a;border-radius:10px;padding:11px 16px;font-size:13px;font-family:inherit;cursor:pointer}
+.empty{text-align:center;color:var(--muted);padding:60px;font-size:17px}
+@media(max-width:640px){.row{flex-wrap:wrap}.row .st{min-width:0}.row .nm{min-width:120px}}
+</style>
+</head>
+<body>
+<header>
+  <img class="logo" src="../assets/logo/tada-logo-gold.png" alt="TADA">
+  <div class="t">貴賓報到一覽<small>工作人員 · 現場貴賓管理</small></div>
+  <div class="prog"><b id="p-checked">0</b><span> / <span id="p-total">0</span> 已報到</span></div>
+  <button class="r-btn" onclick="load()">↻ 重新載入</button>
+</header>
+<div class="filters">
+  <div class="chips" id="cat-chips" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+  <div class="sep"></div>
+  <button class="chip on" id="st-all" onclick="setSt('all',this)">全部</button>
+  <button class="chip" id="st-no" onclick="setSt('no',this)">未報到</button>
+  <button class="chip" id="st-yes" onclick="setSt('yes',this)">已報到</button>
+  <div class="search">🔍 <input id="q" placeholder="搜尋姓名/單位" oninput="render()"></div>
+</div>
+<div class="list" id="list"><div class="empty">載入中…</div></div>
+
+<script>
+const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
+const CATS=['公協會','學校單位','政府單位','農業合作單位'];
+let guests=[], curCat='__all__', curSt='all';
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function clean(v){ v=(v==null?'':String(v)).trim(); return (v===''||v==='?'||v==='？')?'':v; }
+function catFor(g){ return clean(g.category)||'農業合作單位'; }
+function gci(t){ return t?new Date(t).toLocaleString('zh-TW',{hour12:false,hour:'2-digit',minute:'2-digit'}):''; }
+async function rpc(fn,b){ const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:'POST',headers:H(),body:JSON.stringify(b)}); if(!r.ok)throw new Error('HTTP '+r.status); return r.json(); }
+async function load(){
+  try{
+    const r=await fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,category,seat,plate,checked_in,checked_in_at&order=category.asc,sort.asc,name.asc`,{headers:H()});
+    guests=r.ok?await r.json():[];
+  }catch(e){ document.getElementById('list').innerHTML='<div class="empty">載入失敗，請重新整理。</div>'; return; }
+  renderCatChips(); render();
+}
+function renderCatChips(){
+  const cnt={__all__:{t:0,c:0}}; CATS.forEach(c=>cnt[c]={t:0,c:0});
+  guests.forEach(g=>{ const k=catFor(g); if(!cnt[k])cnt[k]={t:0,c:0}; cnt[k].t++; cnt.__all__.t++; if(g.checked_in){cnt[k].c++;cnt.__all__.c++;} });
+  const chip=(k,lbl)=>`<button class="chip ${curCat===k?'on':''}" onclick="setCat('${k}')">${lbl} <b style="opacity:.7">${cnt[k]?cnt[k].c:0}/${cnt[k]?cnt[k].t:0}</b></button>`;
+  document.getElementById('cat-chips').innerHTML=chip('__all__','全部')+CATS.map(c=>chip(c,c)).join('');
+  document.getElementById('p-total').textContent=guests.length;
+  document.getElementById('p-checked').textContent=guests.filter(g=>g.checked_in).length;
+}
+function setCat(k){ curCat=k; renderCatChips(); render(); }
+function setSt(s,el){ curSt=s; document.querySelectorAll('#st-all,#st-no,#st-yes').forEach(b=>b.classList.remove('on')); el.classList.add('on'); render(); }
+function render(){
+  const q=document.getElementById('q').value.trim();
+  let arr=guests.filter(g=>{
+    if(curCat!=='__all__'&&catFor(g)!==curCat) return false;
+    if(curSt==='yes'&&!g.checked_in) return false;
+    if(curSt==='no'&&g.checked_in) return false;
+    if(q&&!((g.name||'').includes(q)||(g.org||'').includes(q))) return false;
+    return true;
+  });
+  const el=document.getElementById('list');
+  if(!arr.length){ el.innerHTML='<div class="empty">沒有符合條件的貴賓。</div>'; return; }
+  // 依類別分組
+  const groups={};
+  arr.forEach(g=>{ const k=catFor(g); (groups[k]=groups[k]||[]).push(g); });
+  const order=['公協會','學校單位','政府單位','農業合作單位'];
+  el.innerHTML=order.filter(k=>groups[k]).map(k=>`<div class="grp"><div class="grp-h">${esc(k)}（${groups[k].filter(x=>x.checked_in).length}/${groups[k].length}）</div>`+
+    groups[k].map(g=>rowHtml(g)).join('')+`</div>`).join('');
+}
+function rowHtml(g){
+  const meta=[]; if(clean(g.org))meta.push(esc(clean(g.org)));
+  if(clean(g.seat))meta.push('座位 <b>'+esc(clean(g.seat))+'</b>');
+  if(clean(g.plate))meta.push('🚗 '+esc(clean(g.plate)));
+  return `<div class="row ${g.checked_in?'done':''}">
+    <div class="nm">${esc(g.name)}</div>
+    <div class="meta">${meta.join('　')}</div>
+    <div class="st">${g.checked_in?`<span class="done-t">✓ 已報到 ${gci(g.checked_in_at)}</span>`:'<span class="no-t">未報到</span>'}</div>
+    <div class="act">${g.checked_in
+      ? `<button class="btn-undo" onclick="undo('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')">撤銷</button>`
+      : `<button class="btn-ci" onclick="ci('${g.id}')">報到</button>`}</div>
+  </div>`;
+}
+async function ci(id){
+  const g=guests.find(x=>x.id===id); if(!g||g.checked_in) return;
+  try{ const res=await rpc('guest_checkin',{p_guest_id:id});
+    if(res.ok||res.error==='already_checked_in'){ g.checked_in=true; g.checked_in_at=new Date().toISOString(); renderCatChips(); render(); }
+    else alert('報到失敗：'+(res.error||'')); }catch(e){ alert('報到失敗：'+e.message); }
+}
+async function undo(id,name){
+  if(!confirm(`將「${name}」恢復為未報到？`)) return;
+  const g=guests.find(x=>x.id===id); if(!g) return;
+  try{ const res=await rpc('guest_checkin_undo',{p_guest_id:id});
+    if(res.ok){ g.checked_in=false; g.checked_in_at=null; renderCatChips(); render(); }
+    else alert('撤銷失敗：'+(res.error||'')); }catch(e){ alert('撤銷失敗：'+e.message); }
+}
+load();
+setInterval(load, 20000);
+</script>
+</body>
+</html>

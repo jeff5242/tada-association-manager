@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>臨時貴賓報到｜TADA</title>
+<script src="../../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@700;900&display=swap');
+:root{--green-deep:#12241a;--green:#1e3320;--gold:#c4922a;--gold-lt:#e0b458;--cream:#f5ecd4;--muted:#93a08c;
+  --serif:'Noto Serif TC',serif;--sans:'Noto Sans TC',"PingFang TC",system-ui,sans-serif;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--cream);min-height:100vh;padding:26px 20px 50px;
+  background:radial-gradient(120% 70% at 50% -10%, #24402b 0%, #0c160f 60%);-webkit-tap-highlight-color:transparent}
+.wrap{max-width:460px;margin:0 auto}
+.brand{text-align:center;margin-bottom:22px}
+.brand img{height:46px}
+.brand .t{font-family:var(--serif);font-size:24px;font-weight:900;color:var(--gold-lt);letter-spacing:.1em;margin-top:12px}
+.brand .s{font-size:13px;color:var(--muted);margin-top:6px}
+.card{background:linear-gradient(158deg,#28472f,#16291d);border:1px solid rgba(196,146,42,.3);border-radius:20px;padding:26px 24px}
+.lb{display:block;font-size:14px;color:var(--gold-lt);font-weight:700;margin:16px 0 7px}
+.lb:first-child{margin-top:0}
+.in{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(196,146,42,.3);border-radius:13px;padding:16px;color:var(--cream);font-size:18px;font-family:inherit;outline:none}
+.in::placeholder{color:rgba(245,236,212,.35)}
+.cats{display:flex;flex-wrap:wrap;gap:8px}
+.cat{background:rgba(255,255,255,.05);border:1px solid rgba(196,146,42,.3);color:var(--cream);border-radius:99px;padding:11px 16px;font-size:15px;font-family:inherit;cursor:pointer}
+.cat.on{background:var(--gold);color:#1a1a12;border-color:var(--gold);font-weight:700}
+.btn{width:100%;margin-top:24px;background:var(--gold);border:none;color:#1a1a12;border-radius:14px;padding:18px;font-size:20px;font-weight:900;font-family:inherit;cursor:pointer}
+.btn:active{transform:scale(.98)}
+.err{color:#f0a;font-size:14px;text-align:center;margin-top:14px;min-height:18px}
+/* 完成畫面 */
+.done{display:none;text-align:center;padding:40px 10px}
+.done.show{display:block;animation:fade .4s ease}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.done .chk{font-size:74px;line-height:1}
+.done .h{font-family:var(--serif);font-size:34px;font-weight:900;color:var(--gold-lt);margin-top:14px}
+.done .nm{font-family:var(--serif);font-size:26px;color:var(--cream);margin-top:16px}
+.done .og{font-size:15px;color:var(--muted);margin-top:6px}
+.done .p{margin-top:22px;font-size:16px;color:#d9e6d0;line-height:1.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <img src="../../assets/logo/tada-logo-gold.png" alt="TADA">
+    <div class="t">臨時貴賓報到</div>
+    <div class="s">2026 第六屆會員大會暨理監事選舉 · 9/4</div>
+  </div>
+
+  <div class="card" id="form">
+    <label class="lb">姓名（必填）</label>
+    <input id="w-name" class="in" placeholder="例：王大明" autocomplete="name">
+    <label class="lb">職稱</label>
+    <input id="w-title" class="in" placeholder="例：處長／總經理／教授">
+    <label class="lb">服務單位 / 公司</label>
+    <input id="w-org" class="in" placeholder="機關或公司名稱">
+    <label class="lb">車號（供停車服務，選填）</label>
+    <input id="w-plate" class="in" placeholder="例：ABC-1234" autocapitalize="characters">
+    <label class="lb">類別</label>
+    <div class="cats" id="w-cats"></div>
+    <button class="btn" onclick="submitWalkin()">✓ 完成報到</button>
+    <div class="err" id="w-err"></div>
+  </div>
+
+  <div class="done" id="done">
+    <div class="chk">🎉</div>
+    <div class="h">報到完成</div>
+    <div class="nm" id="d-name"></div>
+    <div class="og" id="d-org"></div>
+    <div class="p">歡迎蒞臨，感謝您的出席！<br>請至報到處領取資料，入座參加大會。</div>
+  </div>
+</div>
+
+<script>
+const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
+const CATS=['公協會','學校單位','政府單位','農業合作單位'];
+let wCat='農業合作單位';
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function renderCats(){ document.getElementById('w-cats').innerHTML=CATS.map(c=>`<button class="cat ${c===wCat?'on':''}" onclick="pickCat('${c}')">${c}</button>`).join(''); }
+function pickCat(c){ wCat=c; renderCats(); }
+renderCats();
+async function submitWalkin(){
+  const nm=document.getElementById('w-name').value.trim();
+  const title=document.getElementById('w-title').value.trim();
+  const name=[nm,title].filter(Boolean).join(' ');
+  const org=document.getElementById('w-org').value.trim();
+  const plate=document.getElementById('w-plate').value.trim();
+  const err=document.getElementById('w-err');
+  if(!nm){ err.textContent='請填寫姓名'; return; }
+  err.textContent='報到中…'; err.style.color='var(--muted)';
+  try{
+    const r=await fetch(`${SB}/rest/v1/rpc/guest_add`,{method:'POST',headers:H(),body:JSON.stringify({p_name:name,p_org:org,p_category:wCat,p_plate:plate})});
+    const res=await r.json();
+    if(res && res.ok){
+      document.getElementById('d-name').textContent=res.name;
+      document.getElementById('d-org').textContent=[res.org,plate?('車號 '+plate):''].filter(Boolean).join('　·　');
+      document.getElementById('form').style.display='none';
+      document.getElementById('done').classList.add('show');
+    } else { err.textContent='報到失敗：'+((res&&res.error)||'請重試'); err.style.color='#f0a'; }
+  }catch(e){ err.textContent='報到失敗：'+e.message; err.style.color='#f0a'; }
+}
+</script>
+</body>
+</html>

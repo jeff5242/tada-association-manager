@@ -10,6 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>貴賓報到｜TADA</title>
 <script src="../assets/liff-common.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{
   --green-deep:#12241a; --green:#1e3320; --green-2:#2c4a32;
@@ -51,6 +52,13 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 .add-cancel{flex:0 0 auto;background:transparent;border:1px solid rgba(245,236,212,.3);color:var(--cream);border-radius:12px;padding:15px 24px;font-size:17px;font-family:inherit;cursor:pointer}
 .add-ok{flex:1;background:var(--gold);border:none;color:#1a1a12;border-radius:12px;padding:15px;font-size:19px;font-weight:900;font-family:inherit;cursor:pointer}
 .add-err{color:#f0a;font-size:14px;text-align:center;margin-top:12px;min-height:18px}
+/* 掃碼報到 QR */
+.qrcard{background:#15281c;border:1px solid var(--gold);border-radius:22px;padding:34px 40px;text-align:center;max-width:460px}
+.qr-h{font-family:var(--serif);font-size:26px;font-weight:900;color:var(--gold-lt)}
+.qr-sub{font-size:15px;color:var(--muted);line-height:1.7;margin:12px 0 22px}
+#qrbox{background:#fff;padding:16px;border-radius:16px;display:inline-block;line-height:0}
+#qrbox img{display:block}
+.qr-close{margin-top:24px;background:transparent;border:1px solid rgba(245,236,212,.3);color:var(--cream);border-radius:12px;padding:14px 40px;font-size:17px;font-family:inherit;cursor:pointer}
 
 /* Top: 兩排過濾（各一行，可左右滑，不折行）*/
 .top{flex:0 0 auto;padding:12px 0 8px;}
@@ -137,6 +145,7 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
   </div>
   <div class="prog"><div class="n"><b id="p-checked">0</b> / <span id="p-total">0</span></div><div class="l">已報到</div></div>
   <button class="add-btn" onclick="openAddGuest()">＋ 新增貴賓</button>
+  <button class="fs-btn" onclick="showWalkinQR()" title="臨時貴賓掃碼報到">📱</button>
   <button class="fs-btn" id="fs-btn" onclick="toggleFS()" title="全螢幕">⛶</button>
 </header>
 
@@ -164,6 +173,14 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
     <button class="add-ok" onclick="submitAddGuest()">✓ 完成報到</button>
   </div>
   <div class="add-err" id="ag-err"></div>
+</div></div>
+
+<!-- 臨時貴賓掃碼報到 QR -->
+<div class="overlay" id="qrModal" onclick="closeQR()"><div class="qrcard" onclick="event.stopPropagation()">
+  <div class="qr-h">臨時貴賓 · 掃碼自助報到</div>
+  <div class="qr-sub">不在名單中或臨時蒞臨？<br>請用手機掃描下方 QR Code，填寫姓名、公司、車號即可完成報到。</div>
+  <div id="qrbox"></div>
+  <button class="qr-close" onclick="closeQR()">關閉</button>
 </div></div>
 
 <div class="overlay" id="welcome"><div class="wcard" id="wcard"></div></div>
@@ -319,6 +336,13 @@ async function submitGreeting(){
   }catch(e){ done.textContent='送出失敗，請重試'; done.style.color='#f0a'; }
 }
 function closeWelcome(){ document.getElementById('welcome').classList.remove('show'); }
+let qrDone=false;
+function showWalkinQR(){
+  const box=document.getElementById('qrbox');
+  if(!qrDone && window.QRCode){ new QRCode(box,{text:'https://tada-ai.org.tw/guest/walkin/',width:300,height:300,correctLevel:QRCode.CorrectLevel.M}); qrDone=true; }
+  document.getElementById('qrModal').classList.add('show');
+}
+function closeQR(){ document.getElementById('qrModal').classList.remove('show'); }
 
 /* 簽名板 */
 let sigCtx=null, sigDrawing=false, sigHas=false;
