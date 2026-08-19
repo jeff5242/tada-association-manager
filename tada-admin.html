@@ -1829,7 +1829,7 @@ function renderGuests(){
       <td data-label="備註" style="font-size:11px;color:var(--gray);">${g.note?escapeHtml(g.note):'–'}</td>
       <td data-label="現場報到" style="font-size:11px;min-width:150px;">
         ${g.checked_in?`<span style="color:#66bb6a;">✓ 已報到</span> <span style="color:var(--gray);">${gci(g.checked_in_at)}</span>`:'<span style="color:var(--gray);">未報到</span>'}
-        ${g.seat?`<div style="color:var(--gold-lt);">座位：${escapeHtml(g.seat)}</div>`:''}
+        ${g.seat?`<div style="color:var(--gold-lt);">桌號：${escapeHtml(g.seat)}</div>`:''}
         ${g.greeting?`<div style="color:var(--green-lt);margin-top:2px;">🙏 ${escapeHtml(g.greeting)}</div>`:''}
         ${g.signature?`<img src="${g.signature}" onclick="showSig('${g.id}')" style="height:36px;background:#fff;border-radius:4px;padding:2px;margin-top:3px;cursor:pointer;" title="點擊放大簽名">`:''}
       </td>

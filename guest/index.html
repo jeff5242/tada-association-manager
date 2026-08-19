@@ -305,8 +305,8 @@ function showWelcome(d, gid){
      <div class="w-hi">歡　迎　蒞　臨</div>
      <div class="w-name">${esc(d.name)}</div>
      ${clean(d.org)?`<div class="w-org">${esc(clean(d.org))}</div>`:''}
-     ${seat?`<div class="w-seat"><div class="s-l">您的座位</div><div class="s-v">${esc(seat)}</div></div>`
-           :`<div class="w-seat"><div class="s-l">座位</div><div class="s-v" style="font-size:24px;">請洽接待人員</div></div>`}
+     ${seat?`<div class="w-seat"><div class="s-l">您的桌號</div><div class="s-v">${esc(seat)}</div></div>`
+           :`<div class="w-seat"><div class="s-l">桌號</div><div class="s-v" style="font-size:24px;">請洽接待人員</div></div>`}
      ${chips.length?`<div class="w-info">${chips.map(c=>'<span>'+c+'</span>').join('')}</div>`:''}
      ${clean(d.note)?`<div class="w-note">📌 ${esc(clean(d.note))}</div>`:''}
      <div class="w-bless">
