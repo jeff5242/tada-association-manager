@@ -2048,6 +2048,10 @@ function buildActionButtons(a) {
   } else if (a.status === 'rejected') {
     btns.push(`<button class="btn btn-sm btn-outline" onclick="openAppModal('${id}','pending')">重置待審</button>`);
   }
+  // 已付款/已核准 → 轉為正式會員（建立主名冊會員＋加投票名冊，才能綁證/投票）
+  if (a.status === 'payment_confirmed' || a.status === 'approved') {
+    btns.push(`<button class="btn btn-sm" style="margin-left:4px;background:rgba(196,146,42,0.15);color:var(--gold-lt);border:1px solid rgba(196,146,42,0.5);" onclick="convertToMember('${id}')">✅ 轉正式會員</button>`);
+  }
   // 寄送「審核通過」通知（內含繳費回報連結，繳費為次要）
   if (a.status === 'pending' || a.status === 'payment_confirmed' || a.status === 'approved') {
     btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;color:var(--gold-lt);border-color:rgba(196,146,42,0.4);" onclick="openNotifyModal('${id}')">✅ 審核通過</button>`);
@@ -2056,6 +2060,20 @@ function buildActionButtons(a) {
   btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="openAppEdit('${id}')">檢視／修改</button>`);
   btns.push(`<button class="btn btn-sm btn-outline" style="margin-left:4px;color:var(--gray);" onclick="hideApp('${id}')">隱藏</button>`);
   return btns.join('');
+}
+
+// 入會申請 → 正式會員（建立主名冊會員＋加第六屆投票名冊）
+async function convertToMember(id){
+  const a = allApps.find(x=>x.id===id) || {};
+  const who = a.name || a.org_name || '此申請';
+  if(!confirm('確定將「'+who+'」轉為正式會員？\n將建立主名冊會員（自動配會員編號）並加入第六屆投票名冊。')) return;
+  try{
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/app_to_member`, {method:'POST', headers:{...SB_HEADERS,'Content-Type':'application/json'}, body:JSON.stringify({p_app_id:id})});
+    const d = r.ok ? await r.json() : null;
+    if(d && d.ok){ alert('✓ 已轉為正式會員\n姓名：'+d.name+'\n會員編號：'+d.member_no+'\n（已加入主名冊與第六屆投票名冊，可綁定電子會員證）'); await loadApplications(); }
+    else if(d && d.error==='already_member'){ alert('此申請的統編或姓名已在主名冊，無需重複轉入。'); }
+    else { alert('轉入失敗：'+((d && d.error) || await r.text())); }
+  }catch(e){ alert('連線失敗：'+e.message); }
 }
 
 // ── 信件公版（tada_mail_templates，可後台編輯）──────────────────────────
