@@ -302,7 +302,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>姓名 / 職稱</th><th>機關單位</th><th>高鐵接送</th><th>用餐</th><th>邀請狀態</th><th>備註</th><th>操作</th>
+          <th>姓名 / 職稱</th><th>機關單位</th><th>高鐵接送</th><th>用餐</th><th>邀請狀態</th><th>備註</th><th>現場報到 / 祝福</th><th>操作</th>
         </tr></thead>
         <tbody id="guest-tbody"></tbody>
       </table>
@@ -1827,6 +1827,12 @@ function renderGuests(){
       <td data-label="用餐">${mealBadge(g.meal)}</td>
       <td data-label="狀態">${statusHTML[g.status]}</td>
       <td data-label="備註" style="font-size:11px;color:var(--gray);">${g.note?escapeHtml(g.note):'–'}</td>
+      <td data-label="現場報到" style="font-size:11px;min-width:150px;">
+        ${g.checked_in?`<span style="color:#66bb6a;">✓ 已報到</span> <span style="color:var(--gray);">${gci(g.checked_in_at)}</span>`:'<span style="color:var(--gray);">未報到</span>'}
+        ${g.seat?`<div style="color:var(--gold-lt);">座位：${escapeHtml(g.seat)}</div>`:''}
+        ${g.greeting?`<div style="color:var(--green-lt);margin-top:2px;">🙏 ${escapeHtml(g.greeting)}</div>`:''}
+        ${g.signature?`<img src="${g.signature}" onclick="showSig('${g.id}')" style="height:36px;background:#fff;border-radius:4px;padding:2px;margin-top:3px;cursor:pointer;" title="點擊放大簽名">`:''}
+      </td>
       <td style="white-space:nowrap;">
         <button class="btn btn-outline btn-sm" onclick="editGuestRow('${g.id}')">編輯</button>
         <button class="btn btn-outline btn-sm" onclick="advanceGuest(${ri})">${nextLabel[g.status]}</button>
@@ -1857,6 +1863,7 @@ function guestEditRow(g){
     </td>
     <td>${statusHTML[g.status]}</td>
     <td><input id="eg-note" class="search-input" style="width:100%;min-width:80px;" placeholder="備註" value="${esc(g.note)}"></td>
+    <td style="font-size:11px;color:var(--gray);">${g.checked_in?'✓ 已報到':'—'}</td>
     <td style="white-space:nowrap;">
       <button class="btn btn-sm btn-gold" onclick="saveGuestRow('${g.id}')">儲存</button>
       <button class="btn btn-sm btn-outline" onclick="editingGuest=null;renderGuests()">取消</button>
@@ -1865,6 +1872,18 @@ function guestEditRow(g){
 }
 
 function editGuestRow(id){ editingGuest=id; renderGuests(); }
+function gci(t){ return t?new Date(t).toLocaleString('zh-TW',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):''; }
+function showSig(id){
+  const g=guestData.find(x=>String(x.id)===String(id)); if(!g||!g.signature) return;
+  let ov=document.getElementById('sig-lightbox');
+  if(!ov){ ov=document.createElement('div'); ov.id='sig-lightbox';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;';
+    ov.onclick=()=>ov.style.display='none'; document.body.appendChild(ov); }
+  ov.innerHTML=`<div style="color:#fff;font-size:15px;">${escapeHtml(g.name)}　${g.greeting?'🙏 '+escapeHtml(g.greeting):''}</div>
+    <img src="${g.signature}" style="max-width:80vw;max-height:70vh;background:#fff;border-radius:12px;padding:12px;">
+    <div style="color:#bbb;font-size:12px;">點任意處關閉</div>`;
+  ov.style.display='flex';
+}
 
 async function saveGuestRow(id){
   const mode=document.getElementById('eg-trainmode').value;

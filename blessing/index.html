@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>祝福牆｜TADA</title>
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@700;900&display=swap');
+:root{
+  --green-deep:#10201660;--green:#14261a;--gold:#c4922a;--gold-lt:#e0b458;--cream:#f5ecd4;--muted:#93a08c;
+  --serif:'Noto Serif TC',"Songti TC",serif;--sans:'Noto Sans TC',"PingFang TC",system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--sans);color:var(--cream);
+  background:radial-gradient(130% 90% at 50% -20%, #24402b 0%, #0c160f 60%);
+  min-height:100%;overflow-x:hidden}
+header{text-align:center;padding:38px 20px 22px}
+header .eyebrow{font-size:14px;letter-spacing:.5em;color:var(--gold);font-weight:700;text-indent:.5em}
+header h1{font-family:var(--serif);font-size:clamp(34px,6vw,60px);font-weight:900;color:var(--gold-lt);margin-top:10px;letter-spacing:.1em}
+header .sub{margin-top:12px;color:var(--muted);font-size:15px;letter-spacing:.08em}
+header .cnt{margin-top:6px;color:var(--gold);font-size:14px;font-variant-numeric:tabular-nums}
+.wall{column-count:4;column-gap:20px;padding:10px 28px 70px;max-width:1680px;margin:0 auto}
+@media(max-width:1400px){.wall{column-count:3}}
+@media(max-width:1000px){.wall{column-count:2}}
+@media(max-width:640px){.wall{column-count:1}}
+.card{break-inside:avoid;margin-bottom:20px;background:linear-gradient(158deg,#28472f,#16291d);
+  border:1px solid rgba(196,146,42,.3);border-radius:18px;padding:22px 24px;box-shadow:0 12px 30px rgba(0,0,0,.28);
+  animation:rise .6s cubic-bezier(.2,.7,.3,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.card .bless{font-family:var(--serif);font-size:24px;font-weight:700;color:var(--cream);line-height:1.5;letter-spacing:.02em}
+.card .sig{margin-top:14px;background:#fff;border-radius:12px;padding:8px;text-align:center}
+.card .sig img{max-width:100%;max-height:150px;display:block;margin:0 auto}
+.card .who{margin-top:14px;display:flex;align-items:baseline;gap:10px;border-top:1px dashed rgba(196,146,42,.3);padding-top:12px}
+.card .who .nm{font-family:var(--serif);font-size:19px;font-weight:700;color:var(--gold-lt)}
+.card .who .og{font-size:13px;color:var(--muted)}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:80px 20px;font-size:20px}
+.loading{text-align:center;color:var(--muted);padding:60px;font-size:18px}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">TADA · 2026 第六屆會員大會</div>
+  <h1>祝　福　牆</h1>
+  <div class="sub">感謝各界貴賓蒞臨，為大會獻上祝福</div>
+  <div class="cnt" id="cnt"></div>
+</header>
+<div class="wall" id="wall"><div class="loading">載入祝福…</div></div>
+
+<script>
+const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function clean(v){ v=(v==null?'':String(v)).trim(); return (v===''||v==='?'||v==='？')?'':v; }
+async function load(){
+  let rows=[];
+  try{
+    const r=await fetch(`${SB}/rest/v1/tada_guests?select=name,org,greeting,signature,checked_in_at&or=(greeting.not.is.null,signature.not.is.null)&order=checked_in_at.desc`,{headers:H()});
+    rows=r.ok?await r.json():[];
+  }catch(e){ document.getElementById('wall').innerHTML='<div class="empty">載入失敗，請重新整理。</div>'; return; }
+  document.getElementById('cnt').textContent = rows.length?`已收到 ${rows.length} 份祝福`:'';
+  const el=document.getElementById('wall');
+  if(!rows.length){ el.innerHTML='<div class="empty">祝福陸續湧入中… 敬請期待 🌾</div>'; return; }
+  el.innerHTML=rows.map(g=>{
+    const bless=clean(g.greeting), sig=g.signature, org=clean(g.org);
+    return `<div class="card">
+      ${bless?`<div class="bless">${esc(bless)}</div>`:''}
+      ${sig?`<div class="sig"><img src="${sig}" alt="簽名"></div>`:''}
+      <div class="who"><span class="nm">${esc(g.name)}</span>${org?`<span class="og">${esc(org)}</span>`:''}</div>
+    </div>`;
+  }).join('');
+}
+load();
+setInterval(load, 15000);
+</script>
+</body>
+</html>
