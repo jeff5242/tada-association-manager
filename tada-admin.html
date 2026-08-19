@@ -867,6 +867,15 @@ tr:hover td{background:rgba(74,124,89,0.06);}
           <option value="payment_confirm">繳費確認</option>
           <option value="manual">個別寄信</option>
         </select>
+        <select class="filter-select" id="mc-status" style="width:auto;" onchange="renderMailLog()">
+          <option value="">全部狀態</option>
+          <option value="sent">已送出</option>
+          <option value="delivered">已送達</option>
+          <option value="opened">已開信</option>
+          <option value="clicked">已點擊</option>
+          <option value="bounced">退信</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="exportMailLog()">⬇ 匯出 CSV</button>
         <button class="btn btn-outline btn-sm" onclick="renderMailLog()">↻ 重新載入</button>
       </div>
     </div>
@@ -2333,15 +2342,20 @@ async function batchSendAssembly(){
   prog.textContent=`✓ 完成：成功 ${ok}、失敗 ${fail}`;
   renderMailLog();
 }
+let mcLogRows=[];  // 目前過濾後的發信記錄（供匯出）
 async function renderMailLog(){
   const cat=document.getElementById('mc-cat').value;
-  let path='tada_mail_log?order=created_at.desc&limit=300'; if(cat) path+=`&category=eq.${cat}`;
+  const stf=document.getElementById('mc-status').value;
+  let path='tada_mail_log?order=created_at.desc&limit=2000'; if(cat) path+=`&category=eq.${cat}`;
   const r=await fetch(`${SB_URL}/rest/v1/${path}`, {headers:SB_HEADERS});
-  const rows=r.ok?await r.json():[];
-  const byS={}; rows.forEach(x=>byS[x.status]=(byS[x.status]||0)+1);
-  document.getElementById('mc-summary').textContent='共 '+rows.length+' 封'+(Object.keys(byS).length?'　｜　'+Object.entries(byS).map(([s,n])=>((MAIL_STATUS_LBL[s]&&MAIL_STATUS_LBL[s][0])||s)+' '+n).join('、'):'');
+  const all=r.ok?await r.json():[];
+  const byS={}; all.forEach(x=>byS[x.status]=(byS[x.status]||0)+1);
+  const rows=stf?all.filter(x=>x.status===stf):all;
+  mcLogRows=rows;
+  const stfLbl=stf?('（篩選：'+((MAIL_STATUS_LBL[stf]&&MAIL_STATUS_LBL[stf][0])||stf)+' '+rows.length+'）'):'';
+  document.getElementById('mc-summary').textContent='共 '+all.length+' 封'+(Object.keys(byS).length?'　｜　'+Object.entries(byS).map(([s,n])=>((MAIL_STATUS_LBL[s]&&MAIL_STATUS_LBL[s][0])||s)+' '+n).join('、'):'')+stfLbl;
   const tb=document.getElementById('mc-log-tbody');
-  if(!rows.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無發信記錄</td></tr>'; return; }
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">'+(all.length?'此狀態無記錄':'尚無發信記錄')+'</td></tr>'; return; }
   tb.innerHTML=rows.map(x=>{ const st=MAIL_STATUS_LBL[x.status]||[x.status,'#9aa'];
     return `<tr><td style="font-size:11px;color:var(--gray);white-space:nowrap;">${new Date(x.created_at).toLocaleString('zh-TW',{hour12:false})}</td>
       <td style="font-size:12px;">${MAIL_CAT_LBL[x.category]||x.category||'–'}</td>
@@ -2349,6 +2363,26 @@ async function renderMailLog(){
       <td style="font-size:11px;color:var(--gray);max-width:220px;">${escapeHtml(x.subject||'')}</td>
       <td><span style="font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid ${st[1]};color:${st[1]};">${st[0]}</span></td></tr>`;
   }).join('');
+}
+function exportMailLog(){
+  if(!mcLogRows.length){ alert('目前沒有可匯出的記錄'); return; }
+  const fmtT=t=>t?new Date(t).toLocaleString('zh-TW',{hour12:false}):'';
+  const head=['時間','類別','姓名','Email','會員編號','主旨','狀態','開信時間','點擊時間'];
+  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  const lines=[head.map(q).join(',')];
+  mcLogRows.forEach(x=>lines.push([
+    fmtT(x.created_at), MAIL_CAT_LBL[x.category]||x.category||'',
+    x.name||'', x.to_email||'', x.member_no||'', x.subject||'',
+    (MAIL_STATUS_LBL[x.status]&&MAIL_STATUS_LBL[x.status][0])||x.status||'',
+    fmtT(x.opened_at), fmtT(x.clicked_at)
+  ].map(q).join(',')));
+  const csv='﻿'+lines.join('\r\n');  // BOM 讓 Excel 正確辨識 UTF-8
+  const cat=document.getElementById('mc-cat').value||'全部';
+  const stf=document.getElementById('mc-status').value;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`發信記錄_${cat}${stf?'_'+stf:''}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
 
 function buildNotifyMessage(a){
