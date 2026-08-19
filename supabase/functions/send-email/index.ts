@@ -24,6 +24,8 @@ const RESEND_KEY = Deno.env.get('RESEND_API_KEY');
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const FROM = Deno.env.get('MAIL_FROM') ?? '臺灣科技農企業發展協會 TADA <service@tada-ai.org.tw>';
+// 測試白名單：這些信箱可收測試信（即使不在名冊）。逗號分隔，設於 Secret MAIL_TEST_ALLOW。
+const TEST_ALLOW = (Deno.env.get('MAIL_TEST_ALLOW') ?? '').toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
 
 function json(o: unknown, status = 200) {
   return new Response(JSON.stringify(o), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
@@ -66,7 +68,7 @@ Deno.serve(async (req) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return json({ ok: false, error: 'bad_recipient' }, 400);
   if (!subject || (!html && !text)) return json({ ok: false, error: 'missing_content' }, 400);
 
-  if (!(await recipientKnown(to))) return json({ ok: false, error: 'recipient_not_member' }, 403);
+  if (!TEST_ALLOW.includes(to) && !(await recipientKnown(to))) return json({ ok: false, error: 'recipient_not_member' }, 403);
 
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',

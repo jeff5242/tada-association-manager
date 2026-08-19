@@ -843,6 +843,12 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <button class="btn btn-gold btn-sm" onclick="batchSendAssembly()">📤 批次發送開會通知</button>
       <span id="mc-progress" style="font-size:12px;color:var(--gold-lt);"></span>
     </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;border-top:1px dashed var(--border);padding-top:12px;">
+      <span style="font-size:12px;color:var(--gray);align-self:center;">🧪 先測試：</span>
+      <input id="mc-test-email" type="email" value="fruitfull1024@gmail.com" placeholder="收測試信的 Email" style="flex:1;min-width:200px;max-width:320px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:8px 11px;font-size:13px;outline:none;">
+      <button class="btn btn-outline btn-sm" onclick="sendAssemblyTest()">寄一封測試給我</button>
+      <span id="mc-test-status" style="font-size:12px;color:var(--gray);"></span>
+    </div>
   </div>
 
   <div class="section-card">
@@ -2276,6 +2282,24 @@ async function saveAssemblyTpl(){
     headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
     body:JSON.stringify({key:'assembly',subject,body,updated_at:new Date().toISOString()})});
   if(r.ok){ st.style.color='#66bb6a'; st.textContent='✓ 已儲存範本'; } else { st.style.color='#ef5350'; st.textContent='儲存失敗'; }
+}
+async function sendAssemblyTest(){
+  const email=document.getElementById('mc-test-email').value.trim();
+  const subject=document.getElementById('mc-subject').value.trim();
+  const bodyTpl=document.getElementById('mc-body').value;
+  const st=document.getElementById('mc-test-status');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ st.style.color='#ef5350'; st.textContent='請填正確的 Email'; return; }
+  if(!subject||!bodyTpl){ st.style.color='#ef5350'; st.textContent='請先填主旨與內文'; return; }
+  const text=bodyTpl.split('{姓名}').join('測試會員');
+  st.style.color='var(--gray)'; st.textContent='寄送中…';
+  try{
+    const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},
+      body:JSON.stringify({to:email,subject:'【測試】'+subject,text,category:'assembly-test',name:'測試'})});
+    const d=await res.json().catch(()=>({}));
+    if(d.ok){ st.style.color='#66bb6a'; st.textContent='✓ 測試信已寄出至 '+email; renderMailLog(); }
+    else{ const M={recipient_not_member:'此信箱不在白名單，請告知我加入測試白名單。',not_configured:'寄信尚未設定。',send_failed:'寄送失敗，請檢查 Resend。'};
+      st.style.color='#ef5350'; st.textContent='寄送失敗：'+(M[d.error]||d.error||'未知錯誤'); }
+  }catch(e){ st.style.color='#ef5350'; st.textContent='寄送失敗：'+e.message; }
 }
 async function batchSendAssembly(){
   const subject=document.getElementById('mc-subject').value.trim();
