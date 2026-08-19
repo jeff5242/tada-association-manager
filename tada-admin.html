@@ -618,6 +618,12 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <button class="btn btn-outline btn-sm" onclick="resetCheckins()">↺ 重設全部報到（測試用）</button>
         <span id="roster-count" style="font-size:12px;color:var(--gray);align-self:center;"></span>
       </div>
+      <div style="display:flex;gap:8px;margin:0 0 10px;flex-wrap:wrap;align-items:center;border-top:1px dashed var(--border);padding-top:10px;">
+        <span style="font-size:12px;color:var(--gray);">依日期清除報到：</span>
+        <input type="date" id="roster-clear-date" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:7px 10px;font-size:13px;outline:none;">
+        <button class="btn btn-outline btn-sm" onclick="clearCheckinsByDate()">清除此日（含）以前</button>
+        <span style="font-size:11px;color:var(--gray);">或於下方清單逐筆「撤銷報到」</span>
+      </div>
       <div class="tbl-wrap"><table><thead><tr><th>編號</th><th>姓名</th><th>類型</th><th>報到</th><th>操作</th></tr></thead>
         <tbody id="roster-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr></tbody></table></div>
     </div>
@@ -3426,15 +3432,33 @@ async function copyFifthCandidates(){
 }
 
 async function renderRoster(){
-  const r=await sbEl(`tada_v_members?election_id=eq.${election.id}&order=member_no&select=id,member_no,name,member_type,rep,is_checked_in`); const arr=r.ok?await r.json():[];
+  const r=await sbEl(`tada_v_members?election_id=eq.${election.id}&order=member_no&select=id,member_no,name,member_type,rep,is_checked_in,check_in_time`); const arr=r.ok?await r.json():[];
   document.getElementById('roster-count').textContent=`名冊共 ${arr.length} 人（已報到 ${arr.filter(m=>m.is_checked_in).length}）`;
   const tb=document.getElementById('roster-tbody');
   if(!arr.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr>'; return; }
+  const fmtT=t=>t?new Date(t).toLocaleString('zh-TW',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
   tb.innerHTML=arr.map(v=>`<tr><td style="font-family:monospace;font-size:12px;">${escapeHtml(v.member_no)}</td>
     <td class="name-cell">${escapeHtml(v.name)}${v.rep?'<span style="color:var(--gray);font-size:11px;"> / '+escapeHtml(v.rep)+'</span>':''}</td>
     <td style="font-size:11px;color:var(--gray);">${v.member_type==='group'?'團體':'個人'}</td>
-    <td>${v.is_checked_in?'<span style="color:#66bb6a;">✓ 已領</span>':'<span style="color:var(--gray);">—</span>'}</td>
-    <td><button class="btn btn-sm btn-outline" onclick="delMember('${v.id}')">移除</button></td></tr>`).join('');
+    <td>${v.is_checked_in?`<span style="color:#66bb6a;">✓ 已領</span><span style="color:var(--gray);font-size:10px;display:block;">${fmtT(v.check_in_time)}</span>`:'<span style="color:var(--gray);">—</span>'}</td>
+    <td style="white-space:nowrap;">${v.is_checked_in?`<button class="btn btn-sm btn-outline" style="color:var(--warn);border-color:rgba(224,119,106,.4);" onclick="undoCheckin('${escapeHtml(v.member_no)}','${escapeHtml(v.name)}')">撤銷報到</button> `:''}<button class="btn btn-sm btn-outline" onclick="delMember('${v.id}')">移除</button></td></tr>`).join('');
+}
+async function undoCheckin(memberNo,name){
+  if(!confirm(`撤銷「${name}」（${memberNo}）的報到？\n將同時刪除其對應的未使用選票（已投出的票不受影響）。`)) return;
+  const r=await sbEl('rpc/checkin_undo',{method:'POST',headers:{...SB_HEADERS,'Content-Type':'application/json'},body:JSON.stringify({p_election:election.id,p_member_no:memberNo})});
+  const d=r.ok?await r.json():null;
+  if(d&&d.ok){ renderRoster(); } else alert('撤銷失敗：'+(d&&d.error||await r.text()));
+}
+async function clearCheckinsByDate(){
+  const dstr=document.getElementById('roster-clear-date').value;
+  if(!dstr){ alert('請先選擇日期'); return; }
+  if(!confirm(`清除「${dstr}（含）以前」的所有報到紀錄？\n將同時刪除對應的未使用選票（已投出的票不受影響）。`)) return;
+  // 當日(含)以前 = 隔日 00:00 之前
+  const before=new Date(dstr+'T00:00:00'); before.setDate(before.getDate()+1);
+  const r=await sbEl('rpc/checkin_undo_before',{method:'POST',headers:{...SB_HEADERS,'Content-Type':'application/json'},body:JSON.stringify({p_election:election.id,p_before:before.toISOString()})});
+  const d=r.ok?await r.json():null;
+  if(d&&d.ok){ renderRoster(); alert(`已清除 ${d.members_reset} 筆報到，刪除 ${d.tokens_deleted} 張未使用選票。`); }
+  else alert('清除失敗：'+(d&&d.error||await r.text()));
 }
 
 async function importRoster(){
