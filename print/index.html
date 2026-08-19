@@ -45,6 +45,33 @@ body{font-family:'Noto Serif TC',serif;background:#e8e8e0;color:#111;padding:20p
 .b-table td.co{color:#333;font-size:15px;font-family:'Noto Sans TC',sans-serif;}
 .b-note{font-family:'Noto Sans TC',sans-serif;font-size:14px;line-height:1.9;color:#333;margin-top:16px;}
 .b-seal{font-family:'Noto Sans TC',sans-serif;font-size:15px;margin-top:26px;text-align:right;color:#111;}
+/* 收據 */
+.r-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px;}
+.r-title{font-size:30px;font-weight:900;letter-spacing:10px;text-indent:10px;}
+.r-no{font-family:'Noto Sans TC',sans-serif;color:#c0110d;font-size:20px;font-weight:700;letter-spacing:1px;}
+.r-date{text-align:right;font-size:17px;letter-spacing:2px;margin-bottom:12px;}
+.r-table{width:100%;border-collapse:collapse;font-size:18px;table-layout:fixed;}
+.r-table td{border:1.5px solid #222;padding:11px 12px;vertical-align:middle;}
+.r-il{width:130px;text-align:center;font-weight:700;white-space:nowrap;background:#faf9f2;letter-spacing:6px;}
+.r-val{font-weight:700;min-height:30px;}
+.r-seal{width:150px;text-align:center;color:#c9c4b4;font-family:'Noto Sans TC',sans-serif;font-size:14px;letter-spacing:2px;}
+.r-corner{position:relative;height:70px;padding:0!important;}
+.r-corner svg{position:absolute;inset:0;width:100%;height:100%;}
+.r-corner span{position:absolute;font-size:14px;font-weight:700;font-family:'Noto Sans TC',sans-serif;}
+.r-corner .c-name{top:7px;right:12px;}
+.r-corner .c-amt{top:50%;left:10px;transform:translateY(-50%);}
+.r-corner .c-item{bottom:7px;left:52%;transform:translateX(-50%);}
+.r-unit{font-size:22px;font-weight:900;letter-spacing:2px;}
+.r-total-row td{padding:14px 12px;}
+.r-total{font-size:19px;font-weight:700;letter-spacing:2px;display:flex;align-items:center;flex-wrap:wrap;gap:4px;}
+.r-boxes{display:inline-flex;margin:0 8px;}
+.r-boxes .cell{width:36px;border:1px solid #333;border-left:none;text-align:center;}
+.r-boxes .cell:first-child{border-left:1px solid #333;}
+.r-boxes .dg{display:block;font-size:20px;font-weight:700;line-height:1.4;min-height:28px;}
+.r-boxes .u{display:block;font-size:11px;color:#666;font-family:'Noto Sans TC',sans-serif;border-top:1px solid #ccc;padding:2px 0;}
+.r-sign{display:flex;justify-content:space-around;margin-top:34px;font-size:18px;font-family:'Noto Sans TC',sans-serif;}
+.r-sign i{font-style:normal;}
+.r-sign u{text-decoration:none;border-bottom:1px solid #333;display:inline-block;min-width:96px;}
 @media print{
   body{background:#fff;padding:0;}
   .toolbar{display:none;}
@@ -80,7 +107,7 @@ async function fetchRow(table, id){
 
 async function render(){
   if(!DOC){ fail('缺少文件參數。'); return; }
-  if(!['ballot','proxy'].includes(DOC) && !ID){ fail('缺少文件參數。'); return; }   // ballot/空白委任書(proxy) 免 id
+  if(!['ballot','proxy','receipt'].includes(DOC) && !ID){ fail('缺少文件參數。'); return; }   // ballot/委任書(proxy)/收據(receipt) 免 id
   try{
     if(DOC==='consent'){
       const c = await fetchRow('tada_v_consent', ID);
@@ -171,6 +198,50 @@ async function render(){
         </div>`;
       }).join('');
       sheet(html);
+    } else if(DOC==='receipt'){
+      // 收據：可帶參數預填，未帶則印空白供手填
+      //   no 收據編號 · name 繳款單位/姓名 · date ISO(預設今日)
+      //   join 入會費 · annual 常年會費 · permanent 永久會員會費 · donation 一般捐款
+      //   other 其他金額 · otherdesc 其他說明 · note 備註
+      const g = k => params.get(k) || '';
+      const num = x => Number(String(x||'').replace(/[^\d.]/g,''))||0;
+      const money = x => { const n = num(x); return n ? n.toLocaleString('en-US') : ''; };
+      const items = [
+        ['入　會　費', money(g('join'))],
+        ['常　年　會　費', money(g('annual'))],
+        ['永久會員會費', money(g('permanent'))],
+        ['一　般　捐　款', money(g('donation'))],
+        ['其　　　　他', g('otherdesc') || money(g('other'))],
+        ['備　　　　註', g('note')],
+      ];
+      const total = num(g('join'))+num(g('annual'))+num(g('permanent'))+num(g('donation'))+num(g('other'));
+      // 合計國字大寫格：佰(百萬)拾(十萬)萬 仟佰拾 元 —— 依總額右對齊填入
+      const units = ['佰','拾','萬','仟','佰','拾','元'];
+      const digits = total ? String(total).padStart(units.length,' ').slice(-units.length).split('') : Array(units.length).fill('');
+      const boxes = units.map((u,i)=>`<div class="cell"><span class="dg">${digits[i]&&digits[i]!==' '?esc(digits[i]):'&nbsp;'}</span><span class="u">${u}</span></div>`).join('');
+      const rows = items.map(([lab,val])=>`<tr><td class="r-il">${lab}</td><td class="r-val">${esc(val)}</td></tr>`).join('');
+      sheet(`
+        <div class="r-head">
+          <div class="r-title">${esc(ORG)}收據</div>
+          <div class="r-no">NO：${esc(g('no')||'　　　　')}</div>
+        </div>
+        <div class="r-date">${rocDate(g('date')||undefined)}</div>
+        <table class="r-table">
+          <tr>
+            <td class="r-corner">
+              <svg viewBox="0 0 130 70" preserveAspectRatio="none"><line x1="0" y1="0" x2="130" y2="38" stroke="#222" stroke-width="1"/><line x1="0" y1="0" x2="70" y2="70" stroke="#222" stroke-width="1"/></svg>
+              <span class="c-name">姓　名</span><span class="c-amt">金額</span><span class="c-item">項　目</span>
+            </td>
+            <td class="r-unit">${esc(g('name'))}</td>
+            <td class="r-seal" rowspan="7">（用印處）</td>
+          </tr>
+          ${rows}
+          <tr class="r-total-row"><td colspan="3">
+            <div class="r-total">合　計　新臺幣<div class="r-boxes">${boxes}</div>元整</div>
+          </td></tr>
+        </table>
+        <div class="r-sign"><i>理事長：<u>&nbsp;</u></i><i>會　計：<u>&nbsp;</u></i><i>經手人：<u>&nbsp;</u></i></div>
+      `);
     } else { fail('未知的文件類型。'); }
   }catch(e){ fail('載入失敗：'+e.message); }
 }
