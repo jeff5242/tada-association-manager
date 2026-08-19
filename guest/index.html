@@ -34,8 +34,23 @@ header .prog{margin-left:auto;text-align:right}
 header .prog .n{font-family:var(--serif);font-size:30px;font-weight:900;color:var(--cream);line-height:1}
 header .prog .n b{color:var(--gold-lt)}
 header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top:3px}
-.fs-btn{margin-left:22px;background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.35);color:var(--gold-lt);border-radius:12px;width:56px;height:52px;font-size:24px;cursor:pointer;flex:none}
+.add-btn{margin-left:22px;background:var(--gold);border:none;color:#1a1a12;border-radius:12px;height:52px;padding:0 22px;font-size:17px;font-weight:900;font-family:inherit;cursor:pointer;flex:none}
+.add-btn:active{transform:scale(.96)}
+.fs-btn{margin-left:12px;background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.35);color:var(--gold-lt);border-radius:12px;width:56px;height:52px;font-size:24px;cursor:pointer;flex:none}
 .fs-btn:active{transform:scale(.94)}
+/* 新增貴賓 Modal */
+.addcard{background:radial-gradient(120% 120% at 50% 0%, #2c4a32, #15281c);border:1px solid var(--gold);border-radius:22px;padding:36px 40px;max-width:520px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.add-h{font-family:var(--serif);font-size:28px;font-weight:900;color:var(--gold-lt);text-align:center}
+.add-sub{font-size:14px;color:var(--muted);text-align:center;margin:8px 0 22px}
+.add-lb{display:block;font-size:14px;color:var(--gold-lt);margin:14px 0 6px;font-weight:700}
+.add-in{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(196,146,42,.3);border-radius:12px;padding:15px 16px;color:var(--cream);font-size:19px;font-family:inherit;outline:none}
+.add-cats{display:flex;flex-wrap:wrap;gap:8px}
+.ag-cat{background:rgba(255,255,255,.05);border:1px solid rgba(196,146,42,.3);color:var(--cream);border-radius:99px;padding:10px 16px;font-size:15px;font-family:inherit;cursor:pointer}
+.ag-cat.on{background:var(--gold);color:#1a1a12;border-color:var(--gold);font-weight:700}
+.add-btns{display:flex;gap:12px;margin-top:26px}
+.add-cancel{flex:0 0 auto;background:transparent;border:1px solid rgba(245,236,212,.3);color:var(--cream);border-radius:12px;padding:15px 24px;font-size:17px;font-family:inherit;cursor:pointer}
+.add-ok{flex:1;background:var(--gold);border:none;color:#1a1a12;border-radius:12px;padding:15px;font-size:19px;font-weight:900;font-family:inherit;cursor:pointer}
+.add-err{color:#f0a;font-size:14px;text-align:center;margin-top:12px;min-height:18px}
 
 /* Top: 兩排過濾（各一行，可左右滑，不折行）*/
 .top{flex:0 0 auto;padding:12px 0 8px;}
@@ -63,7 +78,9 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 .bottom-head{position:sticky;top:0;background:linear-gradient(180deg,#132619 72%,transparent);padding:12px 0;z-index:2}
 .bottom-head .bh-title{font-family:var(--serif);font-size:24px;font-weight:700;color:var(--gold-lt)}
 .guest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
-.gcard{background:linear-gradient(160deg,#25412c,#182c1f);border:1px solid rgba(196,146,42,.28);border-radius:16px;padding:24px 26px;display:flex;flex-direction:column;gap:18px;transition:all .12s}
+.gcard{position:relative;background:linear-gradient(160deg,#25412c,#182c1f);border:1px solid rgba(196,146,42,.28);border-radius:16px;padding:24px 26px;display:flex;flex-direction:column;gap:18px;transition:all .12s}
+.g-reset{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.05);border:1px solid rgba(238,136,136,.4);color:#e69a9a;font-size:12px;font-family:var(--sans);border-radius:8px;padding:5px 10px;cursor:pointer;z-index:3;opacity:.85}
+.g-reset:active{transform:scale(.94)}
 .gcard:active{transform:scale(.98)}
 .gcard .g-name{font-family:var(--serif);font-size:32px;font-weight:900;color:var(--cream);line-height:1.15}
 .gcard .g-org{font-size:15px;color:var(--muted);margin-top:4px}
@@ -76,7 +93,9 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 .overlay{position:fixed;inset:0;background:rgba(8,16,10,.9);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;padding:40px}
 .overlay.show{display:flex;animation:fade .3s ease}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-.wcard{background:radial-gradient(120% 120% at 50% 0%, #2c4a32, #15281c);border:1px solid var(--gold);border-radius:28px;padding:52px 64px;text-align:center;max-width:760px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.5);animation:pop .35s cubic-bezier(.2,.8,.3,1.2)}
+.wcard{position:relative;background:radial-gradient(120% 120% at 50% 0%, #2c4a32, #15281c);border:1px solid var(--gold);border-radius:28px;padding:48px 60px;text-align:center;max-width:760px;width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.5);animation:pop .35s cubic-bezier(.2,.8,.3,1.2)}
+.wcard .w-x{position:absolute;top:16px;right:20px;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(245,236,212,.3);color:var(--cream);font-size:22px;cursor:pointer}
+.wcard .w-x:active{transform:scale(.92)}
 @keyframes pop{from{opacity:0;transform:scale(.9) translateY(20px)}to{opacity:1;transform:none}}
 .wcard .w-hi{font-size:16px;letter-spacing:.4em;color:var(--gold-lt);font-weight:700;margin-bottom:18px}
 .wcard .w-name{font-family:var(--serif);font-size:56px;font-weight:900;color:var(--cream);line-height:1.1}
@@ -87,8 +106,25 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 .wcard .w-info{margin-top:24px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .wcard .w-info span{background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.25);border-radius:99px;padding:9px 18px;font-size:15px;color:var(--cream)}
 .wcard .w-note{margin-top:22px;font-size:16px;color:#d9e6d0;line-height:1.7}
-.wcard .w-thanks{margin-top:30px;font-family:var(--serif);font-size:22px;color:var(--gold-lt);font-weight:700}
-.wcard .w-close{margin-top:26px;font-size:14px;color:var(--muted)}
+.wcard .w-bless{margin-top:28px;border-top:1px solid rgba(196,146,42,.28);padding-top:22px}
+.wcard .wb-label{font-family:var(--serif);font-size:19px;color:var(--gold-lt);font-weight:700;margin-bottom:16px}
+.wcard .wb-chips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.wcard .wb-chip{background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.35);color:var(--cream);border-radius:99px;padding:12px 22px;font-size:17px;font-family:inherit;cursor:pointer}
+.wcard .wb-chip.on{background:var(--gold);color:#1a1a12;border-color:var(--gold);font-weight:700}
+.wcard .wb-actions{display:flex;gap:12px;justify-content:center;margin-top:20px}
+.wcard .wb-sign{background:transparent;border:1px solid var(--gold-lt);color:var(--gold-lt);border-radius:12px;padding:14px 26px;font-size:17px;font-weight:700;font-family:inherit;cursor:pointer}
+.wcard .wb-sign.signed{background:rgba(102,187,106,.16);border-color:rgba(102,187,106,.5);color:#9be0a3}
+.wcard .wb-send{background:var(--gold);border:none;color:#1a1a12;border-radius:12px;padding:14px 34px;font-size:18px;font-weight:900;font-family:inherit;cursor:pointer}
+.wcard .wb-done{margin-top:16px;font-size:16px;min-height:20px;font-weight:700}
+/* 簽名板 */
+.signcard{background:#15281c;border:1px solid var(--gold);border-radius:22px;padding:26px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.sign-h{font-family:var(--serif);font-size:22px;color:var(--gold-lt);font-weight:700;margin-bottom:16px}
+#sign-canvas{background:#fff;border-radius:14px;touch-action:none;display:block;max-width:90vw}
+.sign-btns{display:flex;gap:12px;justify-content:center;margin-top:18px}
+.sign-btns button{border-radius:12px;padding:14px 26px;font-size:17px;font-family:inherit;font-weight:700;cursor:pointer}
+.sign-clear{background:transparent;border:1px solid rgba(245,236,212,.3);color:var(--cream)}
+.sign-cancel{background:transparent;border:1px solid rgba(238,136,136,.4);color:#e69a9a}
+.sign-ok{background:var(--gold);border:none;color:#1a1a12;font-weight:900}
 .loading{margin:auto;font-size:20px;color:var(--muted)}
 </style>
 </head>
@@ -100,6 +136,7 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
     <div class="h-sub">2026 第六屆會員大會暨理監事選舉 · 9/4 臻愛婚宴會館</div>
   </div>
   <div class="prog"><div class="n"><b id="p-checked">0</b> / <span id="p-total">0</span></div><div class="l">已報到</div></div>
+  <button class="add-btn" onclick="openAddGuest()">＋ 新增貴賓</button>
   <button class="fs-btn" id="fs-btn" onclick="toggleFS()" title="全螢幕">⛶</button>
 </header>
 
@@ -109,11 +146,38 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 </div>
 
 <div class="bottom">
-  <div class="bottom-head"><div class="bh-title" id="bh-title">全部貴賓</div></div>
   <div class="guest-grid" id="list"><div class="loading">載入貴賓名冊…</div></div>
 </div>
 
-<div class="overlay" id="welcome" onclick="closeWelcome()"><div class="wcard" id="wcard" onclick="event.stopPropagation()"></div></div>
+<!-- 現場新增貴賓（不在名單者簽到）-->
+<div class="overlay" id="addModal" onclick="closeAddGuest()"><div class="addcard" onclick="event.stopPropagation()">
+  <div class="add-h">新增貴賓報到</div>
+  <div class="add-sub">名單中沒有您嗎？請填寫資料完成現場報到。</div>
+  <label class="add-lb">姓名（必填）</label>
+  <input id="ag-name" class="add-in" placeholder="您的姓名／稱謂">
+  <label class="add-lb">服務單位</label>
+  <input id="ag-org" class="add-in" placeholder="公司／機關名稱">
+  <label class="add-lb">類別</label>
+  <div class="add-cats" id="ag-cats"></div>
+  <div class="add-btns">
+    <button class="add-cancel" onclick="closeAddGuest()">取消</button>
+    <button class="add-ok" onclick="submitAddGuest()">✓ 完成報到</button>
+  </div>
+  <div class="add-err" id="ag-err"></div>
+</div></div>
+
+<div class="overlay" id="welcome"><div class="wcard" id="wcard"></div></div>
+
+<!-- 簽名板 -->
+<div class="overlay" id="signModal"><div class="signcard">
+  <div class="sign-h">請於下方簽名</div>
+  <canvas id="sign-canvas" width="720" height="300"></canvas>
+  <div class="sign-btns">
+    <button class="sign-clear" onclick="clearSign()">清除重簽</button>
+    <button class="sign-cancel" onclick="cancelSign()">取消</button>
+    <button class="sign-ok" onclick="saveSign()">✓ 確定</button>
+  </div>
+</div></div>
 
 <script>
 const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
@@ -127,7 +191,7 @@ function clean(v){ v=(v==null?'':String(v)).trim(); return (v===''||v==='?'||v==
 
 async function load(){
   try{
-    const r=await fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,category,seat,meal,train,note,checked_in&order=sort.asc,name.asc`,{headers:H()});
+    const r=await fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in&order=sort.asc,name.asc`,{headers:H()});
     guests=r.ok?await r.json():[];
   }catch(e){ document.getElementById('list').innerHTML='<div class="empty">載入失敗，請確認網路後重新整理。</div>'; return; }
   renderCats(); renderUnits(); renderList(); renderProg();
@@ -145,7 +209,7 @@ function renderProg(){
   document.getElementById('p-total').textContent=guests.length;
   document.getElementById('p-checked').textContent=guests.filter(g=>g.checked_in).length;
 }
-function orgKey(g){ return clean(g.org)||'其他'; }
+function orgKey(g){ return clean(g.unit)||clean(g.org)||'其他'; }
 function renderUnits(){
   const pool=curCat==='__all__'?guests:guests.filter(g=>catFor(g)===curCat);
   const map=new Map();
@@ -162,11 +226,10 @@ function renderList(){
   let arr=guests.slice();
   if(searchQ){ arr=arr.filter(g=>(g.name||'').includes(searchQ)); }
   else { if(curCat!=='__all__') arr=arr.filter(g=>catFor(g)===curCat); if(curOrg!=='__all__') arr=arr.filter(g=>orgKey(g)===curOrg); }
-  document.getElementById('bh-title').textContent=searchQ?`搜尋「${searchQ}」`:(curOrg!=='__all__'?curOrg:(curCat!=='__all__'?curCat:'全部貴賓'));
   const el=document.getElementById('list');
   if(!arr.length){ el.innerHTML='<div class="empty">此分類目前沒有貴賓，請改選其他單位或搜尋姓名。</div>'; return; }
   el.innerHTML=arr.map(g=>g.checked_in
-    ? `<div class="gcard done"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`
+    ? `<div class="gcard done"><button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="按錯了？恢復未報到">↺ reset</button><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`
     : `<div class="gcard" onclick="doCheckin('${g.id}')"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><button class="g-btn" onclick="event.stopPropagation();doCheckin('${g.id}')">貴賓報到</button></div>`
   ).join('');
 }
@@ -174,29 +237,114 @@ async function doCheckin(id){
   const g=guests.find(x=>x.id===id); if(!g||g.checked_in) return;
   try{
     const res=await rpc('guest_checkin',{p_guest_id:id});
-    if(res.ok || res.error==='already_checked_in'){ g.checked_in=true; renderCats(); renderUnits(); renderList(); renderProg(); showWelcome(res); }
+    if(res.ok || res.error==='already_checked_in'){ g.checked_in=true; renderCats(); renderUnits(); renderList(); renderProg(); showWelcome(res, id); }
     else alert('報到失敗：'+(res.error||'未知'));
   }catch(e){ alert('報到失敗：'+e.message); }
 }
-function showWelcome(d){
+let agCat='農業合作單位';
+function openAddGuest(){
+  document.getElementById('ag-name').value='';
+  document.getElementById('ag-org').value='';
+  document.getElementById('ag-err').textContent='';
+  agCat = curCat==='__all__' ? '公協會' : curCat;
+  document.getElementById('ag-cats').innerHTML=CATS.map(c=>`<button class="ag-cat ${c===agCat?'on':''}" onclick="pickAgCat('${c}')">${c}</button>`).join('');
+  document.getElementById('addModal').classList.add('show');
+  setTimeout(()=>document.getElementById('ag-name').focus(),100);
+}
+function pickAgCat(c){ agCat=c; document.getElementById('ag-cats').innerHTML=CATS.map(x=>`<button class="ag-cat ${x===agCat?'on':''}" onclick="pickAgCat('${x}')">${x}</button>`).join(''); }
+function closeAddGuest(){ document.getElementById('addModal').classList.remove('show'); }
+async function submitAddGuest(){
+  const name=document.getElementById('ag-name').value.trim();
+  const org=document.getElementById('ag-org').value.trim();
+  const err=document.getElementById('ag-err');
+  if(!name){ err.textContent='請填寫姓名'; return; }
+  err.textContent='';
+  try{
+    const res=await rpc('guest_add',{p_name:name,p_org:org,p_category:agCat});
+    if(res.ok){
+      guests.push({id:res.id,name:res.name,org:res.org,unit:res.org,category:res.category,seat:res.seat,checked_in:true});
+      closeAddGuest(); renderCats(); renderUnits(); renderList(); renderProg(); showWelcome(res, res.id);
+    } else err.textContent='新增失敗：'+(res.error||'未知');
+  }catch(e){ err.textContent='新增失敗：'+e.message; }
+}
+async function doUncheck(id,name){
+  if(!confirm(`將「${name}」恢復為「未報到」？`)) return;
+  const g=guests.find(x=>x.id===id); if(!g) return;
+  try{
+    const res=await rpc('guest_checkin_undo',{p_guest_id:id});
+    if(res.ok){ g.checked_in=false; renderCats(); renderUnits(); renderList(); renderProg(); }
+    else alert('恢復失敗：'+(res.error||'未知'));
+  }catch(e){ alert('恢復失敗：'+e.message); }
+}
+const BLESS=['祝大會圓滿順利','祝會務蒸蒸日上','祝 TADA 智耕傳承 · 鵬程萬里'];
+let wGuestId=null, wBless='', wSig='';
+function showWelcome(d, gid){
+  wGuestId=gid||d.id||null; wBless=''; wSig='';
   const chips=[];
   if(clean(d.meal)) chips.push('🍽️ '+esc(clean(d.meal)));
   if(clean(d.train)) chips.push('🚄 '+esc(clean(d.train)));
   const seat=clean(d.seat);
   document.getElementById('wcard').innerHTML=
-    `<div class="w-hi">歡　迎　蒞　臨</div>
+    `<button class="w-x" onclick="closeWelcome()">✕</button>
+     <div class="w-hi">歡　迎　蒞　臨</div>
      <div class="w-name">${esc(d.name)}</div>
      ${clean(d.org)?`<div class="w-org">${esc(clean(d.org))}</div>`:''}
      ${seat?`<div class="w-seat"><div class="s-l">您的座位</div><div class="s-v">${esc(seat)}</div></div>`
            :`<div class="w-seat"><div class="s-l">座位</div><div class="s-v" style="font-size:24px;">請洽接待人員</div></div>`}
      ${chips.length?`<div class="w-info">${chips.map(c=>'<span>'+c+'</span>').join('')}</div>`:''}
      ${clean(d.note)?`<div class="w-note">📌 ${esc(clean(d.note))}</div>`:''}
-     <div class="w-thanks">感謝您的蒞臨，祝 大會圓滿順利</div>
-     <div class="w-close">點擊任意處關閉（8 秒後自動關閉）</div>`;
+     <div class="w-bless">
+       <div class="wb-label">🙏 感謝您的蒞臨，為大會獻上祝福</div>
+       <div class="wb-chips" id="wb-chips"></div>
+       <div class="wb-actions">
+         <button class="wb-sign" id="wb-sign" onclick="openSign()">✍️ 簽名</button>
+         <button class="wb-send" onclick="submitGreeting()">送出祝福</button>
+       </div>
+       <div class="wb-done" id="wb-done"></div>
+     </div>`;
+  renderBlessChips();
   document.getElementById('welcome').classList.add('show');
-  clearTimeout(wTimer); wTimer=setTimeout(closeWelcome,8000);
 }
-function closeWelcome(){ document.getElementById('welcome').classList.remove('show'); clearTimeout(wTimer); }
+function renderBlessChips(){
+  document.getElementById('wb-chips').innerHTML=BLESS.map(b=>`<button class="wb-chip ${b===wBless?'on':''}" onclick="pickBless('${b.replace(/'/g,"\\'")}')">${esc(b)}</button>`).join('');
+}
+function pickBless(b){ wBless=(wBless===b?'':b); renderBlessChips(); }
+async function submitGreeting(){
+  const done=document.getElementById('wb-done');
+  if(!wGuestId){ closeWelcome(); return; }
+  if(!wBless && !wSig){ done.textContent='請選一句祝福或簽名，或按 ✕ 關閉'; done.style.color='#e0b458'; return; }
+  try{
+    await rpc('guest_greeting',{p_guest_id:wGuestId,p_greeting:wBless||null,p_signature:wSig||null});
+    done.textContent='🎉 已收到您的祝福，感謝！'; done.style.color='#9be0a3';
+    setTimeout(closeWelcome,1400);
+  }catch(e){ done.textContent='送出失敗，請重試'; done.style.color='#f0a'; }
+}
+function closeWelcome(){ document.getElementById('welcome').classList.remove('show'); }
+
+/* 簽名板 */
+let sigCtx=null, sigDrawing=false, sigHas=false;
+function openSign(){
+  document.getElementById('signModal').classList.add('show');
+  const cv=document.getElementById('sign-canvas');
+  sigCtx=cv.getContext('2d'); sigHas=false;
+  sigCtx.clearRect(0,0,cv.width,cv.height);
+  sigCtx.lineWidth=3.5; sigCtx.lineCap='round'; sigCtx.lineJoin='round'; sigCtx.strokeStyle='#20261f';
+  sigCtx.fillStyle='#fff'; sigCtx.fillRect(0,0,cv.width,cv.height);
+  const pos=e=>{ const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return [(t.clientX-r.left)*cv.width/r.width,(t.clientY-r.top)*cv.height/r.height]; };
+  const start=e=>{ e.preventDefault(); sigDrawing=true; sigHas=true; const [x,y]=pos(e); sigCtx.beginPath(); sigCtx.moveTo(x,y); };
+  const move=e=>{ if(!sigDrawing)return; e.preventDefault(); const [x,y]=pos(e); sigCtx.lineTo(x,y); sigCtx.stroke(); };
+  const end=()=>{ sigDrawing=false; };
+  cv.onpointerdown=start; cv.onpointermove=move; cv.onpointerup=end; cv.onpointerleave=end;
+  cv.ontouchstart=start; cv.ontouchmove=move; cv.ontouchend=end;
+}
+function clearSign(){ const cv=document.getElementById('sign-canvas'); sigCtx.fillStyle='#fff'; sigCtx.fillRect(0,0,cv.width,cv.height); sigHas=false; }
+function cancelSign(){ document.getElementById('signModal').classList.remove('show'); }
+function saveSign(){
+  if(!sigHas){ cancelSign(); return; }
+  wSig=document.getElementById('sign-canvas').toDataURL('image/png');
+  document.getElementById('signModal').classList.remove('show');
+  const b=document.getElementById('wb-sign'); if(b){ b.textContent='✓ 已簽名'; b.classList.add('signed'); }
+}
 function toggleFS(){
   const d=document.documentElement;
   try{
