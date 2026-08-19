@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>報到流程｜TADA 大會</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@700;900&display=swap');
+:root{--gold:#c4922a;--gold-lt:#e0b458;--cream:#f5ecd4;--muted:#9aa693;
+  --mem:#5fa06a;--mem-d:#2c4a32;--gst:#c99b3f;--gst-d:#4a3a1a;
+  --serif:'Noto Serif TC',serif;--sans:'Noto Sans TC',"PingFang TC",system-ui,sans-serif;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--sans);color:var(--cream);height:100%;display:flex;flex-direction:column;overflow:hidden;
+  background:radial-gradient(130% 90% at 50% -15%, #24402b 0%, #0b140e 62%);padding:2.2vh 2.4vw}
+header{text-align:center;flex:none;padding-bottom:1.6vh}
+header .eyebrow{font-size:1.5vh;letter-spacing:.5em;color:var(--gold);font-weight:700;text-indent:.5em}
+header h1{font-family:var(--serif);font-size:4.2vh;font-weight:900;color:var(--gold-lt);letter-spacing:.14em;margin-top:.6vh}
+header .sub{font-size:1.5vh;color:var(--muted);margin-top:.6vh;letter-spacing:.06em}
+.lanes{flex:1;min-height:0;display:flex;flex-direction:column;gap:2vh;justify-content:center}
+.lane{background:linear-gradient(160deg,rgba(255,255,255,.04),rgba(0,0,0,.12));border:1px solid rgba(196,146,42,.28);
+  border-radius:2vh;padding:2.4vh 2.4vw;display:flex;align-items:center;gap:2vw}
+.lane-tag{flex:0 0 auto;width:15vw;text-align:center}
+.lane-tag .ic{font-size:5vh;line-height:1}
+.lane-tag .nm{font-family:var(--serif);font-size:2.9vh;font-weight:900;margin-top:1vh;line-height:1.2}
+.lane-tag .en{font-size:1.4vh;letter-spacing:.24em;color:var(--muted);margin-top:.6vh}
+.lane.mem .lane-tag .nm{color:var(--mem)} .lane.gst .lane-tag .nm{color:var(--gst)}
+.steps{flex:1;display:flex;align-items:stretch;gap:0}
+.step{flex:1;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.08);border-radius:1.5vh;padding:1.8vh 1.2vw;position:relative;display:flex;flex-direction:column;gap:.8vh}
+.lane.mem .step{border-top:3px solid var(--mem)} .lane.gst .step{border-top:3px solid var(--gst)}
+.step .no{position:absolute;top:-1.6vh;left:1vw;width:3.2vh;height:3.2vh;border-radius:50%;font-family:var(--serif);font-weight:900;font-size:1.7vh;display:flex;align-items:center;justify-content:center;color:#0b140e}
+.lane.mem .step .no{background:var(--mem)} .lane.gst .step .no{background:var(--gst)}
+.step .sic{font-size:3.4vh;line-height:1;margin-top:.6vh}
+.step .t{font-size:2.1vh;font-weight:900;color:var(--cream);line-height:1.25}
+.step .d{font-size:1.5vh;color:var(--muted);line-height:1.5}
+.arrow{flex:0 0 auto;align-self:center;color:var(--gold);font-size:3vh;padding:0 .5vw;opacity:.8}
+.foot{flex:none;text-align:center;font-size:1.4vh;color:var(--muted);padding-top:1.4vh;letter-spacing:.05em}
+.foot b{color:var(--gold-lt)}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">TADA · 2026 第六屆會員大會暨理監事選舉 · 9/4</div>
+  <h1>大 會 報 到 流 程</h1>
+  <div class="sub">會員報到 · 貴賓簽到 —— 現場情境說明</div>
+</header>
+
+<div class="lanes">
+
+  <!-- 會員 -->
+  <div class="lane mem">
+    <div class="lane-tag"><div class="ic">🎫</div><div class="nm">會員報到</div><div class="en">MEMBER</div></div>
+    <div class="steps">
+      <div class="step"><div class="no">1</div><div class="sic">🏛️</div><div class="t">抵達報到區</div><div class="d">會員請至「會員報到台」。</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="no">2</div><div class="sic">📇</div><div class="t">報到機驗證</div><div class="d">統一編號＋手機，或出示 LINE 電子會員證掃碼。</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="no">3</div><div class="sic">🖨️</div><div class="t">領電子票券</div><div class="d">列印票券 QR Code（或領紙本圈選票）。</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="no">4</div><div class="sic">🗳️</div><div class="t">掃碼投票</div><div class="d">掃 QR 進投票頁圈選、送出，全程匿名。</div></div>
+    </div>
+  </div>
+
+  <!-- 貴賓 -->
+  <div class="lane gst">
+    <div class="lane-tag"><div class="ic">🎉</div><div class="nm">貴賓簽到</div><div class="en">GUEST</div></div>
+    <div class="steps">
+      <div class="step"><div class="no">1</div><div class="sic">🚪</div><div class="t">抵達迎賓區</div><div class="d">貴賓請至「貴賓接待區」。</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="no">2</div><div class="sic">📖</div><div class="t">貴賓簽到簿</div><div class="d">在 iPad 上選單位、點自己的名字報到；臨時蒞臨可掃 QR 自助簽到。</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="no">3</div><div class="sic">✍️</div><div class="t">祝福 · 簽名</div><div class="d">留下一句祝福與親筆簽名，即時浮現於「祝福牆」。</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="no">4</div><div class="sic">🍽️</div><div class="t">入座參加</div><div class="d">依座位入座，參與大會與晚宴（貴賓不參與投票）。</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="foot">台灣科技農企業發展協會 · 秘書處　｜　會員走報到機領票投票　·　貴賓走簽到簿留祝福　·　報到即時上<b>報到牆</b></div>
+</body>
+</html>
