@@ -951,6 +951,40 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- 收據列印 Modal -->
+<div id="rcpt-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:600;color:var(--white);margin-bottom:4px;">🧾 列印收據</div>
+    <div id="rcpt-hint" style="font-size:12px;color:var(--gold-lt);margin-bottom:12px;"></div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;">
+      <div style="flex:1;"><label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">收據編號 NO</label>
+        <input type="text" id="rcpt-no" placeholder="000393" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;"></div>
+      <div style="flex:1;"><label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">日期</label>
+        <input type="date" id="rcpt-date" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;"></div>
+    </div>
+    <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">繳款單位／姓名</label>
+    <input type="text" id="rcpt-name" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;margin-bottom:12px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div><label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">常年會費</label>
+        <input type="text" id="rcpt-annual" inputmode="numeric" placeholder="20000" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;"></div>
+      <div><label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">入會費</label>
+        <input type="text" id="rcpt-join" inputmode="numeric" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;"></div>
+      <div><label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">永久會員會費</label>
+        <input type="text" id="rcpt-permanent" inputmode="numeric" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;"></div>
+      <div><label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">一般捐款</label>
+        <input type="text" id="rcpt-donation" inputmode="numeric" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;"></div>
+    </div>
+    <label style="font-size:12px;color:var(--gray);display:block;margin:12px 0 4px;">其他說明（會期等，例：112/08-115/07 常年會費）</label>
+    <input type="text" id="rcpt-otherdesc" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;margin-bottom:10px;">
+    <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">備註</label>
+    <input type="text" id="rcpt-note" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;">
+    <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeReceipt()">關閉</button>
+      <button class="btn btn-gold" onclick="printReceipt()">🖨️ 開啟列印</button>
+    </div>
+  </div>
+</div>
+
 <!-- 編輯 Modal -->
 <div id="member-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
   <div style="background:var(--surface);border:1px solid var(--border);padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
@@ -1221,6 +1255,7 @@ function memberMainRow(m, seq){
       <button class="btn btn-outline btn-sm" onclick="${editFn}">編輯</button>
       <button class="btn btn-outline btn-sm" style="margin-left:4px;" onclick="openDetailModal('${m.id}')">詳細</button>
       ${email?`<button class="btn btn-outline btn-sm" style="margin-left:4px;color:var(--gold-lt);border-color:rgba(196,146,42,0.4);" onclick="openMemberMail('${m.id}')">✉ 寄信</button>`:''}
+      <button class="btn btn-outline btn-sm" style="margin-left:4px;color:var(--gold-lt);border-color:rgba(196,146,42,0.4);" onclick="openReceipt('${m.id}')">🧾 收據</button>
       <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);margin-left:4px;" onclick="deleteMemberRow('${m.id}')">刪除</button>
     </td>
   </tr>`;
@@ -1292,6 +1327,29 @@ async function openMemberMail(id){
   }catch(e){ alert('讀取失敗：'+e.message); }
 }
 function closeMemberMail(){ document.getElementById('mmail-modal').style.display='none'; mmailMember=null; }
+
+// ── 會員收據列印 ──────────────────────────────────────────
+async function openReceipt(id){
+  try{
+    const res = await fetch(`${SB_URL}/rest/v1/tada_members?id=eq.${id}&select=name,company,member_type`, {headers:SB_HEADERS});
+    const m = (await res.json())[0]; if(!m) return;
+    const unit = (memberIsGroup(m) ? (m.company||m.name) : (m.name||m.company)) || '';
+    document.getElementById('rcpt-hint').textContent = '會員：' + (m.name||m.company||'');
+    document.getElementById('rcpt-name').value = unit;
+    document.getElementById('rcpt-no').value = '';
+    document.getElementById('rcpt-date').value = new Date().toISOString().slice(0,10);
+    ['annual','join','permanent','donation','otherdesc','note'].forEach(k=>document.getElementById('rcpt-'+k).value='');
+    document.getElementById('rcpt-modal').style.display='flex';
+  }catch(e){ alert('讀取失敗：'+e.message); }
+}
+function closeReceipt(){ document.getElementById('rcpt-modal').style.display='none'; }
+function printReceipt(){
+  const v = k => document.getElementById('rcpt-'+k).value.trim();
+  const q = new URLSearchParams({doc:'receipt'});
+  [['name','name'],['no','no'],['date','date'],['annual','annual'],['join','join'],['permanent','permanent'],['donation','donation'],['otherdesc','otherdesc'],['note','note']]
+    .forEach(([field,key])=>{ const val=v(field); if(val) q.set(key,val); });
+  window.open('print/?'+q.toString(),'_blank');
+}
 async function copyMemberMail(){
   const t=document.getElementById('mmail-body');
   try{ await navigator.clipboard.writeText(t.value); }catch(e){ t.select(); document.execCommand('copy'); }
