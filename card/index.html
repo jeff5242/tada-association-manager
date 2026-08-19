@@ -128,6 +128,16 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
   </div>
 </div>
 
+<!-- 編輯代表人（僅團體會員）-->
+<div class="proxy" id="reps-sec">
+  <h3>編輯代表人</h3>
+  <div class="px-sub">團體會員可推派代表三人。任一已取得會員證報到碼的代表，皆可在此修改三位代表資料（姓名為必填，至少一位）。</div>
+  <div id="reps-list"></div>
+  <button class="px-btn" onclick="saveReps()">💾 儲存代表人</button>
+  <div class="px-err" id="reps-err"></div>
+  <div id="reps-done" class="px-done" style="display:none;"></div>
+</div>
+
 <script>
 let profile = null, election = null;
 let boundMember = null, pxElection = null;
@@ -173,6 +183,48 @@ function renderCard(m){
   document.getElementById('card').style.display='block';
   boundMember = m;
   setupProxy(m);
+  setupReps(m);
+}
+
+// ── 編輯代表人（僅團體會員）─────────────────────────
+function escAttr(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function setupReps(m){
+  if(m.member_type!=='group') return;
+  try{
+    const r = await rpc('group_reps_get',{p_user_id:profile.userId});
+    if(!r || !r.ok) return;   // 非本團體已綁定代表 → 不顯示
+    renderRepsForm(r.reps||[]);
+    document.getElementById('reps-sec').style.display='block';
+  }catch(e){}
+}
+function renderRepsForm(reps){
+  let html='';
+  for(let i=0;i<3;i++){ const r=reps[i]||{};
+    html+=`<div style="border-top:1px solid rgba(184,145,58,0.2);padding-top:10px;margin-top:10px;">
+      <label class="px-lb">代表 ${i+1} 姓名${i===0?'（至少一位）':'（可留空）'}</label>
+      <input type="text" class="rep-name" value="${escAttr(r.name||'')}" placeholder="姓名">
+      <label class="px-lb">電話</label>
+      <input type="text" class="rep-tel" value="${escAttr(r.tel||'')}" placeholder="手機/電話">
+      <label class="px-lb">Email（選填）</label>
+      <input type="text" class="rep-email" value="${escAttr(r.email||'')}" placeholder="Email">
+    </div>`;
+  }
+  document.getElementById('reps-list').innerHTML=html;
+}
+async function saveReps(){
+  const names=[...document.querySelectorAll('.rep-name')].map(x=>x.value.trim());
+  const tels=[...document.querySelectorAll('.rep-tel')].map(x=>x.value.trim());
+  const emails=[...document.querySelectorAll('.rep-email')].map(x=>x.value.trim());
+  const reps=[];
+  for(let i=0;i<3;i++){ if(names[i]) reps.push({name:names[i],tel:tels[i],email:emails[i]}); }
+  const err=document.getElementById('reps-err'); err.style.display='none';
+  const done=document.getElementById('reps-done'); done.style.display='none';
+  if(!reps.length){ err.textContent='至少需填一位代表姓名'; err.style.display='block'; return; }
+  try{
+    const r=await rpc('group_reps_save',{p_user_id:profile.userId,p_reps:reps});
+    if(r && r.ok){ done.innerHTML='✓ 代表人已更新（共 '+r.reps.length+' 位）'; done.style.display='block'; renderRepsForm(r.reps); }
+    else { const M={not_bound:'請先綁定會員證報到碼。',not_group:'僅團體會員可編輯代表。',need_one_rep:'至少需一位代表。'}; err.textContent='儲存失敗：'+(M[r&&r.error]||(r&&r.error)||'未知錯誤'); err.style.display='block'; }
+  }catch(e){ err.textContent='儲存失敗：'+e.message; err.style.display='block'; }
 }
 
 // ── 委託 ─────────────────────────────────────────
