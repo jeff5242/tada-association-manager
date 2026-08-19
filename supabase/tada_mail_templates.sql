@@ -16,7 +16,7 @@ CREATE POLICY mt_rw ON tada_mail_templates FOR ALL USING (true) WITH CHECK (true
 INSERT INTO tada_mail_templates (key, subject, body) VALUES
 ('approval',
  'TADA 入會審核通過 — 會費繳納與回報',
- '【TADA 台灣科技農企業發展協會】
+ '【TADA 臺灣科技農企業發展協會】
 {姓名} 您好：
 
 您的入會申請已審核通過 ✅
@@ -31,7 +31,7 @@ INSERT INTO tada_mail_templates (key, subject, body) VALUES
 收到回報後，會務人員將為您核對確認。感謝您的支持 🌾'),
 ('payment_confirm',
  'TADA 繳費確認通知',
- '【TADA 台灣科技農企業發展協會】
+ '【TADA 臺灣科技農企業發展協會】
 {姓名} 您好：
 
 本會已收到並確認您的會費繳納 {金額}，特此確認。感謝您的支持與參與 🌾
@@ -41,7 +41,7 @@ INSERT INTO tada_mail_templates (key, subject, body) VALUES
 
 如有任何問題，歡迎直接回覆本信與秘書處聯繫。
 
-台灣科技農企業發展協會　敬啟')
+臺灣科技農企業發展協會　敬啟')
 ON CONFLICT (key) DO NOTHING;
 
 NOTIFY pgrst, 'reload schema';

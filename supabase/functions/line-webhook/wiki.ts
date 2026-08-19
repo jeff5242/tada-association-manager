@@ -24,7 +24,7 @@ export const WIKI: WikiEntry[] = [
     id: 'greeting',
     question: '打招呼',
     answer:
-      '嗨～我是 TADA醬 🐝 台灣科技農企業發展協會的 AI 小秘書！\n' +
+      '嗨～我是 TADA醬 🐝 臺灣科技農企業發展協會的 AI 小秘書！\n' +
       '活動、入會、會費、交通、聯絡方式都可以問我，直接打字告訴我就好～',
     keywords: ['你好', '妳好', '哈囉', '嗨', 'hi', 'hello', '在嗎', '請問'],
   },
@@ -32,7 +32,7 @@ export const WIKI: WikiEntry[] = [
     id: 'about',
     question: '協會是做什麼的',
     answer:
-      '台灣科技農企業發展協會（TADA）以「AI 賦能」與「二代傳承」為主軸，' +
+      '臺灣科技農企業發展協會（TADA）以「AI 賦能」與「二代傳承」為主軸，' +
       '協助農企業導入科技、數位轉型，並促進世代交流與資源對接 🌾\n' +
       '官網：https://tada-ai.org.tw',
     keywords: ['協會', '宗旨', '做什麼', '是什麼', '介紹', 'tada', '你們是'],
