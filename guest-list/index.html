@@ -43,6 +43,12 @@ header .r-btn{background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,
 .row .act{flex:0 0 auto}
 .row .btn-ci{background:var(--gold);border:none;color:#1a1a12;border-radius:10px;padding:12px 20px;font-size:15px;font-weight:900;font-family:inherit;cursor:pointer}
 .row .btn-undo{background:transparent;border:1px solid rgba(238,136,136,.4);color:#e69a9a;border-radius:10px;padding:11px 16px;font-size:13px;font-family:inherit;cursor:pointer}
+.row .btn-edit{background:transparent;border:1px solid rgba(196,146,42,.4);color:var(--gold-lt);border-radius:10px;padding:11px 14px;font-size:13px;font-family:inherit;cursor:pointer;margin-right:8px}
+.row.editing{background:rgba(196,146,42,.09);border-color:rgba(196,146,42,.4);flex-wrap:wrap}
+.row .edit-fields{flex:1;display:flex;gap:10px;flex-wrap:wrap;min-width:0}
+.row .edit-fields label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
+.row .edit-fields input{background:rgba(255,255,255,.08);border:1px solid rgba(196,146,42,.35);border-radius:8px;padding:9px 11px;color:var(--cream);font-size:15px;font-family:inherit;outline:none;min-width:120px}
+.row .act{display:flex;gap:8px;align-items:center}
 .empty{text-align:center;color:var(--muted);padding:60px;font-size:17px}
 @media(max-width:640px){.row{flex-wrap:wrap}.row .st{min-width:0}.row .nm{min-width:120px}}
 </style>
@@ -75,7 +81,7 @@ function gci(t){ return t?new Date(t).toLocaleString('zh-TW',{hour12:false,hour:
 async function rpc(fn,b){ const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:'POST',headers:H(),body:JSON.stringify(b)}); if(!r.ok)throw new Error('HTTP '+r.status); return r.json(); }
 async function load(){
   try{
-    const r=await fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,category,seat,plate,checked_in,checked_in_at&order=category.asc,sort.asc,name.asc`,{headers:H()});
+    const r=await fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,category,seat,plate,note,checked_in,checked_in_at&order=category.asc,sort.asc,name.asc`,{headers:H()});
     guests=r.ok?await r.json():[];
   }catch(e){ document.getElementById('list').innerHTML='<div class="empty">載入失敗，請重新整理。</div>'; return; }
   renderCatChips(); render();
@@ -108,18 +114,48 @@ function render(){
   el.innerHTML=order.filter(k=>groups[k]).map(k=>`<div class="grp"><div class="grp-h">${esc(k)}（${groups[k].filter(x=>x.checked_in).length}/${groups[k].length}）</div>`+
     groups[k].map(g=>rowHtml(g)).join('')+`</div>`).join('');
 }
+let editId=null;
 function rowHtml(g){
+  if(editId===g.id) return editRowHtml(g);
   const meta=[]; if(clean(g.org))meta.push(esc(clean(g.org)));
-  if(clean(g.seat))meta.push('座位 <b>'+esc(clean(g.seat))+'</b>');
+  if(clean(g.seat))meta.push('桌號 <b>'+esc(clean(g.seat))+'</b>');
   if(clean(g.plate))meta.push('🚗 '+esc(clean(g.plate)));
+  if(clean(g.note))meta.push('📝 '+esc(clean(g.note)));
   return `<div class="row ${g.checked_in?'done':''}">
     <div class="nm">${esc(g.name)}</div>
-    <div class="meta">${meta.join('　')}</div>
+    <div class="meta">${meta.join('　')||'<span style="opacity:.4">—</span>'}</div>
     <div class="st">${g.checked_in?`<span class="done-t">✓ 已報到 ${gci(g.checked_in_at)}</span>`:'<span class="no-t">未報到</span>'}</div>
-    <div class="act">${g.checked_in
-      ? `<button class="btn-undo" onclick="undo('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')">撤銷</button>`
-      : `<button class="btn-ci" onclick="ci('${g.id}')">報到</button>`}</div>
+    <div class="act">
+      <button class="btn-edit" onclick="editRow('${g.id}')">✎ 資料</button>
+      ${g.checked_in
+        ? `<button class="btn-undo" onclick="undo('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')">撤銷</button>`
+        : `<button class="btn-ci" onclick="ci('${g.id}')">報到</button>`}</div>
   </div>`;
+}
+function editRowHtml(g){
+  const v=s=>esc(clean(s));
+  return `<div class="row editing">
+    <div class="nm">${esc(g.name)}</div>
+    <div class="edit-fields">
+      <label>車號<input id="e-plate" value="${v(g.plate)}" placeholder="例 ABC-1234"></label>
+      <label>桌號<input id="e-seat" value="${v(g.seat)}" placeholder="例 A桌12"></label>
+      <label>接送備註<input id="e-note" value="${v(g.note)}" placeholder="接送/備註"></label>
+    </div>
+    <div class="act">
+      <button class="btn-ci" onclick="saveInfo('${g.id}')">儲存</button>
+      <button class="btn-undo" onclick="editId=null;render()">取消</button>
+    </div>
+  </div>`;
+}
+function editRow(id){ editId=id; render(); setTimeout(()=>{const el=document.getElementById('e-plate');if(el)el.focus();},50); }
+async function saveInfo(id){
+  const g=guests.find(x=>x.id===id); if(!g) return;
+  const plate=document.getElementById('e-plate').value.trim();
+  const seat=document.getElementById('e-seat').value.trim();
+  const note=document.getElementById('e-note').value.trim();
+  try{ const res=await rpc('guest_update_info',{p_guest_id:id,p_plate:plate,p_seat:seat,p_note:note});
+    if(res.ok){ g.plate=plate; g.seat=seat; g.note=note; editId=null; render(); }
+    else alert('儲存失敗：'+(res.error||'')); }catch(e){ alert('儲存失敗：'+e.message); }
 }
 async function ci(id){
   const g=guests.find(x=>x.id===id); if(!g||g.checked_in) return;
