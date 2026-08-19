@@ -171,7 +171,7 @@ export const CONTACT_FLEX = {
         spacing: 'xs',
         contents: [
           { type: 'text', text: 'Email', color: C.gray, size: 'xs' },
-          { type: 'text', text: 'tada201107@gmail.com', color: C.ink, size: 'sm', weight: 'bold' },
+          { type: 'text', text: 'service@tada-ai.org.tw', color: C.ink, size: 'sm', weight: 'bold' },
         ],
       },
     ],
@@ -194,7 +194,7 @@ export const CONTACT_FLEX = {
         type: 'button',
         style: 'secondary',
         height: 'sm',
-        action: { type: 'uri', label: '📧 寄送 Email', uri: 'mailto:tada201107@gmail.com' },
+        action: { type: 'uri', label: '📧 寄送 Email', uri: 'mailto:service@tada-ai.org.tw' },
       },
     ],
   },

@@ -175,7 +175,7 @@ export const WIKI: WikiEntry[] = [
     answer:
       '協會秘書處聯絡方式 📮\n' +
       '📞 0988-558246（雅琳、馨元）\n' +
-      '📧 tada201107@gmail.com\n' +
+      '📧 service@tada-ai.org.tw\n' +
       '有任何我回答不了的問題，也歡迎直接聯繫他們～',
     keywords: ['電話', '聯絡', '聯繫', '秘書處', 'email', '信箱', '找誰', '窗口', '客服'],
     suggest: { label: '📞 聯絡方式', text: '聯絡' },
