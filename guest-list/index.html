@@ -66,6 +66,10 @@ header .r-btn{background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,
 .seat-p .sp-o{font-size:12px;color:var(--muted)}
 .seat-p.in .sp-n::before{content:'✓ ';color:var(--ok);font-size:13px}
 .seat-empty{color:var(--muted);font-size:13px;padding:4px 0}
+.unseat-banner{background:rgba(224,119,106,.14);border:1px solid rgba(224,119,106,.45);color:#f0b3a9;border-radius:12px;padding:14px 18px;margin:10px 0 4px;font-size:16px;font-weight:700}
+.unseat-banner b{color:#ffd7cf;font-size:20px}
+.table-card.unseat{border-color:rgba(224,119,106,.5);background:rgba(224,119,106,.06);opacity:1}
+.table-card.unseat .tc-no{color:#f0b3a9}
 @media(max-width:640px){.row{flex-wrap:wrap}.row .st{min-width:0}.row .nm{min-width:120px}}
 </style>
 </head>
@@ -112,7 +116,7 @@ function gci(t){ return t?new Date(t).toLocaleString('zh-TW',{hour12:false,hour:
 async function rpc(fn,b){ const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:'POST',headers:H(),body:JSON.stringify(b)}); if(!r.ok)throw new Error('HTTP '+r.status); return r.json(); }
 async function load(){
   try{
-    const r=await fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,category,seat,plate,note,checked_in,checked_in_at&order=category.asc,sort.asc,name.asc`,{headers:H()});
+    const r=await fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,category,seat,plate,note,party_size,checked_in,checked_in_at&order=category.asc,sort.asc,name.asc`,{headers:H()});
     guests=r.ok?await r.json():[];
   }catch(e){ document.getElementById('list').innerHTML='<div class="empty">載入失敗，請重新整理。</div>'; return; }
   renderCatChips(); render();
@@ -163,21 +167,26 @@ function renderSeating(){
     else if(map[s]) map[s].push(g);
     else (custom[s]=custom[s]||[]).push(g);
   });
-  const tableCard=(name,arr)=>{
-    const done=arr.filter(x=>x.checked_in).length;
-    const body=arr.length?arr.map(g=>`<div class="seat-p ${g.checked_in?'in':''}"><span class="sp-n">${esc(g.name)}</span><span class="sp-o">${esc(clean(g.org))}</span></div>`).join('')
+  const psum=arr=>arr.reduce((a,g)=>a+(Number(g.party_size)||1),0);
+  const tableCard=(name,arr,cls)=>{
+    const done=arr.filter(x=>x.checked_in).length; const seats=psum(arr);
+    const body=arr.length?arr.map(g=>{ const pn=Number(g.party_size)||1;
+      return `<div class="seat-p ${g.checked_in?'in':''}"><span class="sp-n">${esc(g.name)}${pn>1?' <b style="color:#e0b458">×'+pn+'</b>':''}</span><span class="sp-o">${esc(clean(g.org))}</span></div>`;}).join('')
       :'<div class="seat-empty">（尚無安排）</div>';
-    return `<div class="table-card ${arr.length?'':'vacant'}"><div class="tc-h"><span class="tc-no">${esc(name)}</span><span class="tc-cnt">${arr.length?`${arr.length} 人 · 報到 ${done}`:'空桌'}</span></div>${body}</div>`;
+    return `<div class="table-card ${cls||''} ${arr.length?'':'vacant'}"><div class="tc-h"><span class="tc-no">${esc(name)}</span><span class="tc-cnt">${arr.length?`${seats} 位 · 報到 ${done}`:'空桌'}</span></div>${body}</div>`;
   };
+  const noneSeats=psum(none);
+  const banner=none.length?`<div class="unseat-banner">⚠️ 尚有 <b>${none.length}</b> 組貴賓（${noneSeats} 位）未分桌，請儘速安排 →</div>`:'';
   let html=order.map(s=>tableCard(s,map[s])).join('');
   html+=Object.keys(custom).map(s=>tableCard(s+'（自訂）',custom[s])).join('');
-  html+=tableCard('未分桌',none);
-  document.getElementById('list').innerHTML=`<div class="seating">${html}</div>`;
+  html+=tableCard('未分桌',none,none.length?'unseat':'');
+  document.getElementById('list').innerHTML=banner+`<div class="seating">${html}</div>`;
 }
 let editId=null;
 function rowHtml(g){
   if(editId===g.id) return editRowHtml(g);
   const meta=[]; if(clean(g.org))meta.push(esc(clean(g.org)));
+  const pn=Number(g.party_size)||1; if(pn>1)meta.push('<b style="color:#e0b458">👥 '+pn+' 位</b>');
   if(clean(g.seat))meta.push('桌號 <b>'+esc(clean(g.seat))+'</b>');
   if(clean(g.plate))meta.push('🚗 '+esc(clean(g.plate)));
   if(clean(g.note))meta.push('📝 '+esc(clean(g.note)));
@@ -199,6 +208,7 @@ function editRowHtml(g){
     <div class="edit-fields">
       <label>車號<input id="e-plate" value="${v(g.plate)}" placeholder="例 ABC-1234"></label>
       <label>桌號<select id="e-seat">${seatOptions(g.seat)}</select></label>
+      <label>出席人數<input id="e-party" type="number" min="1" max="20" value="${Number(g.party_size)||1}" style="min-width:70px"></label>
       <label>接送備註<input id="e-note" value="${v(g.note)}" placeholder="接送/備註"></label>
     </div>
     <div class="act">
@@ -213,8 +223,9 @@ async function saveInfo(id){
   const plate=document.getElementById('e-plate').value.trim();
   const seat=document.getElementById('e-seat').value.trim();
   const note=document.getElementById('e-note').value.trim();
-  try{ const res=await rpc('guest_update_info',{p_guest_id:id,p_plate:plate,p_seat:seat,p_note:note});
-    if(res.ok){ g.plate=plate; g.seat=seat; g.note=note; editId=null; render(); }
+  const party=Math.max(1,parseInt(document.getElementById('e-party').value,10)||1);
+  try{ const res=await rpc('guest_update_info',{p_guest_id:id,p_plate:plate,p_seat:seat,p_note:note,p_party:party});
+    if(res.ok){ g.plate=plate; g.seat=seat; g.note=note; g.party_size=party; editId=null; render(); }
     else alert('儲存失敗：'+(res.error||'')); }catch(e){ alert('儲存失敗：'+e.message); }
 }
 async function ci(id){
