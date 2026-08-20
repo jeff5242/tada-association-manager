@@ -57,6 +57,22 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
 .bind-btn{width:100%;padding:14px;font-family:inherit;font-size:16px;font-weight:700;background:var(--gold);color:#1a1a14;border:none;border-radius:9px;cursor:pointer;letter-spacing:0.08em;}
 .bind-btn:disabled{opacity:.5;}
 .bind-err{background:rgba(192,57,43,0.2);border:1px solid rgba(192,57,43,0.5);color:#ffb3aa;font-size:12px;padding:10px;border-radius:8px;margin-bottom:12px;line-height:1.6;display:none;}
+/* 手機橫放（或矮視窗）：卡片改左右兩欄，QR 完整顯示在右側，報到時不必捲動 */
+@media (orientation: landscape) and (max-height: 560px){
+  body{padding:10px;justify-content:flex-start;}
+  #card{max-width:760px;}
+  #card .card-inner{display:grid;grid-template-columns:1fr auto;column-gap:22px;align-items:center;padding:14px 20px 16px;}
+  #card .brand,#card .label,#card .name,#card .status-line{grid-column:1;}
+  #card .brand{margin-bottom:8px;}
+  #card .brand-logo-img{max-width:160px;}
+  #card .name{font-size:22px;}
+  #card .status-line{margin-bottom:0;}
+  #card .qr-wrap{grid-column:2;grid-row:1 / span 4;padding:10px;}
+  #card #qrcode{width:min(210px,62vh);height:min(210px,62vh);}
+  #card #qrcode img{width:100% !important;height:100% !important;}
+  #card .qr-hint{display:none;}
+  #card .checked,#card .foot{grid-column:1 / -1;margin-top:8px;}
+}
 </style>
 </head>
 <body>
@@ -182,6 +198,11 @@ function renderCard(m){
   document.getElementById('bind-card').style.display='none';
   document.getElementById('card').style.display='block';
   boundMember = m;
+  // QR 若被擠出可視範圍（小螢幕/橫放），自動捲到畫面中央，避免報到時掃不到
+  setTimeout(()=>{
+    const q=document.querySelector('#card .qr-wrap');
+    if(q){ const r=q.getBoundingClientRect(); if(r.bottom>window.innerHeight||r.top<0) q.scrollIntoView({block:'center',behavior:'smooth'}); }
+  },350);
   setupProxy(m);
   setupReps(m);
 }

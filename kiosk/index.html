@@ -65,8 +65,12 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
 .oa-qr{width:240px;height:240px;background:#fff;border-radius:16px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .oa-qr img,.oa-qr canvas{width:212px!important;height:212px!important;}
 .oa-qr .ph{color:#999;font-size:14px;text-align:center;padding:10px;font-family:'Noto Sans TC';}
-#v-idle .scan-ic{font-size:150px;line-height:1;margin:6px 0 6px;animation:pulse 1.8s ease-in-out infinite;}
+/* 掃描圖示：內嵌 SVG（樹莓派 Chromium 無彩色 emoji 字型，📷 會顯示不出來） */
+#v-idle .scan-ic{width:150px;margin:6px auto;animation:pulse 1.8s ease-in-out infinite;}
+#v-idle .scan-ic svg{display:block;width:100%;height:auto;}
+#v-idle .scan-line{animation:scanline 2.4s ease-in-out infinite;}
 @keyframes pulse{0%,100%{transform:scale(1);opacity:.9;}50%{transform:scale(1.08);opacity:1;}}
+@keyframes scanline{0%,100%{transform:translateY(16px);opacity:.25;}50%{transform:translateY(78px);opacity:1;}}
 .idle-p{font-size:19px;color:var(--green-light);line-height:1.8;margin-top:22px;}
 .prog-box{margin-top:20px;padding:14px 34px;border:2px solid rgba(212,168,83,.35);border-radius:14px;text-align:center;}
 .prog-box b{display:block;font-family:'Noto Serif TC',serif;font-size:46px;line-height:1;color:var(--gold-light);}
@@ -169,7 +173,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
   <div class="main">
     <div class="toast" id="toast"></div>
 
-    <!-- 待機：① 加入 LINE　② 出示會員條碼 -->
+    <!-- 待機：① 加入 LINE　② 出示會員證報到碼 -->
     <div class="view on" id="v-idle">
       <div class="idle-grid">
         <div class="idle-col">
@@ -185,9 +189,36 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
         <div class="idle-div"></div>
         <div class="idle-col">
           <div class="step">STEP 2</div>
-          <div class="idle-h">出示會員條碼報到</div>
-          <div class="scan-ic">📷</div>
-          <div class="idle-p">將會員條碼對準掃描器<br>系統會顯示姓名並列印選票</div>
+          <div class="idle-h">出示會員證報到碼</div>
+          <div class="scan-ic" aria-hidden="true">
+            <svg viewBox="0 0 100 100">
+              <!-- 取景框四角 -->
+              <g fill="none" stroke="#d4a853" stroke-width="6" stroke-linecap="round">
+                <path d="M8 28 V15 a7 7 0 0 1 7-7 H28"/>
+                <path d="M72 8 H85 a7 7 0 0 1 7 7 V28"/>
+                <path d="M92 72 V85 a7 7 0 0 1 -7 7 H72"/>
+                <path d="M28 92 H15 a7 7 0 0 1 -7 -7 V72"/>
+              </g>
+              <!-- QR 定位方塊 -->
+              <g fill="none" stroke="#d4a853" stroke-width="5">
+                <rect x="26" y="26" width="18" height="18" rx="3"/>
+                <rect x="56" y="26" width="18" height="18" rx="3"/>
+                <rect x="26" y="56" width="18" height="18" rx="3"/>
+              </g>
+              <g fill="#d4a853">
+                <rect x="32.5" y="32.5" width="5" height="5"/>
+                <rect x="62.5" y="32.5" width="5" height="5"/>
+                <rect x="32.5" y="62.5" width="5" height="5"/>
+                <rect x="56" y="56" width="7" height="7"/>
+                <rect x="67" y="67" width="7" height="7"/>
+                <rect x="58" y="69" width="5" height="5"/>
+                <rect x="69" y="58" width="5" height="5"/>
+              </g>
+              <!-- 掃描線（上下呼吸掃動） -->
+              <rect class="scan-line" x="14" y="0" width="72" height="3.5" rx="1.75" fill="#f5ecd4"/>
+            </svg>
+          </div>
+          <div class="idle-p">打開 LINE 電子會員證，將報到碼對準掃描器<br>系統會顯示姓名並列印選票</div>
           <button class="kbd-btn" onclick="openKeypad()">⌨ 手動輸入會員編號</button>
         </div>
       </div>
@@ -428,7 +459,7 @@ function printReceipt(res){
       `<div class="rname">${esc(nameDisp)}</div>`+
       `<div class="rno">會員編號 ${esc(res.member_no)}</div>`+
       `<div class="rcands">${candsHTML}</div>`+
-      `<div class="rtip">請以手機掃描上方 QR Code 進入投票。<br>本票為匿名選票，恕不重發，請妥善保管。</div>`;
+      `<div class="rtip">請用您的 LINE 掃描上方 QR Code 進入投票（需本人 LINE 驗證）。<br>本票為匿名選票，恕不重發，請妥善保管。</div>`;
     slips.appendChild(div);
     new QRCode(div.querySelector('.rqr'),{text:url,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
   });
@@ -438,7 +469,7 @@ function printReceipt(res){
   let headline, tip;
   if(attendOnly){ headline=res.name+' 報到完成'; tip='您已將投票委託他人，本次僅完成出席報到'; }
   else if(uuids.length>1){ headline=res.name+' 報到完成 · 共 '+uuids.length+' 張選票'; tip=NO_PRINT?'代理票請由工作人員協助列印':'請至出票口領取 '+uuids.length+' 張選票（含代理票）'; }
-  else { headline=NO_PRINT?(res.name+' 報到完成'):(res.name+' 的選票列印中…'); tip=NO_PRINT?'請用手機掃描上方 QR Code 進入投票':'請至出票口領取您的選票，掃描選票 QR 即可投票'; }
+  else { headline=NO_PRINT?(res.name+' 報到完成'):(res.name+' 的選票列印中…'); tip=NO_PRINT?'請用您的 LINE 掃描上方 QR Code 進入投票（需本人 LINE 驗證）':'請至出票口領取您的選票，用您的 LINE 掃描選票 QR 即可投票'; }
   if(res.attend_rep>0 && !attendOnly) tip += '（另代表 '+res.attend_rep+' 人出席）';
   document.getElementById('pr-name').textContent = headline;
   document.getElementById('pr-tip').textContent = tip;
