@@ -730,6 +730,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <option value="">全部</option>
     </select>
     <label style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:5px;margin-left:12px;cursor:pointer;"><input type="checkbox" id="rsvp-show-hidden" onchange="renderRsvp()"> 顯示已隱藏</label>
+    <button class="btn btn-sm btn-outline" onclick="cleanupRsvp()" style="margin-left:12px;" title="偵測並隱藏測試資料與同名重複回報（軟隱藏、可還原）">🧹 清理測試/重複</button>
     <span style="font-size:11px;color:var(--gray);margin-left:auto;">共 <span id="rsvp-count">0</span> 筆回覆</span>
   </div>
 
@@ -3018,6 +3019,58 @@ async function toggleHideRsvp(uid, hide){
   const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(uid)}`, {
     method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({hidden:hide}) });
   if(res.ok) loadRsvp(); else alert('操作失敗：'+await res.text());
+}
+
+// 一鍵清理：偵測測試資料 + 同名重複回報，軟隱藏（可還原、不刪除）
+const RSVP_TEST_RE = /測試|test/i;
+function rsvpIsTest(r){
+  return RSVP_TEST_RE.test(r.display_name||'') || RSVP_TEST_RE.test(r.org||'');
+}
+function rsvpNormName(s){
+  return (s||'').normalize('NFKC').replace(/\s+/g,'').toLowerCase();
+}
+async function cleanupRsvp(){
+  if(!allRsvp.length){ alert('尚無資料，請先按「重新載入」'); return; }
+  const active = allRsvp.filter(r => !r.hidden);   // 已隱藏的略過
+  const toHide = new Map();  // uid -> 原因
+
+  // 1) 測試資料
+  active.forEach(r => { if(rsvpIsTest(r)) toHide.set(r.user_id, '測試資料'); });
+
+  // 2) 同名重複（保留 created_at 最早的一筆，其餘隱藏）
+  const groups = {};
+  active.forEach(r => {
+    const k = rsvpNormName(r.display_name);
+    if(!k) return;
+    (groups[k] = groups[k] || []).push(r);
+  });
+  Object.values(groups).forEach(list => {
+    if(list.length < 2) return;
+    const sorted = [...list].sort((a,b) => new Date(a.created_at||0) - new Date(b.created_at||0));
+    sorted.slice(1).forEach(r => { if(!toHide.has(r.user_id)) toHide.set(r.user_id, '重複回報（保留最早一筆）'); });
+  });
+
+  if(!toHide.size){ alert('✓ 沒有偵測到測試資料或同名重複，無需清理'); return; }
+
+  const preview = [...toHide.entries()].map(([uid, reason]) => {
+    const r = allRsvp.find(x => x.user_id === uid);
+    return `・${r?.display_name || uid}　—　${reason}`;
+  }).join('\n');
+  if(!confirm(`將隱藏以下 ${toHide.size} 筆（軟隱藏、可還原、不刪除）：\n\n${preview}`)) return;
+
+  const status = document.getElementById('rsvp-sb-status');
+  status.style.color = ''; status.textContent = '清理中…';
+  let ok = 0, fail = 0;
+  for(const uid of toHide.keys()){
+    try{
+      const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(uid)}`, {
+        method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({hidden:true}) });
+      res.ok ? ok++ : fail++;
+    }catch(e){ fail++; }
+  }
+  await loadRsvp();
+  status.style.color = fail ? '#ef5350' : '#66bb6a';
+  status.textContent = `✓ 已隱藏 ${ok} 筆${fail ? `，失敗 ${fail} 筆` : ''}（可勾「顯示已隱藏」還原）`;
 }
 
 function exportRsvpCSV() {
