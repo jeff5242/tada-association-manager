@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>理監事選舉投票｜TADA</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="../assets/liff-common.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
@@ -87,6 +88,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--i
 <script>
 const params = new URLSearchParams(location.search);
 const TOKEN = params.get('t');
+let USER_ID = null;   // 持有人驗證：選票綁定領票本人的 LINE 帳號
 let election = null;
 const pick = { director: 0, supervisor: 0 };
 const chosen = { director: new Set(), supervisor: new Set() };
@@ -109,15 +111,32 @@ async function rpc(fn, body){
   return res.json();
 }
 
+function lineRequiredPage(){
+  statePage('📱','請以 LINE 開啟投票連結',
+    '為確認選票由領票本人使用，投票需以您的 LINE 帳號驗證。<br>請用 LINE 的行動條碼掃描器掃選票 QR Code，<br>或把連結貼進 LINE 聊天室後點開。');
+}
+
 async function init(){
   if(!TOKEN){ statePage('📷','請掃描領票單上的 QR Code','由現場報到處領取選票後，以手機掃描 QR Code 即可進入投票。'); return; }
+  // 持有人驗證：一律需要 LINE 身分（?u= 僅供本機測試）
+  const testU = params.get('u');
+  if(testU){ USER_ID = testU; }
+  else{
+    try{
+      await liff.init({ liffId: window.TADA_LIFF_IDS.vote });
+      if(!liff.isLoggedIn()){ liff.login({ redirectUri: location.href }); return; }
+      USER_ID = (await liff.getProfile()).userId;
+    }catch(e){ lineRequiredPage(); return; }
+  }
   try{
-    const r = await rpc('vote_ballot', { p_uuid: TOKEN });
+    const r = await rpc('vote_ballot', { p_uuid: TOKEN, p_user_id: USER_ID });
     document.getElementById('loading').style.display='none';
     if(!r.ok){
       if(r.error==='used'){ statePage('✅','這張選票已完成投票','一張選票僅能使用一次，感謝您的參與。'); }
       else if(r.error==='invalid'){ statePage('⚠️','選票無效','查無此選票，請洽現場工作人員確認。'); }
       else if(r.error==='not_open'){ statePage('🕐','投票尚未開放或已截止','請依現場宣布時間投票。'); }
+      else if(r.error==='not_owner'){ statePage('🚫','這張選票不屬於此 LINE 帳號','選票已綁定領票本人的 LINE 帳號，他人無法代為投票。<br>若您是領票本人，請改用綁定電子會員證的那個 LINE 帳號開啟；有疑問請洽現場工作人員。'); }
+      else if(r.error==='need_line'){ lineRequiredPage(); }
       else { statePage('⚠️','無法載入選票', r.error); }
       return;
     }
@@ -201,12 +220,15 @@ async function castBallot(){
       p_directors: [...chosen.director],
       p_supervisors: [...chosen.supervisor],
       p_executives: [],
+      p_user_id: USER_ID,
     });
     if(r.ok){
       statePage('🎉','投票完成，感謝您！', `理事 ${dn} 位、監事 ${sn} 位已送出。<br>開票結果將於現場宣布。`);
     } else if(r.error==='already_voted'){ statePage('✅','這張選票已完成投票','一張選票僅能使用一次。');
     } else if(r.error==='not_open'){ showErr('ballot-err','投票已截止。'); btn.disabled=false; btn.textContent='送出選票';
     } else if(r.error==='invalid_token'){ statePage('⚠️','選票無效','請洽現場工作人員。');
+    } else if(r.error==='not_owner'){ statePage('🚫','這張選票不屬於此 LINE 帳號','選票已綁定領票本人的 LINE 帳號，他人無法代為投票。');
+    } else if(r.error==='need_line'){ lineRequiredPage();
     } else { showErr('ballot-err','送出失敗（'+r.error+'），請洽工作人員。'); btn.disabled=false; btn.textContent='送出選票'; }
   }catch(e){ showErr('ballot-err','送出失敗：'+e.message); btn.disabled=false; btn.textContent='送出選票'; }
 }
