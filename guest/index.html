@@ -152,7 +152,7 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
   </div>
   <div class="prog"><div class="n"><b id="p-checked">0</b> / <span id="p-total">0</span></div><div class="l">已報到</div></div>
   <button class="add-btn" id="add-btn" onclick="openAddGuest()">＋ 貴賓</button>
-  <button class="fs-btn" id="qr-btn" onclick="showWalkinQR()" title="臨時貴賓掃碼報到">📱</button>
+  <button class="fs-btn" id="qr-btn" onclick="showWalkinQR()" title="掃碼自助報到">📱</button>
   <button class="fs-btn" onclick="openSettings()" title="設定">⚙</button>
   <button class="fs-btn" id="fs-btn" onclick="toggleFS()" title="全螢幕">⛶</button>
 </header>
@@ -185,8 +185,8 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 
 <!-- 臨時貴賓掃碼報到 QR -->
 <div class="overlay" id="qrModal" onclick="closeQR()"><div class="qrcard" onclick="event.stopPropagation()">
-  <div class="qr-h">臨時貴賓 · 掃碼自助報到</div>
-  <div class="qr-sub">不在名單中或臨時蒞臨？<br>請用手機掃描下方 QR Code，填寫姓名、公司、車號即可完成報到。</div>
+  <div class="qr-h">掃碼自助報到</div>
+  <div class="qr-sub">貴賓可用手機掃描下方 QR Code，<br>填寫姓名、公司、車號即可完成報到。</div>
   <div id="qrbox"></div>
   <button class="qr-close" onclick="closeQR()">關閉</button>
 </div></div>
@@ -197,7 +197,7 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
   <div class="add-sub">控制這台裝置上「貴賓報到頁」要顯示哪些按鈕。給貴賓自助時可關閉工作人員按鈕。</div>
   <label class="set-row"><span>顯示「貴賓報到」按鈕<small>關閉＝純展示，貴賓無法自己點報到</small></span><input type="checkbox" id="set-checkin"></label>
   <label class="set-row"><span>顯示「＋ 貴賓」按鈕<small>工作人員現場新增用</small></span><input type="checkbox" id="set-add"></label>
-  <label class="set-row"><span>顯示「📱 臨時報到 QR」按鈕<small>臨時貴賓掃碼用</small></span><input type="checkbox" id="set-qr"></label>
+  <label class="set-row"><span>顯示「📱 掃碼報到 QR」按鈕<small>貴賓手機掃碼自助報到</small></span><input type="checkbox" id="set-qr"></label>
   <div class="add-btns"><button class="add-ok" onclick="saveSettings()">✓ 套用</button></div>
 </div></div>
 
