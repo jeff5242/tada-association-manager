@@ -1956,7 +1956,7 @@ async function renderDash(){
     const show = pays.slice(0,8);
     tb.innerHTML = show.length ? show.map(p=>{
       const dt = p.created_at ? new Date(p.created_at).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '–';
-      return `<tr><td style="color:var(--white);">${escapeHtml(p.display_name||'（未取得）')}</td><td style="font-size:12px;">${PAY_TYPE[p.member_type]||p.member_type||'–'}</td><td style="font-weight:700;color:var(--gold);">$${(p.amount||0).toLocaleString()}</td><td style="font-family:monospace;">${escapeHtml(p.last5||'–')}</td><td>${PAY_STATUS_HTML[p.status]||p.status}</td><td style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td></tr>`;
+      return `<tr><td style="color:var(--white);">${escapeHtml(p.display_name||p.applicant_name||'（未取得）')}</td><td style="font-size:12px;">${PAY_TYPE[p.member_type]||p.member_type||'–'}</td><td style="font-weight:700;color:var(--gold);">$${(p.amount||0).toLocaleString()}</td><td style="font-family:monospace;">${escapeHtml(p.last5||'–')}</td><td>${PAY_STATUS_HTML[p.status]||p.status}</td><td style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td></tr>`;
     }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">目前沒有繳費回報</td></tr>';
   }catch(e){}
 }
@@ -3079,7 +3079,7 @@ function renderPay(){
       ? `<button class="btn btn-sm" style="background:rgba(46,125,50,0.2);color:#66bb6a;border:1px solid rgba(46,125,50,0.3);" onclick="confirmPay('${p.id}')">確認收款</button>`
       : '<span style="font-size:11px;color:var(--gray);">已處理</span>';
     return `<tr>
-      <td data-label="回報者" style="color:var(--white);">${escapeHtml(p.display_name||'（未取得）')}</td>
+      <td data-label="回報者" style="color:var(--white);">${escapeHtml(p.display_name||p.applicant_name||'（未取得）')}</td>
       <td data-label="類別" style="font-size:12px;">${PAY_TYPE[p.member_type]||p.member_type||'–'}</td>
       <td data-label="金額" style="font-weight:700;color:var(--gold);">$${(p.amount||0).toLocaleString()}</td>
       <td data-label="後5碼" style="font-family:monospace;">${escapeHtml(p.last5||'–')}</td>
