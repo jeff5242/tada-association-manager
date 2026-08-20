@@ -737,9 +737,9 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>回覆者</th><th>來源</th><th>出席</th><th>人數</th><th>素食</th><th>同行/備註</th><th>回覆時間</th><th>操作</th>
+        <th>回覆者</th><th>來源</th><th>類別<br><small style="font-weight:400;color:var(--gray);">AI 判斷</small></th><th>出席</th><th>人數</th><th>素食</th><th>同行/備註</th><th>回覆時間</th><th>操作</th>
       </tr></thead>
-      <tbody id="rsvp-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取回覆</td></tr></tbody>
+      <tbody id="rsvp-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取回覆</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -2893,6 +2893,62 @@ async function toggleUserFlag(userId, field, value, el) {
 // ── 出席統計（RSVP）─────────────────────────────────────
 let allRsvp = [];
 let rsvpFilter = 'yes';
+let rsvpMemberIndex = new Map();  // 正規化姓名 -> 顯示名
+let rsvpGuestIndex  = new Map();
+let rsvpIndexReady  = false;
+
+// 名冊比對用：正規化姓名（去空白、全半形統一、小寫）
+function rsvpKey(s){ return (s||'').normalize('NFKC').replace(/\s+/g,'').toLowerCase(); }
+// 從一段字串抓出所有 2 字以上的中文詞（處理 LINE 暱稱如「Rex (CSCP) 王柏崴」）
+function cjkRuns(s){ return (String(s||'').match(/[一-鿿]{2,}/g) || []); }
+// 貴賓名單多為「姓＋職稱＋名」（如「郭場長坤峯」＝郭坤峯），比對前先去職稱
+const RSVP_TITLE_RE = /(副總經理|總經理|攝影總監|副校長|副署長|副司長|副所長|分所長|前院長|董事長|執行長|秘書長|理事長|副總|總監|署長|司長|院長|校長|處長|鄉長|技正|技監|顧問|主任|教授|場長|組長|所長|社長|博士|部長|次長|局長|科長|課長|專員|襄理|協理|副理|技師|主委|監事|理事|秘書|主秘)/g;
+function rsvpDetitle(s){ return String(s||'').replace(RSVP_TITLE_RE,''); }
+
+// 建立會員名冊／貴賓名單姓名索引（含團體代表人）
+async function buildRsvpIndex(){
+  try{
+    const [mRes, gRes] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_members?select=name,contact_name,reps`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_guests?select=name`, { headers: SB_HEADERS }),
+    ]);
+    const members = mRes.ok ? await mRes.json() : [];
+    const guests  = gRes.ok ? await gRes.json() : [];
+    const mi = new Map(), gi = new Map();
+    const add = (map, raw) => { const k = rsvpKey(raw); if(k && k.length >= 2 && !map.has(k)) map.set(k, String(raw).trim()); };
+    members.forEach(m => {
+      add(mi, m.name); add(mi, m.contact_name);
+      let reps = m.reps;
+      if (typeof reps === 'string') { try { reps = JSON.parse(reps); } catch { reps = null; } }
+      if (Array.isArray(reps)) reps.forEach(rp => add(mi, typeof rp === 'string' ? rp : (rp && (rp.name || rp.rep || rp.contact_name))));
+    });
+    guests.forEach(g => {
+      // 一列可能含多人（如「陳丞彥、陳思岑」），逐一拆解
+      String(g.name||'').split(/[、,，]/).forEach(part => {
+        part = part.trim();
+        if(!part) return;
+        add(gi, part);                              // 原始（可能含職稱）
+        add(gi, rsvpDetitle(part));                 // 去職稱：郭場長坤峯 -> 郭坤峯
+        const core = part.split(/\s+/)[0];
+        if(core) add(gi, rsvpDetitle(core));        // 首段再去職稱
+      });
+    });
+    rsvpMemberIndex = mi; rsvpGuestIndex = gi; rsvpIndexReady = true;
+  }catch(e){ console.warn('建立名冊索引失敗', e); rsvpIndexReady = false; }
+}
+
+// 依姓名比對：會員 > 貴賓 > 其他
+function classifyRsvp(r){
+  if(!rsvpIndexReady) return { label:'—', bg:'transparent', fg:'var(--gray)', title:'名冊尚未載入' };
+  const name = r.display_name || '';
+  const candidates = new Set([ rsvpKey(name), ...cjkRuns(name).map(rsvpKey) ]);
+  const hit = (map) => { for(const k of candidates){ if(k && map.has(k)) return map.get(k); } return null; };
+  const m = hit(rsvpMemberIndex);
+  if(m) return { label:'會員', bg:'rgba(46,125,50,0.2)', fg:'#66bb6a', title:'比對到會員名冊：'+m };
+  const g = hit(rsvpGuestIndex);
+  if(g) return { label:'貴賓', bg:'rgba(41,182,246,0.15)', fg:'#4fc3f7', title:'比對到貴賓名單：'+g };
+  return { label:'其他', bg:'rgba(158,158,158,0.15)', fg:'var(--gray)', title:'名冊中查無此姓名（可能是眷屬、臨時來賓或暱稱）' };
+}
 
 async function loadRsvp() {
   const btn = document.querySelector('[onclick="loadRsvp()"]');
@@ -2900,7 +2956,10 @@ async function loadRsvp() {
   if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
   status.textContent = '';
   try {
-    const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?order=updated_at.desc`, { headers: SB_HEADERS });
+    const [res] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_rsvp?order=updated_at.desc`, { headers: SB_HEADERS }),
+      buildRsvpIndex(),
+    ]);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     allRsvp = await res.json();
     renderRsvp();
@@ -2941,7 +3000,7 @@ function renderRsvp() {
   document.getElementById('rsvp-count').textContent = data.length;
 
   if (!data.length) {
-    document.getElementById('rsvp-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">尚無回覆</td></tr>';
+    document.getElementById('rsvp-tbody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray);padding:30px;">尚無回覆</td></tr>';
     return;
   }
 
@@ -2956,9 +3015,11 @@ function renderRsvp() {
     const orgTitle = [r.org, r.title].filter(Boolean).map(escapeHtml).join('　');
     const sub = [orgTitle, r.mobile ? '📱 ' + escapeHtml(r.mobile) : '']
       .filter(Boolean).map(s => `<div style="font-size:11px;color:var(--gray);font-weight:400;">${s}</div>`).join('');
+    const cat = classifyRsvp(r);
     return `<tr style="${r.hidden?'opacity:.5;':''}">
       <td data-label="回覆者" style="color:var(--white);">${escapeHtml(r.display_name || '（未取得）')}${r.hidden?' <span style="font-size:10px;color:var(--gray);">(已隱藏)</span>':''}${sub}</td>
       <td data-label="來源">${rsvpSource(r)}</td>
+      <td data-label="類別"><span class="status" style="background:${cat.bg};color:${cat.fg};" title="${escapeHtml(cat.title)}">${cat.label}</span></td>
       <td data-label="出席">${att}</td>
       <td data-label="人數" style="font-weight:700;color:var(--gold);">${r.attending ? (r.headcount ?? 0) : '–'}</td>
       <td data-label="素食" style="color:var(--gray);">${r.attending ? (r.vegetarian ?? 0) : '–'}</td>
@@ -2984,6 +3045,7 @@ function rsvpEditRow(r){
       <input id="ed-mobile" class="search-input" style="width:100%;min-width:80px;margin-top:4px;" placeholder="手機" value="${escapeHtml(r.mobile||'')}">
     </td>
     <td>${rsvpSource(r)}</td>
+    <td>${(()=>{const c=classifyRsvp(r);return `<span class="status" style="background:${c.bg};color:${c.fg};">${c.label}</span>`;})()}</td>
     <td><select id="ed-att" class="search-input" style="width:76px;"><option value="1"${r.attending?' selected':''}>出席</option><option value="0"${!r.attending?' selected':''}>不克</option></select></td>
     <td><input id="ed-head" type="number" min="0" class="search-input" style="width:60px;" value="${r.headcount??0}"></td>
     <td><input id="ed-veg" type="number" min="0" class="search-input" style="width:60px;" value="${r.vegetarian??0}"></td>
@@ -3076,9 +3138,9 @@ async function cleanupRsvp(){
 function exportRsvpCSV() {
   const list = allRsvp.filter(r => !r.hidden);
   if (!list.length) { alert('尚無資料可匯出'); return; }
-  const rows = [['姓名','單位','職稱','手機','來源','出席','人數','素食份數','同行眷屬','備註','回覆時間']];
+  const rows = [['姓名','類別(AI判斷)','單位','職稱','手機','來源','出席','人數','素食份數','同行眷屬','備註','回覆時間']];
   list.forEach(r => rows.push([
-    r.display_name || '', r.org || '', r.title || '', r.mobile || '',
+    r.display_name || '', classifyRsvp(r).label, r.org || '', r.title || '', r.mobile || '',
     (r.user_id||'').startsWith('web-') ? '網頁自填' : 'LINE',
     r.attending ? '出席' : '不克出席',
     r.attending ? (r.headcount ?? 0) : 0, r.attending ? (r.vegetarian ?? 0) : 0,
