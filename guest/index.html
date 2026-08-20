@@ -195,6 +195,7 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 <div class="overlay" id="setModal" onclick="closeSettings()"><div class="addcard" onclick="event.stopPropagation()" style="max-width:440px">
   <div class="add-h">前台顯示設定</div>
   <div class="add-sub">控制這台裝置上「貴賓報到頁」要顯示哪些按鈕。給貴賓自助時可關閉工作人員按鈕。</div>
+  <label class="set-row"><span>隱藏「已報到」的貴賓<small>報到完成即從名單消失，只剩未報到者</small></span><input type="checkbox" id="set-hidedone"></label>
   <label class="set-row"><span>顯示「貴賓報到」按鈕<small>關閉＝純展示，貴賓無法自己點報到</small></span><input type="checkbox" id="set-checkin"></label>
   <label class="set-row"><span>顯示「＋ 貴賓」按鈕<small>工作人員現場新增用</small></span><input type="checkbox" id="set-add"></label>
   <label class="set-row"><span>顯示「📱 掃碼報到 QR」按鈕<small>貴賓手機掃碼自助報到</small></span><input type="checkbox" id="set-qr"></label>
@@ -260,8 +261,9 @@ function renderList(){
   let arr=guests.slice();
   if(searchQ){ arr=arr.filter(g=>(g.name||'').includes(searchQ)); }
   else { if(curCat!=='__all__') arr=arr.filter(g=>catFor(g)===curCat); if(curOrg!=='__all__') arr=arr.filter(g=>orgKey(g)===curOrg); }
+  if(GS.hideDone) arr=arr.filter(g=>!g.checked_in);
   const el=document.getElementById('list');
-  if(!arr.length){ el.innerHTML='<div class="empty">此分類目前沒有貴賓，請改選其他單位或搜尋姓名。</div>'; return; }
+  if(!arr.length){ el.innerHTML='<div class="empty">'+(GS.hideDone?'此分類已全部完成報到 ✓':'此分類目前沒有貴賓，請改選其他單位或搜尋姓名。')+'</div>'; return; }
   el.innerHTML=arr.map(g=>g.checked_in
     ? `<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="按錯了？恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`
     : (GS.checkin
@@ -364,7 +366,7 @@ function showWalkinQR(){
 }
 function closeQR(){ document.getElementById('qrModal').classList.remove('show'); }
 // ── 前台顯示設定（記在該裝置）──────────────────────
-let GS={checkin:true,add:true,qr:true};
+let GS={checkin:true,add:true,qr:true,hideDone:false};
 try{ const s=JSON.parse(localStorage.getItem('tadaGuestUI')||'{}'); GS={...GS,...s}; }catch(e){}
 function applySettings(){
   const ab=document.getElementById('add-btn'); if(ab) ab.style.display=GS.add?'':'none';
@@ -372,6 +374,7 @@ function applySettings(){
   if(typeof renderList==='function') renderList();
 }
 function openSettings(){
+  document.getElementById('set-hidedone').checked=GS.hideDone;
   document.getElementById('set-checkin').checked=GS.checkin;
   document.getElementById('set-add').checked=GS.add;
   document.getElementById('set-qr').checked=GS.qr;
@@ -379,7 +382,8 @@ function openSettings(){
 }
 function closeSettings(){ document.getElementById('setModal').classList.remove('show'); }
 function saveSettings(){
-  GS={checkin:document.getElementById('set-checkin').checked,
+  GS={hideDone:document.getElementById('set-hidedone').checked,
+      checkin:document.getElementById('set-checkin').checked,
       add:document.getElementById('set-add').checked,
       qr:document.getElementById('set-qr').checked};
   try{ localStorage.setItem('tadaGuestUI',JSON.stringify(GS)); }catch(e){}
