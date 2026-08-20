@@ -70,6 +70,22 @@ header .r-btn{background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,
 .unseat-banner b{color:#ffd7cf;font-size:20px}
 .table-card.unseat{border-color:rgba(224,119,106,.5);background:rgba(224,119,106,.06);opacity:1}
 .table-card.unseat .tc-no{color:#f0b3a9}
+.cap{font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;margin-left:6px;white-space:nowrap}
+.cap.over{color:#ff6b5a;background:rgba(224,119,106,.18);border:1px solid rgba(255,107,90,.5)}
+.cap.full{color:#e0b458;background:rgba(196,146,42,.16)}
+.cap.free{color:var(--ok);background:rgba(102,187,106,.12)}
+.table-card.over{border-color:rgba(255,107,90,.55)}
+.table-card.over .tc-no{color:#ff8a7a}
+.seat-p{cursor:pointer;border-radius:8px;padding:6px 8px!important;margin:2px -8px;transition:background .1s}
+.seat-p:active{background:rgba(196,146,42,.12)}
+.seat-p.sel{background:var(--gold);}
+.seat-p.sel .sp-n,.seat-p.sel .sp-o{color:#1a1a12!important}
+.table-card.droptarget{border-color:var(--gold-lt);border-style:dashed;background:rgba(196,146,42,.06);cursor:copy}
+.table-card.droptarget .tc-h::after{content:' ← 移到這桌';font-size:11px;color:var(--gold-lt);font-weight:400}
+.movebar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120%);background:var(--forest,#1a3320);background:#22402b;border:1px solid var(--gold);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:16px;box-shadow:0 12px 40px rgba(0,0,0,.5);z-index:60;transition:transform .2s;font-size:16px}
+.movebar.show{transform:translateX(-50%) translateY(0)}
+.movebar b{color:var(--gold-lt)}
+.mb-cancel{background:transparent;border:1px solid rgba(245,236,212,.35);color:var(--cream);border-radius:9px;padding:9px 16px;font-size:14px;font-family:inherit;cursor:pointer}
 @media(max-width:640px){.row{flex-wrap:wrap}.row .st{min-width:0}.row .nm{min-width:120px}}
 </style>
 </head>
@@ -93,6 +109,7 @@ header .r-btn{background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,
   <div class="search">🔍 <input id="q" placeholder="搜尋姓名/單位" oninput="render()"></div>
 </div>
 <div class="list" id="list"><div class="empty">載入中…</div></div>
+<div class="movebar" id="movebar"><span id="mb-txt"></span><button class="mb-cancel" onclick="clearSel()">取消</button></div>
 
 <script>
 const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
@@ -168,19 +185,49 @@ function renderSeating(){
     else (custom[s]=custom[s]||[]).push(g);
   });
   const psum=arr=>arr.reduce((a,g)=>a+(Number(g.party_size)||1),0);
-  const tableCard=(name,arr,cls)=>{
+  const CAP=10;
+  const sel=selId!==null;
+  const tableCard=(name,arr,dropKey,cls)=>{
     const done=arr.filter(x=>x.checked_in).length; const seats=psum(arr);
+    // 容量狀態（未分桌不算容量）
+    let capHtml='';
+    if(dropKey!=='__none__'){
+      if(seats>CAP) capHtml=`<span class="cap over">超桌 +${seats-CAP}</span>`;
+      else if(seats===CAP) capHtml=`<span class="cap full">滿桌</span>`;
+      else if(seats>0) capHtml=`<span class="cap free">空 ${CAP-seats}</span>`;
+    }
     const body=arr.length?arr.map(g=>{ const pn=Number(g.party_size)||1;
-      return `<div class="seat-p ${g.checked_in?'in':''}"><span class="sp-n">${esc(g.name)}${pn>1?' <b style="color:#e0b458">×'+pn+'</b>':''}</span><span class="sp-o">${esc(clean(g.org))}</span></div>`;}).join('')
+      return `<div class="seat-p ${g.checked_in?'in':''} ${selId===g.id?'sel':''}" onclick="pickSeatGuest(event,'${g.id}')"><span class="sp-n">${esc(g.name)}${pn>1?' <b style="color:#e0b458">×'+pn+'</b>':''}</span><span class="sp-o">${esc(clean(g.org))}</span></div>`;}).join('')
       :'<div class="seat-empty">（尚無安排）</div>';
-    return `<div class="table-card ${cls||''} ${arr.length?'':'vacant'}"><div class="tc-h"><span class="tc-no">${esc(name)}</span><span class="tc-cnt">${arr.length?`${seats} 位 · 報到 ${done}`:'空桌'}</span></div>${body}</div>`;
+    const drop=dropKey!=null?`onclick="dropTo('${dropKey==='__none__'?'':dropKey}')"`:'';
+    return `<div class="table-card ${cls||''} ${arr.length?'':'vacant'} ${seats>CAP?'over':''} ${sel&&dropKey!=null?'droptarget':''}" ${drop}>
+      <div class="tc-h"><span class="tc-no">${esc(name)}</span><span class="tc-cnt">${arr.length?`${seats} 位 · 報到 ${done}`:'空桌'} ${capHtml}</span></div>${body}</div>`;
   };
   const noneSeats=psum(none);
-  const banner=none.length?`<div class="unseat-banner">⚠️ 尚有 <b>${none.length}</b> 組貴賓（${noneSeats} 位）未分桌，請儘速安排 →</div>`:'';
-  let html=order.map(s=>tableCard(s,map[s])).join('');
-  html+=Object.keys(custom).map(s=>tableCard(s+'（自訂）',custom[s])).join('');
-  html+=tableCard('未分桌',none,none.length?'unseat':'');
+  const banner=none.length?`<div class="unseat-banner">⚠️ 尚有 <b>${none.length}</b> 組貴賓（${noneSeats} 位）未分桌，請點名字再點桌次安排 →</div>`:'';
+  let html=order.map(s=>tableCard(s,map[s],s)).join('');
+  html+=Object.keys(custom).map(s=>tableCard(s+'（自訂）',custom[s],s)).join('');
+  html+=tableCard('未分桌',none,'__none__',none.length?'unseat':'');
   document.getElementById('list').innerHTML=banner+`<div class="seating">${html}</div>`;
+  updateMovebar();
+}
+let selId=null;
+function pickSeatGuest(e,id){ e.stopPropagation(); selId=(selId===id?null:id); render(); }
+function clearSel(){ selId=null; render(); }
+function updateMovebar(){
+  const bar=document.getElementById('movebar');
+  if(selId==null){ bar.classList.remove('show'); return; }
+  const g=guests.find(x=>x.id===selId);
+  document.getElementById('mb-txt').innerHTML=`移動 <b>${esc(g?g.name:'')}</b> → 請點選目標桌次`;
+  bar.classList.add('show');
+}
+async function dropTo(seat){
+  if(selId==null) return;
+  const g=guests.find(x=>x.id===selId); if(!g) return;
+  if(clean(g.seat)===clean(seat)){ selId=null; render(); return; }
+  try{ const res=await rpc('guest_update_info',{p_guest_id:g.id,p_plate:g.plate||'',p_seat:seat,p_note:g.note||'',p_party:Number(g.party_size)||1});
+    if(res.ok){ g.seat=seat||null; selId=null; render(); }
+    else alert('移動失敗：'+(res.error||'')); }catch(e){ alert('移動失敗：'+e.message); }
 }
 let editId=null;
 function rowHtml(g){
