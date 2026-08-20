@@ -154,6 +154,25 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
   <div id="reps-done" class="px-done" style="display:none;"></div>
 </div>
 
+<!-- 更新聯絡資料 -->
+<div class="proxy" id="contact-sec">
+  <h3>更新聯絡資料</h3>
+  <div class="px-sub" id="contact-sub">如公司名稱、電話或 Email 有異動，請在此更新，方便協會與您聯繫。</div>
+  <label class="px-lb">公司／單位名稱</label>
+  <input type="text" id="ct-company" placeholder="公司或單位名稱">
+  <label class="px-lb">職稱</label>
+  <input type="text" id="ct-title" placeholder="例：總經理／執行長">
+  <label class="px-lb">手機</label>
+  <input type="tel" id="ct-mobile" placeholder="09XX-XXX-XXX">
+  <label class="px-lb">Email</label>
+  <input type="email" id="ct-email" placeholder="您的電子信箱">
+  <label class="px-lb">通訊地址</label>
+  <input type="text" id="ct-addr" placeholder="收件地址">
+  <button class="px-btn" onclick="saveContact()">💾 儲存聯絡資料</button>
+  <div class="px-err" id="ct-err"></div>
+  <div id="ct-done" class="px-done" style="display:none;"></div>
+</div>
+
 <script>
 let profile = null, election = null;
 let boundMember = null, pxElection = null;
@@ -205,6 +224,7 @@ function renderCard(m){
   },350);
   setupProxy(m);
   setupReps(m);
+  setupContact(m);
 }
 
 // ── 編輯代表人（僅團體會員）─────────────────────────
@@ -256,6 +276,29 @@ function togOpt(k){
   el.textContent = (pxOpts[k]?'☑':'☐') + (k==='attend'?' 委託出席':' 委託投票');
 }
 
+// ── 更新聯絡資料 ─────────────────────────────────
+async function setupContact(m){
+  try{
+    const r = await rpc('member_contact_get',{p_user_id:profile.userId});
+    if(!r || !r.ok) return;
+    const v=(id,val)=>{ const el=document.getElementById(id); if(el) el.value=val||''; };
+    v('ct-company',r.company); v('ct-title',r.title); v('ct-mobile',r.mobile); v('ct-email',r.email); v('ct-addr',r.addr_mail);
+    if(r.is_group) document.getElementById('contact-sub').innerHTML='更新貴單位的公司名稱與聯絡方式。<br><span style="color:var(--gold-pale)">個人代表資料請用上方「編輯代表人」。</span>';
+    document.getElementById('contact-sec').style.display='block';
+  }catch(e){}
+}
+async function saveContact(){
+  const g=id=>document.getElementById(id).value.trim();
+  const err=document.getElementById('ct-err'); const done=document.getElementById('ct-done');
+  err.style.display='none'; done.style.display='none';
+  const email=g('ct-email');
+  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent='Email 格式有誤'; err.style.display='block'; return; }
+  try{
+    const r=await rpc('member_contact_save',{p_user_id:profile.userId,p_company:g('ct-company'),p_title:g('ct-title'),p_mobile:g('ct-mobile'),p_email:email,p_addr:g('ct-addr')});
+    if(r && r.ok){ done.textContent='✓ 聯絡資料已更新，感謝！'; done.style.display='block'; }
+    else { const M={not_bound:'請先綁定會員身分。'}; err.textContent='更新失敗：'+(M[r&&r.error]||(r&&r.error)||'未知錯誤'); err.style.display='block'; }
+  }catch(e){ err.textContent='更新失敗：'+e.message; err.style.display='block'; }
+}
 async function setupProxy(m){
   try{
     const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election?status=in.(checkin,open)&order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
