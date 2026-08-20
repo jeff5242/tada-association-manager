@@ -156,6 +156,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
 
 <!-- 更新聯絡資料 -->
 <div class="proxy" id="contact-sec">
+  <div id="pay-info" style="display:none;background:rgba(255,255,255,0.04);border:1px solid rgba(184,145,58,0.25);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;line-height:1.9;"></div>
   <h3>更新聯絡資料</h3>
   <div class="px-sub" id="contact-sub">如公司名稱、電話或 Email 有異動，請在此更新，方便協會與您聯繫。</div>
   <label class="px-lb">公司／單位名稱</label>
@@ -284,8 +285,19 @@ async function setupContact(m){
     const v=(id,val)=>{ const el=document.getElementById(id); if(el) el.value=val||''; };
     v('ct-company',r.company); v('ct-title',r.title); v('ct-mobile',r.mobile); v('ct-email',r.email); v('ct-addr',r.addr_mail);
     if(r.is_group) document.getElementById('contact-sub').innerHTML='更新貴單位的公司名稱與聯絡方式。<br><span style="color:var(--gold-pale)">個人代表資料請用上方「編輯代表人」。</span>';
+    renderPayInfo(r);
     document.getElementById('contact-sec').style.display='block';
   }catch(e){}
+}
+function renderPayInfo(r){
+  const box=document.getElementById('pay-info'); if(!box) return;
+  const STC={'有效會員':'#66bb6a','永久會員':'#29b6f6','榮譽會員':'#e8b84b','待續約會員':'#e8b84b','退會會員':'#e88'};
+  const c=STC[r.status]||'var(--gold-pale)';
+  let html=`<div>會員狀態：<b style="color:${c}">${r.status||'—'}</b>　·　編號 <b style="color:var(--gold-light)">${r.member_no||'—'}</b></div>`;
+  if(r.join_date) html+=`<div>入會：${r.join_date}</div>`;
+  html+=`<div>最後繳費：<b>${r.last_paid||'—'}</b></div>`;
+  if(r.status==='待續約會員') html+=`<div style="margin-top:6px;"><a href="https://tada-ai.org.tw/join/?flow=renew" style="color:#e8b84b;font-weight:700;text-decoration:none;">→ 前往續約繳費</a></div>`;
+  box.innerHTML=html; box.style.display='block';
 }
 async function saveContact(){
   const g=id=>document.getElementById(id).value.trim();
