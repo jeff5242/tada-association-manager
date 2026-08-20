@@ -59,6 +59,13 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 #qrbox{background:#fff;padding:16px;border-radius:16px;display:inline-block;line-height:0}
 #qrbox img{display:block}
 .qr-close{margin-top:24px;background:transparent;border:1px solid rgba(245,236,212,.3);color:var(--cream);border-radius:12px;padding:14px 40px;font-size:17px;font-family:inherit;cursor:pointer}
+/* 設定 */
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 4px;border-top:1px solid rgba(196,146,42,.18);cursor:pointer}
+.set-row span{display:flex;flex-direction:column;gap:3px;font-size:15px;color:var(--cream)}
+.set-row span small{font-size:12px;color:var(--muted)}
+.set-row input{width:26px;height:26px;accent-color:var(--gold);flex:none}
+.gcard.viewonly{opacity:.9}
+.g-wait{margin-top:auto;text-align:center;color:var(--muted);font-size:15px;padding:14px;border:1px dashed rgba(196,146,42,.25);border-radius:12px}
 
 /* Top: 兩排過濾（各一行，可左右滑，不折行）*/
 .top{flex:0 0 auto;padding:12px 0 8px;}
@@ -144,8 +151,9 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
     <div class="h-sub">2026 第六屆會員大會暨理監事選舉 · 9/4 臻愛婚宴會館</div>
   </div>
   <div class="prog"><div class="n"><b id="p-checked">0</b> / <span id="p-total">0</span></div><div class="l">已報到</div></div>
-  <button class="add-btn" onclick="openAddGuest()">＋ 新增貴賓</button>
-  <button class="fs-btn" onclick="showWalkinQR()" title="臨時貴賓掃碼報到">📱</button>
+  <button class="add-btn" id="add-btn" onclick="openAddGuest()">＋ 新增貴賓</button>
+  <button class="fs-btn" id="qr-btn" onclick="showWalkinQR()" title="臨時貴賓掃碼報到">📱</button>
+  <button class="fs-btn" onclick="openSettings()" title="設定">⚙</button>
   <button class="fs-btn" id="fs-btn" onclick="toggleFS()" title="全螢幕">⛶</button>
 </header>
 
@@ -181,6 +189,16 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
   <div class="qr-sub">不在名單中或臨時蒞臨？<br>請用手機掃描下方 QR Code，填寫姓名、公司、車號即可完成報到。</div>
   <div id="qrbox"></div>
   <button class="qr-close" onclick="closeQR()">關閉</button>
+</div></div>
+
+<!-- 設定（前台顯示控制）-->
+<div class="overlay" id="setModal" onclick="closeSettings()"><div class="addcard" onclick="event.stopPropagation()" style="max-width:440px">
+  <div class="add-h">前台顯示設定</div>
+  <div class="add-sub">控制這台裝置上「貴賓報到頁」要顯示哪些按鈕。給貴賓自助時可關閉工作人員按鈕。</div>
+  <label class="set-row"><span>顯示「貴賓報到」按鈕<small>關閉＝純展示，貴賓無法自己點報到</small></span><input type="checkbox" id="set-checkin"></label>
+  <label class="set-row"><span>顯示「＋ 新增貴賓」按鈕<small>工作人員現場新增用</small></span><input type="checkbox" id="set-add"></label>
+  <label class="set-row"><span>顯示「📱 臨時報到 QR」按鈕<small>臨時貴賓掃碼用</small></span><input type="checkbox" id="set-qr"></label>
+  <div class="add-btns"><button class="add-ok" onclick="saveSettings()">✓ 套用</button></div>
 </div></div>
 
 <div class="overlay" id="welcome"><div class="wcard" id="wcard"></div></div>
@@ -245,8 +263,10 @@ function renderList(){
   const el=document.getElementById('list');
   if(!arr.length){ el.innerHTML='<div class="empty">此分類目前沒有貴賓，請改選其他單位或搜尋姓名。</div>'; return; }
   el.innerHTML=arr.map(g=>g.checked_in
-    ? `<div class="gcard done"><button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="按錯了？恢復未報到">↺ reset</button><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`
-    : `<div class="gcard" onclick="doCheckin('${g.id}')"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><button class="g-btn" onclick="event.stopPropagation();doCheckin('${g.id}')">貴賓報到</button></div>`
+    ? `<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="按錯了？恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`
+    : (GS.checkin
+        ? `<div class="gcard" onclick="doCheckin('${g.id}')"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><button class="g-btn" onclick="event.stopPropagation();doCheckin('${g.id}')">貴賓報到</button></div>`
+        : `<div class="gcard viewonly"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-wait">未報到</div></div>`)
   ).join('');
 }
 async function doCheckin(id){
@@ -343,6 +363,28 @@ function showWalkinQR(){
   document.getElementById('qrModal').classList.add('show');
 }
 function closeQR(){ document.getElementById('qrModal').classList.remove('show'); }
+// ── 前台顯示設定（記在該裝置）──────────────────────
+let GS={checkin:true,add:true,qr:true};
+try{ const s=JSON.parse(localStorage.getItem('tadaGuestUI')||'{}'); GS={...GS,...s}; }catch(e){}
+function applySettings(){
+  const ab=document.getElementById('add-btn'); if(ab) ab.style.display=GS.add?'':'none';
+  const qb=document.getElementById('qr-btn'); if(qb) qb.style.display=GS.qr?'':'none';
+  if(typeof renderList==='function') renderList();
+}
+function openSettings(){
+  document.getElementById('set-checkin').checked=GS.checkin;
+  document.getElementById('set-add').checked=GS.add;
+  document.getElementById('set-qr').checked=GS.qr;
+  document.getElementById('setModal').classList.add('show');
+}
+function closeSettings(){ document.getElementById('setModal').classList.remove('show'); }
+function saveSettings(){
+  GS={checkin:document.getElementById('set-checkin').checked,
+      add:document.getElementById('set-add').checked,
+      qr:document.getElementById('set-qr').checked};
+  try{ localStorage.setItem('tadaGuestUI',JSON.stringify(GS)); }catch(e){}
+  closeSettings(); applySettings();
+}
 
 /* 簽名板 */
 let sigCtx=null, sigDrawing=false, sigHas=false;
@@ -382,6 +424,7 @@ function toggleFS(){
   }
 }
 
+applySettings();
 load();
 // 每 20 秒同步一次（多台裝置或後台改動時）
 setInterval(()=>{ if(!document.getElementById('welcome').classList.contains('show')) load(); }, 20000);
