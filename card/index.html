@@ -292,21 +292,21 @@ async function setupContact(m){
 }
 function renderPayInfo(r){
   const box=document.getElementById('pay-info'); if(!box) return;
-  const RENEW=`<div style="margin-top:6px;"><a href="https://tada-ai.org.tw/join/?flow=renew" style="color:#e8b84b;font-weight:700;text-decoration:none;">→ 前往續約繳費</a></div>`;
+  const PAY_REPORT=`<div style="margin-top:6px;"><a href="https://tada-ai.org.tw/payment/" style="color:#e8b84b;font-weight:700;text-decoration:none;">→ 前往填寫繳費回報</a></div>`;
   let html;
   if(r.status==='退會會員'){
-    // 退會會員：不貼負面狀態，改暖語＋續約邀請
+    // 退會會員：不貼負面狀態，改暖語＋繳費回報邀請
     html=`<div>編號 <b style="color:var(--gold-light)">${r.member_no||'—'}</b></div>`;
     if(r.join_date) html+=`<div>入會：${r.join_date}</div>`;
     html+=`<div>最後繳費：<b>${r.last_paid||'—'}</b></div>`;
-    html+=`<div style="margin-top:8px;color:#e8c98a;">🌾 娘家的門永遠為您開著，歡迎回來與夥伴同行</div>`+RENEW;
+    html+=`<div style="margin-top:8px;color:#e8c98a;">🌾 娘家的門永遠為您開著，歡迎回來與夥伴同行，一起出席、出力、出錢</div>`+PAY_REPORT;
   }else{
     const STC={'有效會員':'#66bb6a','永久會員':'#29b6f6','榮譽會員':'#e8b84b','待續約會員':'#e8b84b'};
     const c=STC[r.status]||'var(--gold-pale)';
     html=`<div>會員狀態：<b style="color:${c}">${r.status||'—'}</b>　·　編號 <b style="color:var(--gold-light)">${r.member_no||'—'}</b></div>`;
     if(r.join_date) html+=`<div>入會：${r.join_date}</div>`;
     html+=`<div>最後繳費：<b>${r.last_paid||'—'}</b></div>`;
-    if(r.status==='待續約會員') html+=RENEW;
+    if(r.status==='待續約會員') html+=PAY_REPORT;
   }
   box.innerHTML=html; box.style.display='block';
 }
