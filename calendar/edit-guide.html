@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>行事曆編輯說明｜TADA 秘書處</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+:root{
+  --green-deep:#12241a;--green:#1e3320;--gold:#c4922a;--gold-lt:#e0b458;
+  --cream:#f5ecd4;--muted:#93a08c;--line:rgba(196,146,42,.28);
+  --serif:'Noto Serif TC',serif;--sans:'Noto Sans TC',"PingFang TC",system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--cream);line-height:1.85;
+  background:radial-gradient(120% 60% at 50% -8%,#24402b 0%,#0c160f 62%);padding:32px 18px 70px}
+.wrap{max-width:720px;margin:0 auto}
+.top{text-align:center;margin-bottom:30px}
+.top img{height:46px}
+.top h1{font-family:var(--serif);font-size:27px;font-weight:900;color:var(--gold-lt);letter-spacing:.06em;margin-top:14px}
+.top p{font-size:14px;color:var(--muted);margin-top:8px}
+.card{background:linear-gradient(158deg,#22402c,#12241a);border:1px solid var(--line);
+  border-radius:16px;padding:24px 22px;margin-bottom:18px}
+.card h2{font-family:var(--serif);font-size:19px;color:var(--gold-lt);margin-bottom:6px;display:flex;align-items:center;gap:9px}
+.card h2 .n{background:var(--gold);color:#1a1a12;font-family:var(--sans);font-size:14px;font-weight:900;
+  width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+ol,ul{margin:10px 0 0 4px;padding-left:20px}
+li{margin-bottom:9px;font-size:15px;color:#e7efdd}
+b,strong{color:#fff}
+.warn{color:var(--gold-lt);font-weight:700}
+.idbox{display:block;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:9px;
+  padding:11px 13px;margin-top:10px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;
+  color:var(--gold-lt);word-break:break-all;user-select:all}
+.tag{display:inline-block;font-size:12px;color:var(--muted);border:1px solid var(--line);
+  border-radius:99px;padding:3px 11px;margin-top:6px}
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+td{padding:8px 6px;border-bottom:1px solid rgba(196,146,42,.15);vertical-align:top}
+td:first-child{color:var(--gold-lt);font-weight:700;white-space:nowrap;width:42%}
+.foot{text-align:center;margin-top:22px;font-size:13px;color:var(--muted)}
+.foot a{color:var(--gold-lt);text-decoration:none;font-weight:700}
+.note{background:rgba(196,146,42,.08);border:1px dashed var(--line);border-radius:12px;padding:16px 18px;font-size:14px}
+@media print{ body{background:#fff;color:#1a1a14} .card{background:#fff;border-color:#ccc} .top h1,.card h2{color:#1e3320} b,strong{color:#000} li{color:#222} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <img src="../assets/logo/tada-logo-gold.png" alt="TADA">
+    <h1>協會行事曆・編輯說明</h1>
+    <p>給秘書處的簡易操作指南</p>
+    <span class="tag">🔒 官網僅唯讀顯示，只有秘書處能編輯</span>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">✓</span>誰能編輯？</h2>
+    <p style="font-size:15px;">凡 Gmail 帳號在 <b>service@tada-ai.org.tw</b> 群組裡的人，就自動有編輯權。</p>
+    <table>
+      <tr><td>新增一位編輯</td><td>把他的 Gmail 加進 <b>service@</b> 群組（不用再動日曆設定）</td></tr>
+      <tr><td>移除編輯權</td><td>把他從 <b>service@</b> 群組移除</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">1</span>第一次使用</h2>
+    <p>讓「TADA 協會行事曆」出現在你的 Google 日曆。通常會自動出現在左側「其他日曆」；若沒看到：</p>
+    <ol>
+      <li>電腦開 <b>calendar.google.com</b></li>
+      <li>左側「其他日曆」右邊 <b>➕ → 訂閱日曆</b></li>
+      <li>貼上這組<b>日曆 ID</b> 再按 Enter：
+        <code class="idbox">c_2406c0ac2e39a7f413699371f7d6bb7ecbe4d9d16c7f1476500d94721582b4db@group.calendar.google.com</code>
+      </li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>新增活動</h2>
+    <ol>
+      <li>在日曆上<b>點你要的日期</b>（或右上「建立 → 活動」）</li>
+      <li>填標題、時間</li>
+      <li><span class="warn">⚠️ 最重要：</span>中間的「<b>日曆</b>」下拉，要選 <b>「TADA 協會行事曆」</b>（不要留成你自己的日曆）</li>
+      <li>按<b>儲存</b></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>修改／刪除</h2>
+    <ul>
+      <li><b>改</b>：點該活動 → ✏️ 鉛筆 → 改完儲存</li>
+      <li><b>刪</b>：點該活動 → 🗑️ 垃圾桶</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">4</span>重點提醒</h2>
+    <ul>
+      <li>建在「<b>TADA 協會行事曆</b>」上的活動，<b>官網會自動同步</b>顯示（tada-ai.org.tw/calendar/），刪除也會同步消失。</li>
+      <li>手機用 <b>Google 日曆 App</b> 一樣可編輯（新增時記得把日曆選成「TADA 協會行事曆」）。</li>
+      <li>一般會員在官網只看得到、<b>改不了</b>。</li>
+    </ul>
+  </div>
+
+  <div class="note">
+    <b>若有人「看得到但改不了」？</b><br>
+    分享給群組的編輯權偶爾不會馬上生效。解法：① 等權限同步（有時數小時），或
+    ② 在日曆「設定和共用」把<b>他個人的 Gmail 直接加一次</b>、權限給「變更活動」（最保險）。
+  </div>
+
+  <div class="foot">
+    <a href="./">← 前往協會行事曆</a>　·　需要協助請洽會務窗口
+  </div>
+</div>
+</body>
+</html>
