@@ -543,6 +543,28 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     </div>
   </div>
 
+  <!-- 功能開關（前台頁面即時生效，LINE 選單免重新部署） -->
+  <div class="section-card" style="margin-bottom:16px;">
+    <div class="section-header"><div class="section-title" style="font-size:15px;">⚙️ 功能開關</div>
+      <span id="cfg-status" style="margin-left:auto;font-size:12px;align-self:center;color:var(--gray);"></span>
+    </div>
+    <p style="color:var(--gray);font-size:12px;line-height:1.8;margin:4px 0 12px;">關閉後，會員從 LINE 點進該功能頁會看到「尚未開放」提示（前台即時生效、LINE 選單不需重新部署）。</p>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <label class="cfg-row" style="display:flex;align-items:center;gap:12px;font-size:14px;color:var(--ink);cursor:pointer;">
+        <input type="checkbox" id="cfg-vote" onchange="saveFeature('vote',this.checked)" style="width:20px;height:20px;cursor:pointer;flex:0 0 auto;">
+        <span>🗳️ 線上投票<span style="font-size:11px;color:var(--gray);margin-left:8px;">/vote/　·　現場領票後掃 QR</span></span>
+      </label>
+      <label class="cfg-row" style="display:flex;align-items:center;gap:12px;font-size:14px;color:var(--ink);cursor:pointer;">
+        <input type="checkbox" id="cfg-live" onchange="saveFeature('live',this.checked)" style="width:20px;height:20px;cursor:pointer;flex:0 0 auto;">
+        <span>📊 開票直播<span style="font-size:11px;color:var(--gray);margin-left:8px;">/election-live/　·　全體可看</span></span>
+      </label>
+      <label class="cfg-row" style="display:flex;align-items:center;gap:12px;font-size:14px;color:var(--ink);cursor:pointer;">
+        <input type="checkbox" id="cfg-consent" onchange="saveFeature('consent',this.checked)" style="width:20px;height:20px;cursor:pointer;flex:0 0 auto;">
+        <span>🖋️ 候選人願任書<span style="font-size:11px;color:var(--gray);margin-left:8px;">/consent/</span></span>
+      </label>
+    </div>
+  </div>
+
   <div id="el-none" style="display:none;">
     <div style="background:var(--surface);border:1px solid var(--border);padding:24px;text-align:center;">
       <p style="color:var(--gray);font-size:13px;margin-bottom:14px;line-height:1.9;">尚未建立選舉。<br>建立第六屆理監事改選（理事 11 席＋候補 3、圈選 11；監事 3 席＋候補 1、圈選 3；常務理事 3 席由當選理事互選）。</p>
@@ -1203,8 +1225,35 @@ function switchTab(id){
   if(id==='mailtpl') loadMailTemplates();
   if(id==='mailcenter') loadMailCenter();
   if(id==='votes') loadVotes();
-  if(id==='election') loadElection();
+  if(id==='election'){ loadElection(); loadFeatures(); }
   if(id==='docs') loadDocs();
+}
+
+// ── 功能開關（tada_config，前台頁面即時生效）──────────────
+const FEATURE_KEYS = ['vote','live','consent'];
+const FEATURE_LBL = { vote:'線上投票', live:'開票直播', consent:'願任書' };
+async function loadFeatures(){
+  const st=document.getElementById('cfg-status'); if(st) st.textContent='';
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_config?key=like.feature_*&select=key,value`, {headers:SB_HEADERS});
+    const rows=r.ok?await r.json():[];
+    const map={}; rows.forEach(x=>{ map[x.key]=x.value; });
+    FEATURE_KEYS.forEach(k=>{
+      const el=document.getElementById('cfg-'+k);
+      if(el) el.checked = (map['feature_'+k] ?? 'on') !== 'off';   // 缺此列＝視為開
+    });
+  }catch(e){ if(st){ st.style.color='#ef5350'; st.textContent='讀取開關失敗'; } }
+}
+async function saveFeature(key,on){
+  const st=document.getElementById('cfg-status');
+  if(st){ st.style.color='var(--gray)'; st.textContent='儲存中…'; }
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_config?on_conflict=key`, {method:'POST',
+      headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({key:'feature_'+key,value:on?'on':'off',updated_at:new Date().toISOString()})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    if(st){ st.style.color=on?'#66bb6a':'#e8b84b'; st.textContent=`✓ 已${on?'開啟':'關閉'}${FEATURE_LBL[key]}`; }
+  }catch(e){ if(st){ st.style.color='#ef5350'; st.textContent='儲存失敗：'+e.message; } loadFeatures(); }
 }
 
 // ── 會員名冊 ─────────────────────────────────────────────

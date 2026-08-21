@@ -85,6 +85,10 @@ async function rpc(fn, body){
 }
 
 async function boot(){
+  if(!(await window.tadaFeatureOn('live'))){
+    window.tadaGateNotice({title:'開票直播尚未開始', msg:'即時開票將於現場投票結束後開放，敬請期待。'});
+    return;
+  }
   const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election?status=in.(open,closed)&order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
   const list = r.ok ? await r.json() : [];
   if(!list.length){ document.getElementById('loading').textContent='目前沒有進行中或已結束的選舉場次。'; return; }

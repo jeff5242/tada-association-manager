@@ -22,6 +22,34 @@ window.tadaSbHeaders = function () {
   };
 };
 
+// 功能開關（後台於 tada_config 可即時關閉）。feature = 'vote' | 'live' | 'consent'
+// 讀不到 / 沒設定 → 視為開啟（true），不會誤擋。
+window.tadaFeatureOn = async function (feature) {
+  try {
+    var r = await fetch(window.TADA_SB_URL + '/rest/v1/tada_config?key=eq.feature_' + feature + '&select=value', { headers: window.tadaSbHeaders() });
+    if (!r.ok) return true;
+    var rows = await r.json();
+    if (!rows.length) return true;
+    return String(rows[0].value) !== 'off';
+  } catch (e) { return true; }
+};
+
+// 蓋整頁的「功能未開放」提示（綠金風格，自帶樣式，不依賴頁面 CSS）
+window.tadaGateNotice = function (opts) {
+  opts = opts || {};
+  var title = opts.title || '暫未開放';
+  var msg = opts.msg || '此功能目前尚未開放，敬請稍候。';
+  var el = document.createElement('div');
+  el.setAttribute('style', 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:28px;background:radial-gradient(120% 70% at 50% -10%,#24402b 0%,#0c160f 60%);font-family:"Noto Sans TC","PingFang TC",system-ui,sans-serif;');
+  el.innerHTML = '<div style="max-width:420px;text-align:center;color:#f5ecd4;">'
+    + '<div style="font-size:60px;line-height:1;">🌾</div>'
+    + '<div style="font-family:\'Noto Serif TC\',serif;font-size:26px;font-weight:900;color:#e0b458;margin-top:16px;">' + title + '</div>'
+    + '<div style="font-size:15px;line-height:1.9;color:#d9e6d0;margin-top:14px;">' + msg + '</div>'
+    + '<a href="https://liff.line.me/2010670397-e09JL6ri" style="display:inline-block;margin-top:22px;color:#e0b458;font-weight:700;text-decoration:none;">← 返回電子會員證</a>'
+    + '</div>';
+  document.body.appendChild(el);
+};
+
 // 初始化 LIFF 並回傳 profile。key = 'rsvp' | 'card' | 'payment' | 'vote' | 'members'
 window.tadaInitLiff = async function (key) {
   var id = (window.TADA_LIFF_IDS || {})[key];

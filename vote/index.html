@@ -117,6 +117,10 @@ function lineRequiredPage(){
 }
 
 async function init(){
+  if(!(await window.tadaFeatureOn('vote'))){
+    window.tadaGateNotice({title:'線上投票尚未開放', msg:'投票將於大會現場開放。請於報到、領取選票後再行投票。'});
+    return;
+  }
   if(!TOKEN){ statePage('📷','請掃描領票單上的 QR Code','由現場報到處領取選票後，以手機掃描 QR Code 即可進入投票。'); return; }
   // 持有人驗證：一律需要 LINE 身分（?u= 僅供本機測試）
   const testU = params.get('u');

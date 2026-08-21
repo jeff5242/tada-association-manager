@@ -93,6 +93,10 @@ const POS_LABEL = { director:'理事', supervisor:'監事', executive:'常務理
 function showErr(m){ document.getElementById('form-err').innerHTML = m ? '<div class="err">'+m+'</div>' : ''; }
 
 async function init(){
+  if(!(await window.tadaFeatureOn('consent'))){
+    window.tadaGateNotice({title:'願任書尚未開放', msg:'候選人願任書目前未開放線上簽署。如有疑問，歡迎洽秘書處。'});
+    return;
+  }
   try{
     const r = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_election?order=created_at.desc&limit=1`, { headers: window.tadaSbHeaders() });
     const list = r.ok ? await r.json() : [];
