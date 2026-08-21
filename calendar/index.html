@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>協會行事曆｜TADA 台灣科技農企業發展協會</title>
+<meta name="description" content="台灣科技農企業發展協會公用行事曆——會務活動、大會、論壇與重要行程一覽。">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+:root{
+  --green-deep:#12241a; --green:#1e3320; --green-mid:#2d5235;
+  --gold:#c4922a; --gold-lt:#e0b458; --cream:#f5ecd4; --muted:#93a08c;
+  --line:rgba(196,146,42,.28);
+  --serif:'Noto Serif TC',serif; --sans:'Noto Sans TC',"PingFang TC",system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);color:var(--cream);min-height:100vh;
+  background:radial-gradient(120% 60% at 50% -8%,#24402b 0%,#0c160f 62%);padding:30px 18px 60px}
+.wrap{max-width:1000px;margin:0 auto}
+.top{text-align:center;margin-bottom:26px}
+.top img{height:52px}
+.top h1{font-family:var(--serif);font-size:30px;font-weight:900;color:var(--gold-lt);letter-spacing:.08em;margin-top:14px}
+.top p{font-size:14px;color:var(--muted);margin-top:8px;line-height:1.7}
+.controls{display:flex;gap:8px;justify-content:center;margin:22px 0 16px;flex-wrap:wrap}
+.seg{display:inline-flex;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{background:transparent;border:none;color:var(--cream);font-family:inherit;font-size:14px;font-weight:700;
+  padding:9px 20px;border-radius:9px;cursor:pointer;transition:.15s}
+.seg button.on{background:var(--gold);color:#1a1a12}
+.card{background:linear-gradient(158deg,#22402c,#12241a);border:1px solid var(--line);border-radius:18px;
+  padding:12px;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+.frame-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#fff}
+iframe{display:block;width:100%;height:640px;border:0}
+@media(max-width:640px){ iframe{height:560px} .top h1{font-size:24px} }
+/* 未設定時的說明面板 */
+.setup{background:rgba(255,255,255,.04);border:1px dashed var(--line);border-radius:14px;padding:26px 22px;line-height:1.9}
+.setup h2{font-family:var(--serif);font-size:20px;color:var(--gold-lt);margin-bottom:12px}
+.setup ol{margin:10px 0 0 20px}
+.setup li{margin-bottom:10px;font-size:14.5px;color:#dfe8d6}
+.setup code{background:rgba(0,0,0,.35);color:var(--gold-lt);padding:2px 7px;border-radius:5px;font-size:13px;word-break:break-all}
+.foot{text-align:center;margin-top:26px;font-size:13px;color:var(--muted)}
+.foot a{color:var(--gold-lt);text-decoration:none;font-weight:700}
+.badge{display:inline-block;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:4px 12px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <img src="../assets/logo/tada-logo-gold.png" alt="TADA">
+    <h1>協會行事曆</h1>
+    <p>會務活動、大會、論壇與重要行程一覽<br>本頁為唯讀公告，資料以協會官方行事曆為準</p>
+    <span class="badge">🔒 唯讀 · 唯協會秘書處可編輯</span>
+  </div>
+
+  <div id="controls" class="controls" style="display:none;">
+    <div class="seg">
+      <button id="btn-agenda" class="on" onclick="setMode('AGENDA')">📋 議程列表</button>
+      <button id="btn-month" onclick="setMode('MONTH')">🗓️ 月檢視</button>
+    </div>
+  </div>
+
+  <div class="card" id="cal-card" style="display:none;">
+    <div class="frame-wrap"><iframe id="cal-frame" title="協會行事曆" loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+  </div>
+
+  <div class="card" id="setup" style="display:none;">
+    <div class="setup">
+      <h2>行事曆尚未設定</h2>
+      <p style="color:var(--muted);font-size:14px;">秘書處只要完成以下步驟，本頁就會自動顯示協會行事曆（不需帳號密碼、不需寫程式）：</p>
+      <ol>
+        <li>用<b>協會 Google 帳號</b>開啟 Google 日曆，左側選要公開的日曆 →「設定與共用」。</li>
+        <li>「存取權限」勾選 <b>公開此日曆</b>（設為「僅能查看所有活動的詳細資訊」即可，來賓無法編輯）。</li>
+        <li>往下找「日曆的整合」→ 複製 <b>「日曆 ID」</b>（長得像 <code>xxxxxx@group.calendar.google.com</code> 或協會的 Gmail）。</li>
+        <li>把該 ID 貼給我，我填進本頁一個地方即可上線。</li>
+      </ol>
+      <p class="badge" style="margin-top:16px;">目前狀態：等待協會行事曆 ID</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    <a href="../">← 返回協會官網</a>　·　需要調整活動請洽秘書處
+  </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────────────────
+//  設定：把協會「公開行事曆」的日曆 ID 貼在這裡即可（其餘不用動）
+//  例：'abc123@group.calendar.google.com' 或 'service@tada-ai.org.tw'
+const CAL_ID = '';
+// ────────────────────────────────────────────────────────────
+
+let curMode = (window.matchMedia('(max-width:640px)').matches) ? 'AGENDA' : 'MONTH';
+
+function buildSrc(mode){
+  const p = new URLSearchParams({
+    src: CAL_ID,
+    ctz: 'Asia/Taipei',
+    mode: mode,
+    bgcolor: '#ffffff',
+    wkst: '1',
+    showTitle: '0',
+    showPrint: '0',
+    showTz: '0',
+    showCalendars: '0',
+    showTabs: '1'
+  });
+  return 'https://calendar.google.com/calendar/embed?' + p.toString();
+}
+function setMode(mode){
+  curMode = mode;
+  document.getElementById('cal-frame').src = buildSrc(mode);
+  document.getElementById('btn-month').classList.toggle('on', mode==='MONTH');
+  document.getElementById('btn-agenda').classList.toggle('on', mode==='AGENDA');
+}
+(function init(){
+  if(!CAL_ID){ document.getElementById('setup').style.display='block'; return; }
+  document.getElementById('controls').style.display='flex';
+  document.getElementById('cal-card').style.display='block';
+  setMode(curMode);
+})();
+</script>
+</body>
+</html>
