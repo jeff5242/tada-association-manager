@@ -1135,6 +1135,9 @@ const SB_URL = 'https://ldjugtfxtxnpvkqvjxew.supabase.co';
 const SB_KEY = 'sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
 const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
 
+// 匯出檔名日期標記（依本地日期，格式 YYYYMMDD，如 20260821）
+function todayTag(){ const d=new Date(); return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`; }
+
 async function loadMembers(){
   const status = document.getElementById('sb-status');
   if(status){ status.style.color='var(--gray)'; status.textContent='載入中…'; }
@@ -1762,7 +1765,7 @@ function exportMemberCSV(){
   const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,﻿' + encodeURIComponent(csv);
-  a.download = 'TADA_會員名冊_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.download = 'TADA_會員名冊_' + todayTag() + '.csv';
   a.click();
 }
 
@@ -2002,7 +2005,7 @@ function exportGuestsCSV(){
   const csv='﻿'+[head.map(esc).join(','),...lines].join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=`TADA_貴賓名冊_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.download=`TADA_貴賓名冊_${todayTag()}.csv`; a.click();
 }
 function exportCSV(){
   const rows=[['類型','姓名','單位／職稱','邀請狀態','備註']];
@@ -2011,7 +2014,7 @@ function exportCSV(){
   const csv=rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
-  a.download='TADA_邀請進度_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.download='TADA_邀請進度_'+todayTag()+'.csv';
   a.click();
 }
 
@@ -2103,7 +2106,7 @@ function exportApplicationsCSV(){
   const csv = '﻿' + [head.map(esc).join(','), ...lines].join('\n');
   const el = document.createElement('a');
   el.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
-  el.download = `TADA_入會申請_${new Date().toISOString().slice(0,10)}.csv`;
+  el.download = `TADA_入會申請_${todayTag()}.csv`;
   el.click();
 }
 
@@ -2401,7 +2404,7 @@ function exportMailLog(){
   const stf=document.getElementById('mc-status-filter').value;
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-  a.download=`發信記錄_${cat}${stf?'_'+stf:''}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download=`發信記錄_${cat}${stf?'_'+stf:''}_${todayTag()}.csv`;
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
 
@@ -3151,7 +3154,7 @@ function exportRsvpCSV() {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'TADA_出席統計.csv';
+  a.download = 'TADA_出席統計_' + todayTag() + '.csv';
   a.click();
 }
 
@@ -3502,7 +3505,7 @@ function exportProxyCSV(){
     p.ended_by==='principal'?'委託人取消':p.ended_by==='delegate'?'受託人批退':''].map(esc).join(','));
   const csv='﻿'+[head.map(esc).join(','),...lines].join('\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=`TADA_委託清單_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  a.download=`TADA_委託清單_${todayTag()}.csv`; a.click();
 }
 
 const POS_LB = { director:'理事', supervisor:'監事', executive:'常務理事' };
