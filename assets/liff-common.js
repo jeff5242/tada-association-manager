@@ -7,6 +7,7 @@ window.TADA_LIFF_IDS = {
   card:    '2010670397-e09JL6ri',   // 端點需設為 https://tada-ai.org.tw/card/
   payment: '2010670397-aJlbduya',   // 端點需設為 https://tada-ai.org.tw/payment/
   vote:    '2010670397-w3ylS0Bp',   // 端點需設為 https://tada-ai.org.tw/vote/
+  consent: '2010670397-w3ylS0Bp',   // 復用 vote 的 LIFF app（同 channel，僅取身分驗證有效會員）
   members: '2010670397-PiHxP3es',   // 端點需設為 https://tada-ai.org.tw/members/
   bind:    ''                       // ← 待建立：新增一個 LIFF app，端點設 https://tada-ai.org.tw/bind/，把 LIFF ID 貼這裡
 };
