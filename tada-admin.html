@@ -833,6 +833,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       對<b style="color:var(--gold-lt);">全體會員（有 Email）</b>發送開會通知（含出席回覆、委託投票、委任書下載）。變數 <code style="color:var(--gold-lt);">{姓名}</code>。
       ⚠️ Resend 免費版每日上限 100 封。
     </p>
+    <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">選擇範本（可切換不同版本，編輯後按「儲存範本」存回該版本）</label>
+    <select id="mc-tpl" onchange="onMcTplChange()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 12px;font-size:13px;outline:none;margin-bottom:10px;"></select>
     <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">主旨</label>
     <input id="mc-subject" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;margin-bottom:10px;">
     <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">內文（{姓名} 自動代換）</label>
@@ -2283,16 +2285,34 @@ function resetMailTpl(key){
 const MAIL_CAT_LBL = { assembly:'開會通知', approval:'審核通過', payment_confirm:'繳費確認', manual:'個別寄信' };
 const MAIL_STATUS_LBL = { sent:['已送出','#9aa'], delivered:['已送達','#66bb6a'], opened:['已開信','#29b6f6'], clicked:['已點擊','#e8b84b'], bounced:['退信','#ef5350'], failed:['失敗','#ef5350'] };
 
+let mcTemplates = [];
+let mcCurrentTplKey = 'assembly';
 async function loadMailCenter(){
-  try{
-    const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?key=eq.assembly&select=subject,body`, {headers:SB_HEADERS});
-    const t = (r.ok ? await r.json() : [])[0] || {};
-    document.getElementById('mc-subject').value = t.subject || '';
-    document.getElementById('mc-body').value = t.body || '';
-  }catch(e){}
+  await populateMcTemplates();
   loadMcMembers();
   renderMailLog();
 }
+// 載入所有「開會通知」範本（key 以 assembly 開頭）到下拉選單
+async function populateMcTemplates(){
+  try{
+    const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?key=like.assembly*&select=key,subject,body&order=key.asc`, {headers:SB_HEADERS});
+    mcTemplates = r.ok ? await r.json() : [];
+  }catch(e){ mcTemplates = []; }
+  const sel = document.getElementById('mc-tpl');
+  if(sel){
+    sel.innerHTML = mcTemplates.map(t => `<option value="${escapeHtml(t.key)}">${escapeHtml(t.subject || t.key)}</option>`).join('');
+    if(!mcTemplates.some(t => t.key === mcCurrentTplKey)) mcCurrentTplKey = mcTemplates[0]?.key || 'assembly';
+    sel.value = mcCurrentTplKey;
+  }
+  applyMcTemplate(mcCurrentTplKey);
+}
+function applyMcTemplate(key){
+  const t = mcTemplates.find(x => x.key === key);
+  mcCurrentTplKey = key;
+  document.getElementById('mc-subject').value = t?.subject || '';
+  document.getElementById('mc-body').value = t?.body || '';
+}
+function onMcTplChange(){ applyMcTemplate(document.getElementById('mc-tpl').value); }
 // 快取有 Email 的會員（含狀態），供對象人數即時預估
 let mcMembers = null;
 async function loadMcMembers(){
@@ -2316,10 +2336,18 @@ function updateSendCount(){
 async function saveAssemblyTpl(){
   const subject=document.getElementById('mc-subject').value, body=document.getElementById('mc-body').value;
   const st=document.getElementById('mc-status');
+  const key=mcCurrentTplKey||'assembly';
   const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?on_conflict=key`, {method:'POST',
     headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-    body:JSON.stringify({key:'assembly',subject,body,updated_at:new Date().toISOString()})});
-  if(r.ok){ st.style.color='#66bb6a'; st.textContent='✓ 已儲存範本'; } else { st.style.color='#ef5350'; st.textContent='儲存失敗'; }
+    body:JSON.stringify({key,subject,body,updated_at:new Date().toISOString()})});
+  if(r.ok){
+    st.style.color='#66bb6a'; st.textContent='✓ 已儲存範本';
+    // 更新快取與下拉選單標籤（主旨可能已改）
+    const t=mcTemplates.find(x=>x.key===key);
+    if(t){ t.subject=subject; t.body=body; } else { mcTemplates.push({key,subject,body}); }
+    const sel=document.getElementById('mc-tpl');
+    if(sel){ const opt=Array.from(sel.options).find(o=>o.value===key); if(opt) opt.textContent=subject||key; }
+  } else { st.style.color='#ef5350'; st.textContent='儲存失敗'; }
 }
 async function sendAssemblyTest(){
   const email=document.getElementById('mc-test-email').value.trim();
