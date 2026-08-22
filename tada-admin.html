@@ -367,6 +367,19 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 
   <div class="section-card">
+    <div class="section-header">
+      <div class="section-title">🔗 綁定回報</div>
+      <span style="margin-left:auto;display:flex;gap:10px;align-items:center;">
+        <span style="font-size:12px;color:var(--gray);">待處理 <b id="dash-bind-pending" style="color:var(--gold-lt);">0</b> 筆</span>
+        <button class="btn btn-outline btn-sm" onclick="loadBindReports()">↻ 重新載入</button>
+      </span>
+    </div>
+    <p style="font-size:12px;color:var(--gray);line-height:1.7;margin-bottom:12px;">會員在「電子會員證」綁定時比對不到自己、按下「回報秘書處協助」的紀錄。請人工核對名冊，協助綁定後標記「已處理」。</p>
+    <div class="tbl-wrap"><table><thead><tr><th>時間</th><th>姓名</th><th>公司／統編</th><th>LINE 暱稱</th><th>原因</th><th>補充說明</th><th>操作</th></tr></thead>
+      <tbody id="dash-bind-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;">載入中…</td></tr></tbody></table></div>
+  </div>
+
+  <div class="section-card">
     <div class="section-header"><div class="section-title">活動資訊</div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:13px;">
       <div><div class="stat-label">活動日期</div><div style="color:var(--white);font-family:'Noto Serif TC',serif;margin-top:4px;">2026 年 9 月 4 日（五）</div></div>
@@ -2041,6 +2054,48 @@ async function renderDash(){
       return `<tr><td style="color:var(--white);">${escapeHtml(p.display_name||p.applicant_name||'（未取得）')}</td><td style="font-size:12px;">${PAY_TYPE[p.member_type]||p.member_type||'–'}</td><td style="font-weight:700;color:var(--gold);">$${(p.amount||0).toLocaleString()}</td><td style="font-family:monospace;">${escapeHtml(p.last5||'–')}</td><td>${PAY_STATUS_HTML[p.status]||p.status}</td><td style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td></tr>`;
     }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">目前沒有繳費回報</td></tr>';
   }catch(e){}
+  loadBindReports();
+}
+
+// 綁定回報（會員綁不上→回報秘書處）
+async function loadBindReports(){
+  const tb = document.getElementById('dash-bind-tbody');
+  const BIND_ERR = { not_found:'查無會員', multiple:'多筆同名', taken:'已被綁定', not_in_roster:'不在名冊', unknown:'未知' };
+  try{
+    const r = await fetch(`${SB_URL}/rest/v1/tada_bind_reports?order=created_at.desc&limit=100`, {headers:SB_HEADERS});
+    if(!r.ok){ tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;">尚未建立回報資料表（請先在 Supabase 執行 tada_bind_reports.sql）</td></tr>'; return; }
+    const rows = await r.json();
+    const pending = rows.filter(x=>x.status==='pending');
+    document.getElementById('dash-bind-pending').textContent = pending.length;
+    const show = rows.filter(x=>x.status!=='ignored').slice(0,12);
+    tb.innerHTML = show.length ? show.map(b=>{
+      const dt = b.created_at ? new Date(b.created_at).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '–';
+      const co = b.company || (b.tax_id ? ('統編 '+b.tax_id) : '–');
+      const done = b.status==='resolved';
+      const act = done
+        ? '<span style="font-size:11px;color:#66bb6a;">已處理</span>'
+        : `<button class="btn btn-outline btn-sm" onclick="resolveBindReport('${b.id}','resolved')">標記已處理</button> <button class="btn btn-outline btn-sm" onclick="resolveBindReport('${b.id}','ignored')" style="opacity:.7;">忽略</button>`;
+      return `<tr${done?' style="opacity:.55;"':''}>
+        <td style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td>
+        <td class="name-cell">${escapeHtml(b.name||'（未填）')}</td>
+        <td style="font-size:12px;">${escapeHtml(co)}</td>
+        <td style="font-size:12px;color:var(--gray);">${escapeHtml(b.line_display_name||'–')}</td>
+        <td style="font-size:12px;">${BIND_ERR[b.error_code]||escapeHtml(b.error_code||'–')}</td>
+        <td style="font-size:12px;color:var(--gray);max-width:200px;">${escapeHtml(b.note||'')}</td>
+        <td style="white-space:nowrap;">${act}</td></tr>`;
+    }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;">目前沒有綁定回報</td></tr>';
+  }catch(e){ tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;">載入失敗</td></tr>'; }
+}
+
+async function resolveBindReport(id, status){
+  try{
+    const body = { status };
+    if(status==='resolved') body.resolved_at = new Date().toISOString();
+    const r = await fetch(`${SB_URL}/rest/v1/tada_bind_reports?id=eq.${id}`, {
+      method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify(body) });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    loadBindReports();
+  }catch(e){ alert('更新失敗，請稍後再試。'); }
 }
 
 function renderProgBlock(id, data){

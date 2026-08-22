@@ -57,6 +57,13 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
 .bind-btn{width:100%;padding:14px;font-family:inherit;font-size:16px;font-weight:700;background:var(--gold);color:#1a1a14;border:none;border-radius:9px;cursor:pointer;letter-spacing:0.08em;}
 .bind-btn:disabled{opacity:.5;}
 .bind-err{background:rgba(192,57,43,0.2);border:1px solid rgba(192,57,43,0.5);color:#ffb3aa;font-size:12px;padding:10px;border-radius:8px;margin-bottom:12px;line-height:1.6;display:none;}
+.bind-report{margin-top:14px;padding-top:14px;border-top:1px dashed rgba(212,168,83,0.35);}
+.bind-report .report-lead{font-size:12.5px;color:#e6dcc0;line-height:1.7;margin-bottom:10px;}
+.bind-report textarea{width:100%;min-height:64px;padding:10px;border:1.5px solid rgba(212,168,83,0.4);border-radius:8px;background:rgba(0,0,0,0.2);color:#f5ecd4;font-family:inherit;font-size:13px;resize:vertical;outline:none;margin-bottom:10px;}
+.bind-report textarea:focus{border-color:var(--gold);}
+.report-btn{width:100%;padding:12px;font-family:inherit;font-size:14px;font-weight:700;background:rgba(212,168,83,0.15);color:var(--gold);border:1.5px solid var(--gold);border-radius:9px;cursor:pointer;}
+.report-btn:disabled{opacity:.5;}
+.report-done{margin-top:10px;font-size:13px;color:#8fd19e;text-align:center;line-height:1.6;}
 /* 手機橫放（或矮視窗）：卡片改左右兩欄，QR 完整顯示在右側，報到時不必捲動 */
 @media (orientation: landscape) and (max-height: 560px){
   body{padding:10px;justify-content:flex-start;}
@@ -92,6 +99,13 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--green-deep);min-heig
     <div class="fld"><label>姓名 <span class="req">*</span></label><input type="text" id="b-name" placeholder="您的本名（與入會登記相同）"></div>
     <div class="fld"><label>公司／單位名稱</label><input type="text" id="b-company" placeholder="公司或單位名稱"><div class="or">— 或 —</div><label>公司統一編號</label><input type="text" id="b-taxid" inputmode="numeric" maxlength="8" placeholder="8 碼統編"><div class="hint" style="margin-top:6px;">公司名稱與統編 <b>擇一</b> 填寫即可</div></div>
     <button class="bind-btn" id="bind-btn" onclick="doBind()">確認綁定</button>
+
+    <div class="bind-report" id="bind-report" style="display:none;">
+      <div class="report-lead">比對不到您的資料嗎？把上面填的內容一鍵回報秘書處，我們會盡快協助您完成綁定。</div>
+      <textarea id="bind-report-note" placeholder="補充說明（選填）：入會用的姓名、公司舊名、聯絡電話…"></textarea>
+      <button class="report-btn" id="bind-report-btn" onclick="reportBind()">📮 回報秘書處協助</button>
+      <div class="report-done" id="bind-report-done" style="display:none;">✅ 已送出回報，秘書處會盡快與您聯繫，感謝您！</div>
+    </div>
   </div>
 </div>
 
@@ -468,12 +482,47 @@ async function doBind(){
   const btn=document.getElementById('bind-btn'); btn.disabled=true; btn.textContent='比對中…';
   try{
     const r=await rpc('roster_bind',{p_user_id:profile.userId,p_name:name,p_company:company,p_tax_id:taxid});
-    if(r.ok){ renderCard({bound:true,name:r.name,member_no:r.member_no,member_type:r.member_type,company:r.company}); }
-    else if(r.error==='not_found'){ showErr('查無相符會員。請確認姓名與入會登記相同，或補公司名稱／統編。'); btn.disabled=false; btn.textContent='確認綁定'; }
-    else if(r.error==='multiple'){ showErr('有多筆同名，請補「公司名稱」或「統一編號」。'); btn.disabled=false; btn.textContent='確認綁定'; }
-    else if(r.error==='taken'){ showErr('此會員已由其他 LINE 綁定，請洽秘書處。'); btn.disabled=false; btn.textContent='確認綁定'; }
-    else { showErr('綁定失敗（'+r.error+'）'); btn.disabled=false; btn.textContent='確認綁定'; }
-  }catch(e){ showErr('系統錯誤：'+e.message); btn.disabled=false; btn.textContent='確認綁定'; }
+    if(r.ok){ renderCard({bound:true,name:r.name,member_no:r.member_no,member_type:r.member_type,company:r.company}); return; }
+    lastBindError = r.error || 'unknown';
+    if(r.error==='not_found'){ showErr('查無相符會員。請確認姓名與入會登記相同，或補公司名稱／統編。'); }
+    else if(r.error==='multiple'){ showErr('有多筆同名，請補「公司名稱」或「統一編號」。'); }
+    else if(r.error==='taken'){ showErr('此會員已由其他 LINE 綁定，請洽秘書處。'); }
+    else { showErr('綁定失敗（'+r.error+'）'); }
+    revealBindReport();
+    btn.disabled=false; btn.textContent='確認綁定';
+  }catch(e){ showErr('系統錯誤：'+e.message); revealBindReport(); btn.disabled=false; btn.textContent='確認綁定'; }
+}
+
+let lastBindError = '';
+function revealBindReport(){
+  const box=document.getElementById('bind-report');
+  if(box) box.style.display='block';
+}
+async function reportBind(){
+  const btn=document.getElementById('bind-report-btn');
+  const name=document.getElementById('b-name').value.trim();
+  const company=document.getElementById('b-company').value.trim();
+  const taxid=document.getElementById('b-taxid').value.trim();
+  const note=document.getElementById('bind-report-note').value.trim();
+  if(!name && !company && !taxid){ alert('請至少填寫姓名或公司資料，秘書處才能協助您。'); return; }
+  btn.disabled=true; btn.textContent='送出中…';
+  try{
+    const res=await fetch(`${window.TADA_SB_URL}/rest/v1/tada_bind_reports`,{
+      method:'POST',
+      headers:{ ...window.tadaSbHeaders(), 'Prefer':'return=minimal' },
+      body:JSON.stringify({
+        name: name||null, company: company||null, tax_id: taxid||null,
+        error_code: lastBindError||null,
+        line_user_id: (profile&&profile.userId)||null,
+        line_display_name: (profile&&profile.displayName)||null,
+        note: note||null,
+      }),
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    document.getElementById('bind-report-btn').style.display='none';
+    document.getElementById('bind-report-note').style.display='none';
+    document.getElementById('bind-report-done').style.display='block';
+  }catch(e){ alert('回報失敗，請稍後再試，或直接聯繫秘書處。'); btn.disabled=false; btn.textContent='📮 回報秘書處協助'; }
 }
 init();
 </script>
