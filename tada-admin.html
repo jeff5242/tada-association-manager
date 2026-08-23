@@ -297,6 +297,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       </select>
       <button class="btn btn-gold" onclick="exportGuestsCSV()">⬇ 匯出貴賓名冊</button>
       <button class="btn btn-outline" onclick="exportCSV()" title="理監事＋貴賓合併">匯出全部</button>
+      <button class="btn btn-outline" onclick="resetAllGuestCheckins()" title="正式活動前清除測試報到（桌號保留）">↺ 重設全部貴賓報到</button>
       <span style="font-size:11px;color:var(--gray);white-space:nowrap;">共 <span id="guest-count">0</span> 筆</span>
     </div>
     <div class="tbl-wrap">
@@ -1998,13 +1999,14 @@ function renderGuests(){
       <td data-label="備註" style="font-size:11px;color:var(--gray);">${g.note?escapeHtml(g.note):'–'}</td>
       <td data-label="現場報到" style="font-size:11px;min-width:150px;">
         ${g.checked_in?`<span style="color:#66bb6a;">✓ 已報到</span> <span style="color:var(--gray);">${gci(g.checked_in_at)}</span>`:'<span style="color:var(--gray);">未報到</span>'}
-        ${g.seat?`<div style="color:var(--gold-lt);">桌號：${escapeHtml(g.seat)}</div>`:''}
+        <div style="margin-top:3px;"><span style="color:var(--gray);">桌號：</span><select onchange="setGuestSeat('${g.id}',this.value)" class="filter-select" style="width:88px;font-size:12px;${g.seat?'color:var(--gold-lt);border-color:rgba(196,146,42,0.5);':'color:var(--gray);'}">${tableOptionsHtml(g.seat||'')}</select></div>
         ${g.greeting?`<div style="color:var(--green-lt);margin-top:2px;">🙏 ${escapeHtml(g.greeting)}</div>`:''}
         ${g.signature?`<img src="${g.signature}" onclick="showSig('${g.id}')" style="height:36px;background:#fff;border-radius:4px;padding:2px;margin-top:3px;cursor:pointer;" title="點擊放大簽名">`:''}
       </td>
       <td style="white-space:nowrap;">
         <button class="btn btn-outline btn-sm" onclick="editGuestRow('${g.id}')">編輯</button>
         <button class="btn btn-outline btn-sm" onclick="advanceGuest(${ri})">${nextLabel[g.status]}</button>
+        ${g.checked_in?`<button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="undoGuestCheckin('${g.id}')" title="撤銷此貴賓的現場報到">撤銷報到</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -2080,6 +2082,37 @@ async function advanceGuest(i){
     method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({status:newStatus}) });
   if(res.ok){ g.status=newStatus; renderGuests(); }
   else alert('狀態更新失敗：'+await res.text());
+}
+
+// 貴賓桌號（與會員共用同一批桌號）
+async function setGuestSeat(id, val){
+  const res=await fetch(`${SB_URL}/rest/v1/tada_guests?id=eq.${encodeURIComponent(id)}`,{
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({ seat: val||null }) });
+  if(res.ok){ const g=guestData.find(x=>String(x.id)===String(id)); if(g) g.seat=val||null; renderGuests(); }
+  else alert('桌號儲存失敗：'+await res.text());
+}
+
+// 撤銷單一貴賓現場報到（清報到時間、祝福、簽名）
+async function undoGuestCheckin(id){
+  const g=guestData.find(x=>String(x.id)===String(id));
+  if(!confirm(`撤銷「${g?g.name:''}」的現場報到？\n（將清除報到時間、祝福與簽名，桌號保留）`)) return;
+  const res=await fetch(`${SB_URL}/rest/v1/tada_guests?id=eq.${encodeURIComponent(id)}`,{
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'},
+    body:JSON.stringify({ checked_in:false, checked_in_at:null, greeting:null, signature:null }) });
+  if(res.ok){ await reloadGuests(); }
+  else alert('撤銷失敗：'+await res.text());
+}
+
+// 重設全部貴賓報到（測試資料清除；只動「已報到」者，桌號保留）
+async function resetAllGuestCheckins(){
+  const n=guestData.filter(g=>g.checked_in).length;
+  if(!n){ alert('目前沒有已報到的貴賓。'); return; }
+  if(!confirm(`將 ${n} 位貴賓的現場報到全部重設為「未報到」？\n（清除報到時間、祝福、簽名；桌號保留。正式活動前清測試資料用）`)) return;
+  const res=await fetch(`${SB_URL}/rest/v1/tada_guests?checked_in=eq.true`,{
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'},
+    body:JSON.stringify({ checked_in:false, checked_in_at:null, greeting:null, signature:null }) });
+  if(res.ok){ await reloadGuests(); alert(`已重設 ${n} 位貴賓報到。`); }
+  else alert('重設失敗：'+await res.text());
 }
 
 async function reloadGuests(){
@@ -2207,8 +2240,8 @@ function exportGuestsCSV(){
   const trainTxt=v=>v==='x'?'不需':(v==='?'||!v)?'待確認':v;
   const mealTxt=v=>(v==='x'||v===0||v==null)?'':(v==='?'?'待確認':v);
   const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
-  const head=['姓名／職稱','機關單位','高鐵接送','用餐','邀請狀態','備註'];
-  const lines=data.map(g=>[g.name,g.org,trainTxt(g.train),mealTxt(g.meal),GUEST_ST[g.status]||g.status,g.note||''].map(esc).join(','));
+  const head=['姓名／職稱','機關單位','高鐵接送','用餐','邀請狀態','備註','桌號','現場報到'];
+  const lines=data.map(g=>[g.name,g.org,trainTxt(g.train),mealTxt(g.meal),GUEST_ST[g.status]||g.status,g.note||'',g.seat||'',g.checked_in?('已報到 '+gci(g.checked_in_at)):'未報到'].map(esc).join(','));
   const csv='﻿'+[head.map(esc).join(','),...lines].join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
@@ -3159,18 +3192,35 @@ function updateSortArrows(){
   });
 }
 
-// ── 桌次安排 ──────────────────────────────────────────────
-const RSVP_TABLES = ['主桌','第1桌','第2桌','第3桌','第4桌','第5桌','第6桌','第7桌','第8桌','第9桌','第10桌','第11桌','第12桌','工作桌','機動'];
-function rsvpTableRank(v){
-  if(!v) return 999;                       // 未安排排最後
-  const i = RSVP_TABLES.indexOf(v);
-  return i < 0 ? 998 : i;
+// ── 桌次安排（會員與貴賓共用同一批現場桌號）────────────────
+const EVENT_TABLE_GROUPS = [
+  { label:'主桌',   tables:['主桌'] },
+  { label:'貴賓桌', tables:['V01','V02','V03','V04','V05','V06'] },
+  { label:'一般桌', tables:['第1桌','第2桌','第3桌','第4桌','第5桌','第6桌','第7桌','第8桌','第9桌','第10桌','第11桌','第12桌','第13桌','第14桌','第15桌'] },
+  { label:'其他',   tables:['工作桌','機動'] },
+];
+const EVENT_TABLES = EVENT_TABLE_GROUPS.flatMap(g => g.tables);
+function eventTableRank(v){
+  if(!v) return 9999;                        // 未安排排最後
+  const i = EVENT_TABLES.indexOf(v);
+  return i < 0 ? 9998 : i;
 }
+// 共用選項（含分組 optgroup）；cur 為目前值，valMissing 時仍保留顯示
+function tableOptionsHtml(cur){
+  let html = '<option value="">未安排</option>';
+  EVENT_TABLE_GROUPS.forEach(g => {
+    html += `<optgroup label="${g.label}">` +
+      g.tables.map(t => `<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('') +
+      '</optgroup>';
+  });
+  if(cur && !EVENT_TABLES.includes(cur)) html += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}（自訂）</option>`;
+  return html;
+}
+// 向後相容別名
+const rsvpTableRank = eventTableRank;
 function rsvpTableSelect(uid, cur){
-  const opts = ['<option value="">未安排</option>']
-    .concat(RSVP_TABLES.map(t => `<option value="${t}"${t===cur?' selected':''}>${t}</option>`)).join('');
   const assigned = cur ? 'color:var(--gold-lt);border-color:rgba(196,146,42,0.5);' : 'color:var(--gray);';
-  return `<select onchange="setRsvpTable('${uid}',this.value)" class="filter-select" style="width:84px;font-size:12px;${assigned}">${opts}</select>`;
+  return `<select onchange="setRsvpTable('${uid}',this.value)" class="filter-select" style="width:88px;font-size:12px;${assigned}">${tableOptionsHtml(cur)}</select>`;
 }
 async function setRsvpTable(uid, val){
   const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(uid)}`, {
@@ -3380,7 +3430,7 @@ function rsvpEditRow(r){
     <td><input id="ed-veg" type="number" min="0" class="search-input" style="width:52px;" value="${r.vegetarian??0}"></td>
     <td><input id="ed-companions" class="search-input" style="width:100%;min-width:90px;" placeholder="同行" value="${escapeHtml(r.companions||'')}"></td>
     <td><input id="ed-note" class="search-input" style="width:100%;min-width:90px;" placeholder="備註" value="${escapeHtml(r.note||'')}"></td>
-    <td>${(()=>{const opts=['<option value=\"\">未安排</option>'].concat(RSVP_TABLES.map(t=>`<option value=\"${t}\"${t===(r.table_no||'')?' selected':''}>${t}</option>`)).join('');return `<select id=\"ed-table\" class=\"filter-select\" style=\"width:84px;font-size:12px;\">${opts}</select>`;})()}</td>
+    <td><select id="ed-table" class="filter-select" style="width:88px;font-size:12px;">${tableOptionsHtml(r.table_no||'')}</select></td>
     <td style="font-size:11px;color:var(--gray);white-space:nowrap;">–</td>
     <td style="white-space:nowrap;">
       <button class="btn btn-sm btn-gold" onclick="saveRsvpRow('${uid}')">儲存</button>
