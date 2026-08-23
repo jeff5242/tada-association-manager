@@ -802,7 +802,15 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>回覆者</th><th>來源</th><th>類別<br><small style="font-weight:400;color:var(--gray);">AI 判斷</small></th><th>出席</th><th>人數</th><th>素食</th><th>同行/備註</th><th>回覆時間</th><th>操作</th>
+        <th onclick="sortRsvp('name')" style="cursor:pointer;user-select:none;" title="點擊排序">回覆者<span id="sa-name"></span></th>
+        <th onclick="sortRsvp('source')" style="cursor:pointer;user-select:none;" title="點擊排序">來源<span id="sa-source"></span></th>
+        <th onclick="sortRsvp('cat')" style="cursor:pointer;user-select:none;" title="點擊排序">類別<span id="sa-cat"></span><br><small style="font-weight:400;color:var(--gray);">AI 判斷</small></th>
+        <th onclick="sortRsvp('att')" style="cursor:pointer;user-select:none;" title="點擊排序">出席<span id="sa-att"></span></th>
+        <th onclick="sortRsvp('head')" style="cursor:pointer;user-select:none;" title="點擊排序">人數<span id="sa-head"></span></th>
+        <th onclick="sortRsvp('veg')" style="cursor:pointer;user-select:none;" title="點擊排序">素食<span id="sa-veg"></span></th>
+        <th>同行/備註</th>
+        <th onclick="sortRsvp('time')" style="cursor:pointer;user-select:none;" title="點擊排序">回覆時間<span id="sa-time"></span></th>
+        <th>操作</th>
       </tr></thead>
       <tbody id="rsvp-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取回覆</td></tr></tbody>
     </table>
@@ -3119,6 +3127,32 @@ async function toggleUserFlag(userId, field, value, el) {
 // ── 出席統計（RSVP）─────────────────────────────────────
 let allRsvp = [];
 let rsvpFilter = 'yes';
+let rsvpSort = { key:'time', dir:'desc' };   // 預設：回覆時間、新到舊
+
+// 各欄排序取值
+function rsvpSortVal(r, key){
+  switch(key){
+    case 'name':   return r.display_name || '';
+    case 'source': return (r.user_id||'').startsWith('web-') ? 1 : 0;  // LINE 先、網頁後
+    case 'cat':    { const l = classifyRsvp(r).label; return l==='會員'?0 : l==='貴賓'?1 : 2; }
+    case 'att':    return r.attending ? 1 : 0;
+    case 'head':   return r.attending ? (r.headcount||0) : -1;
+    case 'veg':    return r.attending ? (r.vegetarian||0) : -1;
+    case 'time':   return r.updated_at ? new Date(r.updated_at).getTime() : 0;
+    default:       return 0;
+  }
+}
+function sortRsvp(key){
+  if(rsvpSort.key === key){ rsvpSort.dir = rsvpSort.dir==='asc' ? 'desc' : 'asc'; }
+  else { rsvpSort = { key, dir: key==='name' ? 'asc' : 'desc' }; }
+  renderRsvp();
+}
+function updateSortArrows(){
+  ['name','source','cat','att','head','veg','time'].forEach(k=>{
+    const el = document.getElementById('sa-'+k);
+    if(el) el.textContent = (rsvpSort.key===k) ? (rsvpSort.dir==='asc' ? ' ▲' : ' ▼') : '';
+  });
+}
 let rsvpMemberIndex = new Map();  // 正規化姓名 -> 顯示名
 let rsvpGuestIndex  = new Map();
 let rsvpIndexReady  = false;
@@ -3238,6 +3272,19 @@ function renderRsvp() {
     return true;
   });
   if (dupOnly) data = data.filter(r => (nameCount.get(rsvpKey(r.display_name || '')) || 0) > 1);
+
+  // 排序（預設回覆時間、新到舊）
+  const dir = rsvpSort.dir === 'asc' ? 1 : -1;
+  data = data.slice().sort((a, b) => {
+    const va = rsvpSortVal(a, rsvpSort.key), vb = rsvpSortVal(b, rsvpSort.key);
+    let c;
+    if (typeof va === 'string' || typeof vb === 'string') c = String(va).localeCompare(String(vb), 'zh-Hant');
+    else c = va < vb ? -1 : va > vb ? 1 : 0;
+    if (c !== 0) return c * dir;
+    // 同值：一律以回覆時間新到舊作次序
+    return (b.updated_at ? new Date(b.updated_at).getTime() : 0) - (a.updated_at ? new Date(a.updated_at).getTime() : 0);
+  });
+  updateSortArrows();
   document.getElementById('rsvp-count').textContent = data.length;
 
   if (!data.length) {
