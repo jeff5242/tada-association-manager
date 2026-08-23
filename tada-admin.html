@@ -188,6 +188,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <div class="tab-menu">
         <button data-tab="invite" onclick="switchTab('invite')">邀請進度</button>
         <button data-tab="rsvp" onclick="switchTab('rsvp')">📋 出席統計</button>
+        <button data-tab="seating" onclick="switchTab('seating')">🍽️ 桌次規劃</button>
       </div>
     </div>
 
@@ -891,6 +892,41 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ 桌次規劃 ══════════ -->
+<div class="page" id="page-seating">
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">🍽️ 桌次規劃</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" onclick="loadSeating()">↻ 重新載入</button>
+      <button class="btn btn-gold btn-sm" onclick="autoSeatMembers()" title="把尚未排桌的出席會員，依『相同備註／同公司』分到會員桌（草案，可再調整）">🎲 會員自動分桌（草案）</button>
+      <button class="btn btn-outline btn-sm" onclick="clearMemberSeats()" title="清除所有『會員桌』排位（不動貴賓桌與主桌）">🧹 清空會員桌</button>
+      <button class="btn btn-outline btn-sm" onclick="exportSeatingCSV()">⬇ 匯出桌次表</button>
+      <span id="seating-status" style="font-size:11px;"></span>
+    </div>
+  </div>
+
+  <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:14px;">
+    現場共 <b style="color:var(--gold-lt);">20 桌</b>：主桌 ×1、貴賓桌 V01–V04 ×4、會員桌 第1–14 ×14、工作桌 ×1（每桌以 <b>10 人</b>估算）。
+    貴賓桌由「貴賓名冊」的桌號決定、會員桌由「出席統計」的桌次決定；在這裡可總覽誰坐哪桌，並直接微調。
+  </p>
+
+  <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;">
+    <div class="stat-card"><div class="stat-label">已排人數</div><div class="stat-num" style="color:#66bb6a;" id="seat-assigned">–</div></div>
+    <div class="stat-card"><div class="stat-label">尚未排桌</div><div class="stat-num" style="color:var(--gold);" id="seat-unassigned">–</div></div>
+    <div class="stat-card"><div class="stat-label">使用桌數</div><div class="stat-num" style="color:#29b6f6;" id="seat-tables">–</div></div>
+    <div class="stat-card"><div class="stat-label">總桌數</div><div class="stat-num" style="color:var(--white);">20</div></div>
+  </div>
+
+  <div id="seating-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+    <div style="color:var(--gray);padding:30px;">點「重新載入」讀取桌次…</div>
+  </div>
+
+  <div style="margin-top:24px;">
+    <div class="section-title" style="font-size:15px;margin-bottom:10px;">🪑 尚未排桌 <span id="seat-un-count" style="font-size:12px;color:var(--gray);"></span></div>
+    <div id="seating-unassigned" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+</div>
+
 <!-- ══════════ LINE 使用者 ══════════ -->
 <div class="page" id="page-lineusers">
   <div class="section-header" style="margin-bottom:16px;">
@@ -1346,6 +1382,7 @@ function switchTab(id){
   if(id==='unanswered') loadUnanswered();
   if(id==='lineusers') loadLineUsers();
   if(id==='rsvp') loadRsvp();
+  if(id==='seating') loadSeating();
   if(id==='payments') loadPayments();
   if(id==='mailtpl') loadMailTemplates();
   if(id==='mailcenter') loadMailCenter();
@@ -3203,12 +3240,14 @@ function updateSortArrows(){
 }
 
 // ── 桌次安排（會員與貴賓共用同一批現場桌號）────────────────
+// 20 桌方案：主桌 ×1 ＋ 貴賓桌 V01–V04 ×4 ＋ 會員桌 第1–14 ×14 ＋ 工作桌 ×1
 const EVENT_TABLE_GROUPS = [
   { label:'主桌',   tables:['主桌'] },
-  { label:'貴賓桌', tables:['V01','V02','V03','V04','V05','V06'] },
-  { label:'一般桌', tables:['第1桌','第2桌','第3桌','第4桌','第5桌','第6桌','第7桌','第8桌','第9桌','第10桌','第11桌','第12桌','第13桌','第14桌','第15桌'] },
-  { label:'其他',   tables:['工作桌','機動'] },
+  { label:'貴賓桌', tables:['V01','V02','V03','V04'] },
+  { label:'會員桌', tables:['第1桌','第2桌','第3桌','第4桌','第5桌','第6桌','第7桌','第8桌','第9桌','第10桌','第11桌','第12桌','第13桌','第14桌'] },
+  { label:'工作桌', tables:['工作桌'] },
 ];
+const TABLE_CAP = 10;   // 每桌座位數（以人數/headcount 計）
 const EVENT_TABLES = EVENT_TABLE_GROUPS.flatMap(g => g.tables);
 function eventTableRank(v){
   if(!v) return 9999;                        // 未安排排最後
@@ -3637,6 +3676,164 @@ async function submitRsvpProxy(){
     document.getElementById('rsvp-sb-status').style.color='#66bb6a';
     document.getElementById('rsvp-sb-status').textContent=`✓ 已代填 ${rows.length} 筆`;
   }catch(e){ rpxErr('送出失敗：'+e.message); btn.disabled=false; btn.textContent=old; }
+}
+
+// ══════════ 桌次規劃 ══════════
+let seatGuests = [], seatMembers = [];
+const MEMBER_TABLES = EVENT_TABLE_GROUPS.find(g=>g.label==='會員桌').tables;
+
+async function loadSeating(){
+  const st=document.getElementById('seating-status');
+  st.textContent='載入中…'; st.style.color='var(--gray)';
+  try{
+    const [gRes, mRes] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,companions,headcount,table_no`, { headers: SB_HEADERS }),
+    ]);
+    seatGuests  = gRes.ok ? await gRes.json() : [];
+    seatMembers = mRes.ok ? await mRes.json() : [];
+    renderSeating();
+    st.style.color='#66bb6a'; st.textContent='✓ 已載入';
+  }catch(e){ st.style.color='#ef5350'; st.textContent='載入失敗：'+e.message; }
+}
+
+// 統一「座位人」模型
+function seatOccupants(){
+  const list=[];
+  seatGuests.forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:g.seat||'', size:1, checked:g.checked_in }));
+  seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:m.org||m.note||m.companions||'', table:m.table_no||'', size:(m.headcount||1) }));
+  return list;
+}
+
+function renderSeating(){
+  const occ=seatOccupants();
+  const byTable=new Map(); EVENT_TABLES.forEach(t=>byTable.set(t,[]));
+  const unassigned=[];
+  occ.forEach(o=>{ if(o.table && byTable.has(o.table)) byTable.get(o.table).push(o);
+                   else if(o.table) { if(!byTable.has(o.table)) byTable.set(o.table,[]); byTable.get(o.table).push(o); }
+                   else unassigned.push(o); });
+  // 統計
+  const assignedHead=occ.filter(o=>o.table).reduce((s,o)=>s+o.size,0);
+  const unHead=unassigned.reduce((s,o)=>s+o.size,0);
+  const usedTables=[...byTable.entries()].filter(([_,arr])=>arr.length).length;
+  document.getElementById('seat-assigned').textContent=assignedHead;
+  document.getElementById('seat-unassigned').textContent=unHead;
+  document.getElementById('seat-tables').textContent=usedTables;
+
+  // 桌卡
+  const grpOf=t=>{ const g=EVENT_TABLE_GROUPS.find(g=>g.tables.includes(t)); return g?g.label:'其他'; };
+  const grpColor={ '主桌':'#e0b458', '貴賓桌':'#4fc3f7', '會員桌':'#66bb6a', '工作桌':'#b0a58c' };
+  const orderTables=[...byTable.keys()].sort((a,b)=>eventTableRank(a)-eventTableRank(b));
+  document.getElementById('seating-grid').innerHTML = orderTables.map(t=>{
+    const arr=byTable.get(t); const head=arr.reduce((s,o)=>s+o.size,0);
+    const lbl=grpOf(t); const col=grpColor[lbl]||'var(--gold)';
+    const over=head>TABLE_CAP;
+    const rows=arr.length? arr.map(o=>{
+      const icon=o.kind==='guest'?'🎩':'👤';
+      const sizeTag=o.size>1?` <span style="color:var(--gold);">×${o.size}</span>`:'';
+      return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="font-size:12px;">${icon}</span>
+        <span style="flex:1;font-size:12.5px;color:var(--white);">${escapeHtml(o.name)}${sizeTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,14))}</span>`:''}</span>
+        <button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:10px;" onclick="moveOcc('${o.kind}','${escapeHtml(String(o.id))}')" title="改桌／移除">⇄</button>
+      </div>`;
+    }).join('') : '<div style="color:var(--gray);font-size:12px;padding:8px 0;">（空桌）</div>';
+    return `<div style="background:var(--surface,rgba(255,255,255,0.03));border:1px solid ${over?'#ef5350':'var(--border,rgba(196,146,42,0.25))'};border-radius:12px;padding:12px 13px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${col};"></span>
+        <b style="color:${col};font-size:14px;">${t}</b>
+        <span style="font-size:10px;color:var(--gray);">${lbl}</span>
+        <span style="margin-left:auto;font-size:12px;color:${over?'#ef5350':'var(--gray)'};font-weight:700;">${head}/${TABLE_CAP}</span>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+
+  // 未排桌
+  document.getElementById('seat-un-count').textContent = unassigned.length?`（${unassigned.length} 組 / ${unHead} 人）`:'（無）';
+  document.getElementById('seating-unassigned').innerHTML = unassigned.length? unassigned.map(o=>{
+    const icon=o.kind==='guest'?'🎩':'👤'; const sizeTag=o.size>1?`×${o.size}`:'';
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(196,146,42,0.1);border:1px solid rgba(196,146,42,0.3);border-radius:99px;padding:5px 10px;font-size:12px;color:var(--white);">
+      ${icon} ${escapeHtml(o.name)} <span style="color:var(--gold);">${sizeTag}</span>
+      <button class="btn btn-sm btn-outline" style="padding:0 6px;font-size:10px;margin-left:2px;" onclick="moveOcc('${o.kind}','${escapeHtml(String(o.id))}')">安排</button>
+    </span>`;
+  }).join('') : '<span style="color:var(--gray);font-size:12px;">全部已排桌 🎉</span>';
+}
+
+// 改桌：跳簡易 prompt 選桌號
+async function moveOcc(kind, id){
+  const cur = kind==='guest'
+    ? (seatGuests.find(g=>String(g.id)===String(id))||{}).seat
+    : (seatMembers.find(m=>String(m.user_id)===String(id))||{}).table_no;
+  const choice = prompt('輸入桌號（例：主桌、V01、第3桌；留空＝移除排桌）：\n可用：'+EVENT_TABLES.join('、'), cur||'');
+  if(choice===null) return;
+  const val=choice.trim();
+  if(val && !EVENT_TABLES.includes(val)){ if(!confirm(`「${val}」不在標準桌號清單內，仍要使用？`)) return; }
+  if(kind==='guest') await setGuestSeat(id, val);
+  else await setRsvpTable(id, val);
+  await loadSeating();
+}
+
+// 自動分桌：把「未排桌的出席會員」依 相同備註 > 同公司 分群，塞進會員桌
+async function autoSeatMembers(){
+  const un = seatMembers.filter(m=>!m.table_no);
+  if(!un.length){ alert('沒有未排桌的出席會員。'); return; }
+  // 目前各會員桌已用人數
+  const used=new Map(); MEMBER_TABLES.forEach(t=>used.set(t,0));
+  seatMembers.forEach(m=>{ if(m.table_no && used.has(m.table_no)) used.set(m.table_no, used.get(m.table_no)+(m.headcount||1)); });
+  // 分群鍵：優先相同備註（去除空白/無意義），其次同公司；否則各自一組
+  const trivial=v=>!v||['無','無。','none','-'].includes(String(v).trim());
+  const groups=new Map();
+  un.forEach(m=>{
+    let key;
+    if(!trivial(m.note)) key='note:'+m.note.trim();
+    else if(m.org) key='org:'+m.org.trim();
+    else key='solo:'+m.user_id;
+    if(!groups.has(key)) groups.set(key,[]);
+    groups.get(key).push(m);
+  });
+  // 大群優先，塞進「剩餘容量夠」的最前面會員桌；群太大就跨桌續填
+  const plan=[]; // {user_id, table_no}
+  const arr=[...groups.values()].sort((a,b)=>
+    b.reduce((s,m)=>s+(m.headcount||1),0)-a.reduce((s,m)=>s+(m.headcount||1),0));
+  for(const grp of arr){
+    for(const m of grp){
+      const need=m.headcount||1;
+      let placed=false;
+      for(const t of MEMBER_TABLES){
+        if(used.get(t)+need<=TABLE_CAP){ used.set(t,used.get(t)+need); plan.push({user_id:m.user_id,table_no:t}); placed=true; break; }
+      }
+      if(!placed){ /* 全滿：放最後一桌超載，仍標記 */ const t=MEMBER_TABLES[MEMBER_TABLES.length-1]; used.set(t,used.get(t)+need); plan.push({user_id:m.user_id,table_no:t}); }
+    }
+  }
+  if(!confirm(`將 ${un.length} 位未排桌會員自動分到會員桌（依相同備註／同公司盡量同桌）？\n這是草案，之後可用「⇄」逐一微調。`)) return;
+  const st=document.getElementById('seating-status'); st.textContent='分桌中…'; st.style.color='var(--gray)';
+  const res=await fetch(`${SB_URL}/rest/v1/tada_rsvp?on_conflict=user_id`, {
+    method:'POST', headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify(plan.map(p=>({user_id:p.user_id, table_no:p.table_no, updated_at:new Date().toISOString()}))) });
+  if(res.ok){ await loadSeating(); st.style.color='#66bb6a'; st.textContent=`✓ 已分桌 ${plan.length} 位`; }
+  else { st.style.color='#ef5350'; st.textContent='分桌失敗'; alert('分桌失敗：'+await res.text()); }
+}
+
+// 清空所有會員桌排位（不動貴賓/主桌）
+async function clearMemberSeats(){
+  const targets=seatMembers.filter(m=>m.table_no && MEMBER_TABLES.includes(m.table_no));
+  if(!targets.length){ alert('目前沒有已排會員桌的資料。'); return; }
+  if(!confirm(`清空 ${targets.length} 位會員的會員桌排位？（貴賓桌、主桌不受影響）`)) return;
+  const res=await fetch(`${SB_URL}/rest/v1/tada_rsvp?table_no=in.(${MEMBER_TABLES.map(encodeURIComponent).join(',')})`, {
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({table_no:null}) });
+  if(res.ok){ await loadSeating(); } else alert('清空失敗：'+await res.text());
+}
+
+function exportSeatingCSV(){
+  const occ=seatOccupants().filter(o=>o.table);
+  occ.sort((a,b)=>eventTableRank(a.table)-eventTableRank(b.table));
+  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const rows=[['桌號','分類','姓名','身分','單位/備註','人數','報到']];
+  const grpOf=t=>{ const g=EVENT_TABLE_GROUPS.find(g=>g.tables.includes(t)); return g?g.label:'其他'; };
+  occ.forEach(o=>rows.push([o.table,grpOf(o.table),o.name,o.kind==='guest'?'貴賓':'會員',o.sub,o.size,o.kind==='guest'?(o.checked?'已報到':''):''].map(esc)));
+  const csv='﻿'+rows.map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`TADA_桌次表_${todayTag()}.csv`; a.click();
 }
 
 function exportRsvpCSV() {
