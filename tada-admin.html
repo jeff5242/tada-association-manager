@@ -772,6 +772,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="section-header" style="margin-bottom:16px;">
     <div class="section-title">📋 9/4 大會出席統計</div>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-gold btn-sm" onclick="openRsvpProxy()">➕ 出席回覆（代填）</button>
+      <button class="btn btn-outline btn-sm" onclick="copyRsvpLink()" title="複製客戶自填表單連結">🔗 客戶自填連結</button>
       <button class="btn btn-outline btn-sm" onclick="loadRsvp()">↻ 重新載入</button>
       <button class="btn btn-outline btn-sm" onclick="exportRsvpCSV()">匯出 CSV</button>
       <span id="rsvp-sb-status" style="font-size:11px;"></span>
@@ -792,8 +794,9 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <option value="">全部</option>
     </select>
     <label style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:5px;margin-left:12px;cursor:pointer;"><input type="checkbox" id="rsvp-show-hidden" onchange="renderRsvp()"> 顯示已隱藏</label>
+    <label style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:5px;margin-left:12px;cursor:pointer;" title="只顯示姓名重複（可能重複回報）的列"><input type="checkbox" id="rsvp-dup-only" onchange="renderRsvp()"> ⚠️ 只看同名</label>
     <button class="btn btn-sm btn-outline" onclick="cleanupRsvp()" style="margin-left:12px;" title="偵測並隱藏測試資料與同名重複回報（軟隱藏、可還原）">🧹 清理測試/重複</button>
-    <span style="font-size:11px;color:var(--gray);margin-left:auto;">共 <span id="rsvp-count">0</span> 筆回覆</span>
+    <span style="font-size:11px;color:var(--gray);margin-left:auto;">共 <span id="rsvp-count">0</span> 筆回覆<span id="rsvp-dup-note" style="color:#e0a020;margin-left:8px;"></span></span>
   </div>
 
   <div class="tbl-wrap">
@@ -803,6 +806,67 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       </tr></thead>
       <tbody id="rsvp-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取回覆</td></tr></tbody>
     </table>
+  </div>
+</div>
+
+<!-- ══════════ 出席回覆代填 Modal ══════════ -->
+<div id="rsvpproxy-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);padding:26px;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:16px;font-weight:600;color:var(--white);margin-bottom:6px;">➕ 出席回覆（代填）</div>
+    <div style="font-size:11px;color:var(--gray);margin-bottom:16px;">替客戶登記出席。可單筆填寫，或切到「批次多人」貼上整份名單一次匯入。</div>
+
+    <div style="display:flex;gap:6px;margin-bottom:18px;">
+      <button class="btn btn-sm btn-gold" id="rpx-tab-one" onclick="rpxTab('one')">單筆</button>
+      <button class="btn btn-sm btn-outline" id="rpx-tab-batch" onclick="rpxTab('batch')">批次多人</button>
+    </div>
+
+    <!-- 單筆 -->
+    <div id="rpx-pane-one" style="display:flex;flex-direction:column;gap:12px;">
+      <label style="font-size:11px;color:var(--gray);">姓名 <span style="color:#ef5350;">*</span>
+        <input id="rpx-name" class="search-input" style="width:100%;margin-top:4px;" placeholder="出席者姓名"></label>
+      <div style="display:flex;gap:10px;">
+        <label style="font-size:11px;color:var(--gray);flex:1;">公司／單位
+          <input id="rpx-org" class="search-input" style="width:100%;margin-top:4px;" placeholder="公司或單位"></label>
+        <label style="font-size:11px;color:var(--gray);flex:0 0 150px;">職稱
+          <input id="rpx-title" class="search-input" style="width:100%;margin-top:4px;" placeholder="如 董事長"></label>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <label style="font-size:11px;color:var(--gray);flex:1;">手機
+          <input id="rpx-mobile" class="search-input" style="width:100%;margin-top:4px;" placeholder="09XX-XXX-XXX"></label>
+        <label style="font-size:11px;color:var(--gray);flex:0 0 90px;">出席
+          <select id="rpx-att" class="filter-select" style="width:100%;margin-top:4px;"><option value="1">出席</option><option value="0">不克</option></select></label>
+        <label style="font-size:11px;color:var(--gray);flex:0 0 70px;">人數
+          <input id="rpx-head" type="number" min="0" value="1" class="search-input" style="width:100%;margin-top:4px;"></label>
+        <label style="font-size:11px;color:var(--gray);flex:0 0 70px;">素食
+          <input id="rpx-veg" type="number" min="0" value="0" class="search-input" style="width:100%;margin-top:4px;"></label>
+      </div>
+      <label style="font-size:11px;color:var(--gray);">同行／備註
+        <input id="rpx-note" class="search-input" style="width:100%;margin-top:4px;" placeholder="同行眷屬、備註…"></label>
+    </div>
+
+    <!-- 批次 -->
+    <div id="rpx-pane-batch" style="display:none;flex-direction:column;gap:12px;">
+      <label style="font-size:11px;color:var(--gray);">名單（一行一人；支援「姓名」或「姓名,單位,職稱」；純姓名可自動去職稱）
+        <textarea id="rpx-bulk" class="search-input" style="width:100%;margin-top:4px;min-height:150px;font-family:inherit;line-height:1.7;" placeholder="張啓城理事長&#10;陳凱榮理事長&#10;龔信元&#10;或：王大明,大元畜產,董事長"></textarea></label>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <label style="font-size:11px;color:var(--gray);flex:1;">共同單位（套用到未自帶單位者，選填）
+          <input id="rpx-bulk-org" class="search-input" style="width:100%;margin-top:4px;" placeholder="如 彰南二區（陳肇浩理事長）"></label>
+        <label style="font-size:11px;color:var(--gray);display:flex;align-items:center;gap:5px;margin-top:16px;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="rpx-bulk-detitle" checked> 純姓名去職稱</label>
+      </div>
+      <div style="font-size:11px;color:var(--gold-lt);background:rgba(196,146,42,0.08);border-left:2px solid var(--gold);padding:8px 12px;line-height:1.7;">每人以「出席・1 人」建立；素食與人數之後可在列表「編輯」調整。</div>
+    </div>
+
+    <!-- 附件圖檔（單筆／批次共用） -->
+    <label style="font-size:11px;color:var(--gray);display:block;margin-top:14px;">📎 附件圖檔（客戶傳來的名單／截圖，選填）
+      <input id="rpx-file" type="file" accept="image/*" style="width:100%;margin-top:6px;font-size:12px;color:var(--gray);"></label>
+    <div id="rpx-file-note" style="font-size:11px;color:var(--gray);margin-top:4px;"></div>
+
+    <div id="rpx-err" style="display:none;background:rgba(192,57,43,0.15);border:1px solid rgba(192,57,43,0.4);color:#ff9d92;font-size:12px;padding:10px;border-radius:6px;margin-top:14px;"></div>
+
+    <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeRsvpProxy()">取消</button>
+      <button class="btn btn-gold" id="rpx-submit" onclick="submitRsvpProxy()">送出</button>
+    </div>
   </div>
 </div>
 
@@ -3064,25 +3128,27 @@ function rsvpKey(s){ return (s||'').normalize('NFKC').replace(/\s+/g,'').toLower
 // 從一段字串抓出所有 2 字以上的中文詞（處理 LINE 暱稱如「Rex (CSCP) 王柏崴」）
 function cjkRuns(s){ return (String(s||'').match(/[一-鿿]{2,}/g) || []); }
 // 貴賓名單多為「姓＋職稱＋名」（如「郭場長坤峯」＝郭坤峯），比對前先去職稱
-const RSVP_TITLE_RE = /(副總經理|總經理|攝影總監|副校長|副署長|副司長|副所長|分所長|前院長|董事長|執行長|秘書長|理事長|副總|總監|署長|司長|院長|校長|處長|鄉長|技正|技監|顧問|主任|教授|場長|組長|所長|社長|博士|部長|次長|局長|科長|課長|專員|襄理|協理|副理|技師|主委|監事|理事|秘書|主秘)/g;
+const RSVP_TITLE_RE = /(副總經理|總經理|攝影總監|副校長|副署長|副司長|副所長|分所長|前院長|常務理事|常務監事|董事長|執行長|秘書長|財務長|理事長|副總|總監|署長|司長|院長|校長|處長|鄉長|技正|技監|顧問|主任|教授|場長|組長|所長|社長|博士|部長|次長|局長|科長|課長|專員|襄理|協理|副理|技師|主委|監事|理事|秘書|主秘)/g;
 function rsvpDetitle(s){ return String(s||'').replace(RSVP_TITLE_RE,''); }
 
 // 建立會員名冊／貴賓名單姓名索引（含團體代表人）
 async function buildRsvpIndex(){
   try{
     const [mRes, gRes] = await Promise.all([
-      fetch(`${SB_URL}/rest/v1/tada_members?select=name,contact_name,reps`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_members?select=name,contact_name,reps,company`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_guests?select=name`, { headers: SB_HEADERS }),
     ]);
     const members = mRes.ok ? await mRes.json() : [];
     const guests  = gRes.ok ? await gRes.json() : [];
     const mi = new Map(), gi = new Map();
     const add = (map, raw) => { const k = rsvpKey(raw); if(k && k.length >= 2 && !map.has(k)) map.set(k, String(raw).trim()); };
+    // 會員索引另存公司：key -> { name, company }
+    const addM = (raw, company) => { const k = rsvpKey(raw); if(k && k.length >= 2 && !mi.has(k)) mi.set(k, { name:String(raw).trim(), company:(company||'').trim() }); };
     members.forEach(m => {
-      add(mi, m.name); add(mi, m.contact_name);
+      addM(m.name, m.company); addM(m.contact_name, m.company);
       let reps = m.reps;
       if (typeof reps === 'string') { try { reps = JSON.parse(reps); } catch { reps = null; } }
-      if (Array.isArray(reps)) reps.forEach(rp => add(mi, typeof rp === 'string' ? rp : (rp && (rp.name || rp.rep || rp.contact_name))));
+      if (Array.isArray(reps)) reps.forEach(rp => addM(typeof rp === 'string' ? rp : (rp && (rp.name || rp.rep || rp.contact_name)), m.company));
     });
     guests.forEach(g => {
       // 一列可能含多人（如「陳丞彥、陳思岑」），逐一拆解
@@ -3106,10 +3172,10 @@ function classifyRsvp(r){
   const candidates = new Set([ rsvpKey(name), ...cjkRuns(name).map(rsvpKey) ]);
   const hit = (map) => { for(const k of candidates){ if(k && map.has(k)) return map.get(k); } return null; };
   const m = hit(rsvpMemberIndex);
-  if(m) return { label:'會員', bg:'rgba(46,125,50,0.2)', fg:'#66bb6a', title:'比對到會員名冊：'+m };
+  if(m) return { label:'會員', bg:'rgba(46,125,50,0.2)', fg:'#66bb6a', company:(m.company||''), title:'比對到會員名冊：'+m.name+(m.company?('｜'+m.company):'') };
   const g = hit(rsvpGuestIndex);
-  if(g) return { label:'貴賓', bg:'rgba(41,182,246,0.15)', fg:'#4fc3f7', title:'比對到貴賓名單：'+g };
-  return { label:'其他', bg:'rgba(158,158,158,0.15)', fg:'var(--gray)', title:'名冊中查無此姓名（可能是眷屬、臨時來賓或暱稱）' };
+  if(g) return { label:'貴賓', bg:'rgba(41,182,246,0.15)', fg:'#4fc3f7', company:'', title:'比對到貴賓名單：'+g };
+  return { label:'其他', bg:'rgba(158,158,158,0.15)', fg:'var(--gray)', company:'', title:'名冊中查無此姓名（可能是眷屬、臨時來賓或暱稱）' };
 }
 
 async function loadRsvp() {
@@ -3153,12 +3219,25 @@ function renderRsvp() {
   document.getElementById('rsvp-veg').textContent = yes.reduce((s, r) => s + (r.vegetarian || 0), 0);
 
   const showHidden = document.getElementById('rsvp-show-hidden')?.checked;
-  const data = allRsvp.filter(r => {
+  const dupOnly = document.getElementById('rsvp-dup-only')?.checked;
+
+  // 同名偵測：統計每個正規化姓名在「未隱藏」回覆中出現的次數
+  const nameCount = new Map();
+  allRsvp.filter(r => !r.hidden).forEach(r => {
+    const k = rsvpKey(r.display_name || '');
+    if (k) nameCount.set(k, (nameCount.get(k) || 0) + 1);
+  });
+  const dupCount = [...nameCount.values()].filter(n => n > 1).length;
+  const dupNote = document.getElementById('rsvp-dup-note');
+  if (dupNote) dupNote.textContent = dupCount ? `· ⚠️ ${dupCount} 組同名` : '';
+
+  let data = allRsvp.filter(r => {
     if (!showHidden && r.hidden) return false;
     if (rsvpFilter === 'yes') return r.attending;
     if (rsvpFilter === 'no') return !r.attending;
     return true;
   });
+  if (dupOnly) data = data.filter(r => (nameCount.get(rsvpKey(r.display_name || '')) || 0) > 1);
   document.getElementById('rsvp-count').textContent = data.length;
 
   if (!data.length) {
@@ -3174,12 +3253,20 @@ function renderRsvp() {
       : '<span class="status" style="background:rgba(192,57,43,0.15);color:#ef5350;">✕ 不克</span>';
     const extra = [r.companions, r.note].filter(Boolean).map(escapeHtml).join('｜') || '–';
     const uid = escapeHtml(r.user_id);
-    const orgTitle = [r.org, r.title].filter(Boolean).map(escapeHtml).join('　');
-    const sub = [orgTitle, r.mobile ? '📱 ' + escapeHtml(r.mobile) : '']
-      .filter(Boolean).map(s => `<div style="font-size:11px;color:var(--gray);font-weight:400;">${s}</div>`).join('');
     const cat = classifyRsvp(r);
+    const orgTitle = [r.org, r.title].filter(Boolean).map(escapeHtml).join('　');
+    // 會員：加列名冊登記的公司（若與填寫的單位不同才特別標「名冊」）
+    const memberCo = (cat.label === '會員' && cat.company && rsvpKey(cat.company) !== rsvpKey(r.org || ''))
+      ? `<div style="font-size:11px;color:#66bb6a;font-weight:400;">🏢 ${escapeHtml(cat.company)}<span style="color:var(--gray);">（名冊）</span></div>` : '';
+    const sub = [orgTitle, r.mobile ? '📱 ' + escapeHtml(r.mobile) : '']
+      .filter(Boolean).map(s => `<div style="font-size:11px;color:var(--gray);font-weight:400;">${s}</div>`).join('') + memberCo;
+    // 同名警示徽章
+    const dupN = nameCount.get(rsvpKey(r.display_name || '')) || 0;
+    const dupBadge = dupN > 1 ? ` <span class="status" style="background:rgba(224,160,32,0.18);color:#e0a020;font-size:10px;" title="有 ${dupN} 筆同名回覆，請確認是否重複">⚠ 同名×${dupN}</span>` : '';
+    // 附件圖示
+    const att2 = r.attachment_url ? ` <a href="${escapeHtml(r.attachment_url)}" target="_blank" rel="noopener" title="檢視附件圖檔" style="text-decoration:none;">📎</a>` : '';
     return `<tr style="${r.hidden?'opacity:.5;':''}">
-      <td data-label="回覆者" style="color:var(--white);">${escapeHtml(r.display_name || '（未取得）')}${r.hidden?' <span style="font-size:10px;color:var(--gray);">(已隱藏)</span>':''}${sub}</td>
+      <td data-label="回覆者" style="color:var(--white);">${escapeHtml(r.display_name || '（未取得）')}${dupBadge}${att2}${r.hidden?' <span style="font-size:10px;color:var(--gray);">(已隱藏)</span>':''}${sub}</td>
       <td data-label="來源">${rsvpSource(r)}</td>
       <td data-label="類別"><span class="status" style="background:${cat.bg};color:${cat.fg};" title="${escapeHtml(cat.title)}">${cat.label}</span></td>
       <td data-label="出席">${att}</td>
@@ -3295,6 +3382,116 @@ async function cleanupRsvp(){
   await loadRsvp();
   status.style.color = fail ? '#ef5350' : '#66bb6a';
   status.textContent = `✓ 已隱藏 ${ok} 筆${fail ? `，失敗 ${fail} 筆` : ''}（可勾「顯示已隱藏」還原）`;
+}
+
+// ── 出席回覆：代填（單筆／批次）＋ 客戶自填連結 ＋ 附件圖檔 ──────────
+const RSVP_PUBLIC_URL = 'https://tada-ai.org.tw/rsvp/';
+const RSVP_BUCKET = 'tada-uploads';
+
+async function copyRsvpLink(){
+  try{ await navigator.clipboard.writeText(RSVP_PUBLIC_URL); alert('已複製客戶自填連結：\n'+RSVP_PUBLIC_URL+'\n\n可貼給客戶自行填寫。'); }
+  catch(e){ prompt('客戶自填連結（請手動複製）：', RSVP_PUBLIC_URL); }
+}
+
+function genWebId(){ return 'web-staff-' + ((window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+'-'+Math.random().toString(16).slice(2)); }
+
+function openRsvpProxy(){
+  ['rpx-name','rpx-org','rpx-title','rpx-mobile','rpx-note','rpx-bulk','rpx-bulk-org'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('rpx-att').value='1';
+  document.getElementById('rpx-head').value='1';
+  document.getElementById('rpx-veg').value='0';
+  const f=document.getElementById('rpx-file'); if(f) f.value='';
+  document.getElementById('rpx-file-note').textContent='';
+  document.getElementById('rpx-err').style.display='none';
+  rpxTab('one');
+  document.getElementById('rsvpproxy-modal').style.display='flex';
+}
+function closeRsvpProxy(){ document.getElementById('rsvpproxy-modal').style.display='none'; }
+function rpxTab(mode){
+  const one = mode==='one';
+  document.getElementById('rpx-pane-one').style.display   = one?'flex':'none';
+  document.getElementById('rpx-pane-batch').style.display = one?'none':'flex';
+  document.getElementById('rpx-tab-one').className   = 'btn btn-sm '+(one?'btn-gold':'btn-outline');
+  document.getElementById('rpx-tab-batch').className = 'btn btn-sm '+(one?'btn-outline':'btn-gold');
+  document.getElementById('rsvpproxy-modal').dataset.mode = mode;
+}
+function rpxErr(m){ const e=document.getElementById('rpx-err'); e.textContent=m; e.style.display=m?'block':'none'; }
+
+// 上傳附件圖檔到 storage，回傳公開網址；無檔案回傳 null；失敗丟例外
+async function uploadRpxImage(){
+  const f = document.getElementById('rpx-file').files[0];
+  if(!f) return null;
+  const ext = (f.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';
+  const path = `rsvp/${(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()}.${ext}`;
+  const res = await fetch(`${SB_URL}/storage/v1/object/${RSVP_BUCKET}/${path}`, {
+    method:'POST', headers:{ apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type': f.type||'image/jpeg' }, body:f });
+  if(!res.ok){ const t=await res.text(); throw new Error(`附件上傳失敗（HTTP ${res.status}）。請確認 Supabase 已建立公開 bucket「${RSVP_BUCKET}」並允許上傳。\n${t.slice(0,120)}`); }
+  return `${SB_URL}/storage/v1/object/public/${RSVP_BUCKET}/${path}`;
+}
+
+// 批次每行解析：「姓名,單位,職稱」或純姓名（可去職稱）
+function parseBulkLine(line, sharedOrg, detitle){
+  const parts = line.split(/[,，]/).map(s=>s.trim());
+  if(parts.length>=2){
+    return { name:parts[0], org:parts[1]||sharedOrg||null, title:parts[2]||null };
+  }
+  let name = line.trim(), title = null;
+  if(detitle){
+    const mm = line.match(RSVP_TITLE_RE);
+    if(mm && mm.length){ title = mm[mm.length-1]; name = rsvpDetitle(line).trim(); }
+  }
+  return { name, org:sharedOrg||null, title };
+}
+
+async function submitRsvpProxy(){
+  rpxErr('');
+  const btn=document.getElementById('rpx-submit'); btn.disabled=true; const old=btn.textContent; btn.textContent='處理中…';
+  try{
+    let attachUrl=null;
+    try{ attachUrl = await uploadRpxImage(); }
+    catch(upErr){ rpxErr(upErr.message); btn.disabled=false; btn.textContent=old; return; }
+
+    const mode = document.getElementById('rsvpproxy-modal').dataset.mode || 'one';
+    let rows=[];
+    if(mode==='one'){
+      const name=document.getElementById('rpx-name').value.trim();
+      if(!name){ rpxErr('請輸入姓名'); btn.disabled=false; btn.textContent=old; return; }
+      const attending=document.getElementById('rpx-att').value==='1';
+      rows.push({
+        user_id: genWebId(), display_name:name,
+        org: document.getElementById('rpx-org').value.trim()||null,
+        title: document.getElementById('rpx-title').value.trim()||null,
+        mobile: document.getElementById('rpx-mobile').value.trim()||null,
+        attending,
+        headcount: attending?(+document.getElementById('rpx-head').value||1):0,
+        vegetarian: attending?(+document.getElementById('rpx-veg').value||0):0,
+        note: document.getElementById('rpx-note').value.trim()||null,
+        attachment_url: attachUrl,
+        updated_at: new Date().toISOString(),
+      });
+    } else {
+      const sharedOrg=document.getElementById('rpx-bulk-org').value.trim();
+      const detitle=document.getElementById('rpx-bulk-detitle').checked;
+      const lines=document.getElementById('rpx-bulk').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      if(!lines.length){ rpxErr('請至少貼上一個姓名'); btn.disabled=false; btn.textContent=old; return; }
+      rows=lines.map(ln=>{ const p=parseBulkLine(ln,sharedOrg,detitle);
+        return { user_id:genWebId(), display_name:p.name, org:p.org, title:p.title, mobile:null,
+          attending:true, headcount:1, vegetarian:0, note:null, attachment_url:attachUrl, updated_at:new Date().toISOString() }; })
+        .filter(r=>r.display_name);
+    }
+    // 逐筆或整批 insert（attachment_url 欄位若未建立，PostgREST 會報錯 → 提示）
+    const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp`, {
+      method:'POST', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify(rows) });
+    if(!res.ok){
+      let t=await res.text();
+      if(/attachment_url/.test(t)) t='資料表尚未建立 attachment_url 欄位。請先在 Supabase 執行 tada_rsvp_attachment.sql（不影響匯入姓名，可先取消附圖）。\n'+t;
+      throw new Error(t);
+    }
+    closeRsvpProxy();
+    await loadRsvp();
+    document.getElementById('rsvp-sb-status').style.color='#66bb6a';
+    document.getElementById('rsvp-sb-status').textContent=`✓ 已代填 ${rows.length} 筆`;
+  }catch(e){ rpxErr('送出失敗：'+e.message); btn.disabled=false; btn.textContent=old; }
 }
 
 function exportRsvpCSV() {
