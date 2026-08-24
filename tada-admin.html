@@ -3778,11 +3778,12 @@ function renderSeating(){
       const sizeTag=o.size>1?` <span style="color:var(--gold);">×${o.size}</span>`:'';
       const noteBtn = o.kind==='member'
         ? `<button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:10px;" onclick="editOccNote('${escapeHtml(String(o.id))}')" title="改備註（影響分組，改完可重排）">✎</button>` : '';
+      const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:74px;" title="改桌／移除">${tableOptionsHtml(o.table)}</select>`;
       return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
         <span style="font-size:12px;">${icon}</span>
-        <span style="flex:1;font-size:12.5px;color:var(--white);">${escapeHtml(o.name)}${sizeTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,14))}</span>`:''}</span>
+        <span style="flex:1;font-size:12.5px;color:var(--white);min-width:0;">${escapeHtml(o.name)}${sizeTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,14))}</span>`:''}</span>
         ${noteBtn}
-        <button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:10px;" onclick="moveOcc('${o.kind}','${escapeHtml(String(o.id))}')" title="改桌／移除">⇄</button>
+        ${sel}
       </div>`;
     }).join('') : '<div style="color:var(--gray);font-size:12px;padding:8px 0;">（空桌）</div>';
     return `<div style="background:var(--surface,rgba(255,255,255,0.03));border:1px solid ${over?'#ef5350':'var(--border,rgba(196,146,42,0.25))'};border-radius:12px;padding:12px 13px;">
@@ -3800,22 +3801,16 @@ function renderSeating(){
   document.getElementById('seat-un-count').textContent = unassigned.length?`（${unassigned.length} 組 / ${unHead} 人）`:'（無）';
   document.getElementById('seating-unassigned').innerHTML = unassigned.length? unassigned.map(o=>{
     const icon=o.kind==='guest'?'🎩':'👤'; const sizeTag=o.size>1?`×${o.size}`:'';
+    const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:78px;margin-left:2px;" title="安排桌次"><option value="">安排…</option>${tableOptionsHtml('').replace('<option value="">未安排</option>','')}</select>`;
     return `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(196,146,42,0.1);border:1px solid rgba(196,146,42,0.3);border-radius:99px;padding:5px 10px;font-size:12px;color:var(--white);">
       ${icon} ${escapeHtml(o.name)} <span style="color:var(--gold);">${sizeTag}</span>
-      <button class="btn btn-sm btn-outline" style="padding:0 6px;font-size:10px;margin-left:2px;" onclick="moveOcc('${o.kind}','${escapeHtml(String(o.id))}')">安排</button>
+      ${sel}
     </span>`;
   }).join('') : '<span style="color:var(--gray);font-size:12px;">全部已排桌 🎉</span>';
 }
 
-// 改桌：跳簡易 prompt 選桌號
-async function moveOcc(kind, id){
-  const cur = kind==='guest'
-    ? (seatGuests.find(g=>String(g.id)===String(id))||{}).seat
-    : (seatMembers.find(m=>String(m.user_id)===String(id))||{}).table_no;
-  const choice = prompt('輸入桌號（例：主桌、V01、第3桌；留空＝移除排桌）：\n可用：'+EVENT_TABLES.join('、'), cur||'');
-  if(choice===null) return;
-  const val=choice.trim();
-  if(val && !EVENT_TABLES.includes(val)){ if(!confirm(`「${val}」不在標準桌號清單內，仍要使用？`)) return; }
+// 用下拉改桌／移除（會員→table_no、貴賓→seat）
+async function moveOccSelect(kind, id, val){
   if(kind==='guest') await setGuestSeat(id, val);
   else await setRsvpTable(id, val);
   await loadSeating();
