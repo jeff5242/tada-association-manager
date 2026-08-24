@@ -908,7 +908,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 
   <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:14px;">
-    現場共 <b style="color:var(--gold-lt);">24 桌</b>：主桌 ×1、貴賓桌 V01–V04 ×4、會員桌 第1–18 ×18、工作桌 ×1（每桌以 <b>10 人</b>估算）。
+    現場共 <b style="color:var(--gold-lt);">26 桌</b>：主桌 ×1、貴賓桌 V01–V04 ×4、會員桌 第1–20 ×20、工作桌 ×1（每桌以 <b>10 人</b>估算）。
     貴賓桌由「貴賓名冊」的桌號決定、會員桌由「出席統計」的桌次決定；在這裡可總覽誰坐哪桌，並直接微調。
   </p>
 
@@ -916,7 +916,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="stat-card"><div class="stat-label">已排人數</div><div class="stat-num" style="color:#66bb6a;" id="seat-assigned">–</div></div>
     <div class="stat-card"><div class="stat-label">尚未排桌</div><div class="stat-num" style="color:var(--gold);" id="seat-unassigned">–</div></div>
     <div class="stat-card"><div class="stat-label">使用桌數</div><div class="stat-num" style="color:#29b6f6;" id="seat-tables">–</div></div>
-    <div class="stat-card"><div class="stat-label">總桌數</div><div class="stat-num" style="color:var(--white);">24</div></div>
+    <div class="stat-card"><div class="stat-label">總桌數</div><div class="stat-num" style="color:var(--white);">26</div></div>
   </div>
 
   <div id="seating-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
@@ -3285,11 +3285,11 @@ function updateSortArrows(){
 }
 
 // ── 桌次安排（會員與貴賓共用同一批現場桌號）────────────────
-// 24 桌方案：主桌 ×1 ＋ 貴賓桌 V01–V04 ×4 ＋ 會員桌 第1–18 ×18 ＋ 工作桌 ×1
+// 26 桌方案：主桌 ×1 ＋ 貴賓桌 V01–V04 ×4 ＋ 會員桌 第1–20 ×20 ＋ 工作桌 ×1
 const EVENT_TABLE_GROUPS = [
   { label:'主桌',   tables:['主桌'] },
   { label:'貴賓桌', tables:['V01','V02','V03','V04'] },
-  { label:'會員桌', tables:['第1桌','第2桌','第3桌','第4桌','第5桌','第6桌','第7桌','第8桌','第9桌','第10桌','第11桌','第12桌','第13桌','第14桌','第15桌','第16桌','第17桌','第18桌'] },
+  { label:'會員桌', tables:['第1桌','第2桌','第3桌','第4桌','第5桌','第6桌','第7桌','第8桌','第9桌','第10桌','第11桌','第12桌','第13桌','第14桌','第15桌','第16桌','第17桌','第18桌','第19桌','第20桌'] },
   { label:'工作桌', tables:['工作桌'] },
 ];
 const TABLE_CAP = 10;   // 每桌座位數（以人數/headcount 計）
