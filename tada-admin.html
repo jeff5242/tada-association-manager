@@ -908,7 +908,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 
   <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:14px;">
-    現場共 <b style="color:var(--gold-lt);">20 桌</b>：主桌 ×1、貴賓桌 V01–V04 ×4、會員桌 第1–14 ×14、工作桌 ×1（每桌以 <b>10 人</b>估算）。
+    現場共 <b style="color:var(--gold-lt);">24 桌</b>：主桌 ×1、貴賓桌 V01–V04 ×4、會員桌 第1–18 ×18、工作桌 ×1（每桌以 <b>10 人</b>估算）。
     貴賓桌由「貴賓名冊」的桌號決定、會員桌由「出席統計」的桌次決定；在這裡可總覽誰坐哪桌，並直接微調。
   </p>
 
@@ -916,7 +916,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="stat-card"><div class="stat-label">已排人數</div><div class="stat-num" style="color:#66bb6a;" id="seat-assigned">–</div></div>
     <div class="stat-card"><div class="stat-label">尚未排桌</div><div class="stat-num" style="color:var(--gold);" id="seat-unassigned">–</div></div>
     <div class="stat-card"><div class="stat-label">使用桌數</div><div class="stat-num" style="color:#29b6f6;" id="seat-tables">–</div></div>
-    <div class="stat-card"><div class="stat-label">總桌數</div><div class="stat-num" style="color:var(--white);">20</div></div>
+    <div class="stat-card"><div class="stat-label">總桌數</div><div class="stat-num" style="color:var(--white);">24</div></div>
   </div>
 
   <div id="seating-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
@@ -3285,11 +3285,11 @@ function updateSortArrows(){
 }
 
 // ── 桌次安排（會員與貴賓共用同一批現場桌號）────────────────
-// 20 桌方案：主桌 ×1 ＋ 貴賓桌 V01–V04 ×4 ＋ 會員桌 第1–14 ×14 ＋ 工作桌 ×1
+// 24 桌方案：主桌 ×1 ＋ 貴賓桌 V01–V04 ×4 ＋ 會員桌 第1–18 ×18 ＋ 工作桌 ×1
 const EVENT_TABLE_GROUPS = [
   { label:'主桌',   tables:['主桌'] },
   { label:'貴賓桌', tables:['V01','V02','V03','V04'] },
-  { label:'會員桌', tables:['第1桌','第2桌','第3桌','第4桌','第5桌','第6桌','第7桌','第8桌','第9桌','第10桌','第11桌','第12桌','第13桌','第14桌'] },
+  { label:'會員桌', tables:['第1桌','第2桌','第3桌','第4桌','第5桌','第6桌','第7桌','第8桌','第9桌','第10桌','第11桌','第12桌','第13桌','第14桌','第15桌','第16桌','第17桌','第18桌'] },
   { label:'工作桌', tables:['工作桌'] },
 ];
 const TABLE_CAP = 10;   // 每桌座位數（以人數/headcount 計）
@@ -3745,7 +3745,8 @@ async function loadSeating(){
 // 統一「座位人」模型
 function seatOccupants(){
   const list=[];
-  seatGuests.forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:g.seat||'', size:1, checked:g.checked_in }));
+  // 貴賓只顯示「已實際排位」者（依原則：桌次以出席回報為主，長官貴賓回報後由貴賓名冊指定桌號才進場）
+  seatGuests.filter(g=>g.seat).forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:g.seat, size:(g.party_size||1), checked:g.checked_in }));
   seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:m.org||m.note||m.companions||'', table:m.table_no||'', size:(m.headcount||1) }));
   return list;
 }
@@ -3855,7 +3856,7 @@ async function applySeatPlan(plan, verb){
 
 // 補排：只把「未排桌的出席會員」補進會員桌（不動已排好的）
 async function autoSeatMembers(){
-  const un = seatMembers.filter(m=>!m.table_no);
+  const un = seatMembers.filter(m=>!m.table_no && m.note!=='工作人員');
   if(!un.length){ alert('沒有未排桌的出席會員。'); return; }
   const used=new Map(); MEMBER_TABLES.forEach(t=>used.set(t,0));
   seatMembers.forEach(m=>{ if(m.table_no && used.has(m.table_no)) used.set(m.table_no, used.get(m.table_no)+(m.headcount||1)); });
@@ -3866,9 +3867,9 @@ async function autoSeatMembers(){
 
 // 全部重排：清掉所有會員桌，把全部出席會員依目前備註/單位重新排一次（貴賓桌不受影響）
 async function reseatAllMembers(){
-  const all = seatMembers.slice();
+  const all = seatMembers.filter(m=>m.note!=='工作人員');   // 工作人員固定工作桌，不參與會員桌重排
   if(!all.length){ alert('目前沒有出席會員。'); return; }
-  if(!confirm(`全部重排：清掉所有會員桌，依目前『備註／單位』把 ${all.length} 位出席會員重新分桌？\n（貴賓桌、主桌不受影響；手動改過的會員桌位會被覆蓋，備註編輯會保留並生效）`)) return;
+  if(!confirm(`全部重排：清掉所有會員桌，依目前『備註／單位』把 ${all.length} 位出席會員重新分桌？\n（貴賓桌、主桌、工作桌不受影響；手動改過的會員桌位會被覆蓋，備註編輯會保留並生效）`)) return;
   const plan=planSeats(all);   // 從空桌開始
   await applySeatPlan(plan, '已重排');
 }
