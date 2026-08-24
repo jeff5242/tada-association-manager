@@ -899,7 +899,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="section-title">🍽️ 桌次規劃</div>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-outline btn-sm" onclick="loadSeating()">↻ 重新載入</button>
-      <button class="btn btn-gold btn-sm" onclick="autoSeatMembers()" title="把尚未排桌的出席會員，依『相同備註／同公司』分到會員桌（草案，可再調整）">🎲 會員自動分桌（草案）</button>
+      <button class="btn btn-gold btn-sm" onclick="autoSeatMembers()" title="只把『尚未排桌』的出席會員補進會員桌（不動已排好的）">🎲 補排未排會員</button>
+      <button class="btn btn-gold btn-sm" onclick="reseatAllMembers()" title="清掉所有會員桌，依目前『備註／單位』把全部出席會員重新排一次（貴賓桌不受影響）">♻️ 全部重排</button>
       <button class="btn btn-outline btn-sm" onclick="clearMemberSeats()" title="清除所有『會員桌』排位（不動貴賓桌與主桌）">🧹 清空會員桌</button>
       <button class="btn btn-outline btn-sm" onclick="exportSeatingCSV()">⬇ 匯出桌次表</button>
       <span id="seating-status" style="font-size:11px;"></span>
@@ -3775,9 +3776,12 @@ function renderSeating(){
     const rows=arr.length? arr.map(o=>{
       const icon=o.kind==='guest'?'🎩':'👤';
       const sizeTag=o.size>1?` <span style="color:var(--gold);">×${o.size}</span>`:'';
+      const noteBtn = o.kind==='member'
+        ? `<button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:10px;" onclick="editOccNote('${escapeHtml(String(o.id))}')" title="改備註（影響分組，改完可重排）">✎</button>` : '';
       return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
         <span style="font-size:12px;">${icon}</span>
         <span style="flex:1;font-size:12.5px;color:var(--white);">${escapeHtml(o.name)}${sizeTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,14))}</span>`:''}</span>
+        ${noteBtn}
         <button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:10px;" onclick="moveOcc('${o.kind}','${escapeHtml(String(o.id))}')" title="改桌／移除">⇄</button>
       </div>`;
     }).join('') : '<div style="color:var(--gray);font-size:12px;padding:8px 0;">（空桌）</div>';
@@ -3817,45 +3821,73 @@ async function moveOcc(kind, id){
   await loadSeating();
 }
 
-// 自動分桌：把「未排桌的出席會員」依 相同備註 > 同公司 分群，塞進會員桌
-async function autoSeatMembers(){
-  const un = seatMembers.filter(m=>!m.table_no);
-  if(!un.length){ alert('沒有未排桌的出席會員。'); return; }
-  // 目前各會員桌已用人數
-  const used=new Map(); MEMBER_TABLES.forEach(t=>used.set(t,0));
-  seatMembers.forEach(m=>{ if(m.table_no && used.has(m.table_no)) used.set(m.table_no, used.get(m.table_no)+(m.headcount||1)); });
-  // 分群鍵：優先相同備註（去除空白/無意義），其次同公司；否則各自一組
-  const trivial=v=>!v||['無','無。','none','-'].includes(String(v).trim());
+// 共用分桌演算法：依 相同備註 > 同公司 分群，整群優先塞進「容量夠」的會員桌
+const SEAT_TRIVIAL = v=>!v||['無','無。','none','-'].includes(String(v).trim());
+function seatGroupKey(m){
+  if(!SEAT_TRIVIAL(m.note)) return 'note:'+m.note.trim();
+  if(m.org) return 'org:'+m.org.trim();
+  return 'solo:'+m.user_id;
+}
+// members: 要排的人；usedInit: 各桌已占用（Map），預設全空
+function planSeats(members, usedInit){
+  const used=new Map(); MEMBER_TABLES.forEach(t=>used.set(t, usedInit?(usedInit.get(t)||0):0));
   const groups=new Map();
-  un.forEach(m=>{
-    let key;
-    if(!trivial(m.note)) key='note:'+m.note.trim();
-    else if(m.org) key='org:'+m.org.trim();
-    else key='solo:'+m.user_id;
-    if(!groups.has(key)) groups.set(key,[]);
-    groups.get(key).push(m);
-  });
-  // 大群優先，塞進「剩餘容量夠」的最前面會員桌；群太大就跨桌續填
-  const plan=[]; // {user_id, table_no}
-  const arr=[...groups.values()].sort((a,b)=>
-    b.reduce((s,m)=>s+(m.headcount||1),0)-a.reduce((s,m)=>s+(m.headcount||1),0));
+  members.forEach(m=>{ const k=seatGroupKey(m); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });
+  const gh=g=>g.reduce((s,m)=>s+(m.headcount||1),0);
+  const arr=[...groups.values()].sort((a,b)=>gh(b)-gh(a));
+  const plan=[];
+  const placeOne=m=>{ const need=m.headcount||1;
+    const t=MEMBER_TABLES.find(t=>used.get(t)+need<=TABLE_CAP) || MEMBER_TABLES[MEMBER_TABLES.length-1];
+    used.set(t,used.get(t)+need); plan.push({user_id:m.user_id,table_no:t}); };
   for(const grp of arr){
-    for(const m of grp){
-      const need=m.headcount||1;
-      let placed=false;
-      for(const t of MEMBER_TABLES){
-        if(used.get(t)+need<=TABLE_CAP){ used.set(t,used.get(t)+need); plan.push({user_id:m.user_id,table_no:t}); placed=true; break; }
-      }
-      if(!placed){ /* 全滿：放最後一桌超載，仍標記 */ const t=MEMBER_TABLES[MEMBER_TABLES.length-1]; used.set(t,used.get(t)+need); plan.push({user_id:m.user_id,table_no:t}); }
+    const total=gh(grp);
+    if(total<=TABLE_CAP){
+      const t=MEMBER_TABLES.find(t=>used.get(t)+total<=TABLE_CAP);
+      if(t){ grp.forEach(m=>{ used.set(t,used.get(t)+(m.headcount||1)); plan.push({user_id:m.user_id,table_no:t}); }); continue; }
     }
+    grp.forEach(placeOne);   // 整群放不下 → 逐一補位
   }
-  if(!confirm(`將 ${un.length} 位未排桌會員自動分到會員桌（依相同備註／同公司盡量同桌）？\n這是草案，之後可用「⇄」逐一微調。`)) return;
-  const st=document.getElementById('seating-status'); st.textContent='分桌中…'; st.style.color='var(--gray)';
+  return plan;
+}
+async function applySeatPlan(plan, verb){
+  const st=document.getElementById('seating-status'); st.textContent=verb+'中…'; st.style.color='var(--gray)';
   const res=await fetch(`${SB_URL}/rest/v1/tada_rsvp?on_conflict=user_id`, {
     method:'POST', headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
     body:JSON.stringify(plan.map(p=>({user_id:p.user_id, table_no:p.table_no, updated_at:new Date().toISOString()}))) });
-  if(res.ok){ await loadSeating(); st.style.color='#66bb6a'; st.textContent=`✓ 已分桌 ${plan.length} 位`; }
-  else { st.style.color='#ef5350'; st.textContent='分桌失敗'; alert('分桌失敗：'+await res.text()); }
+  if(res.ok){ await loadSeating(); st.style.color='#66bb6a'; st.textContent=`✓ ${verb} ${plan.length} 位`; }
+  else { st.style.color='#ef5350'; st.textContent=verb+'失敗'; alert(verb+'失敗：'+await res.text()); }
+}
+
+// 補排：只把「未排桌的出席會員」補進會員桌（不動已排好的）
+async function autoSeatMembers(){
+  const un = seatMembers.filter(m=>!m.table_no);
+  if(!un.length){ alert('沒有未排桌的出席會員。'); return; }
+  const used=new Map(); MEMBER_TABLES.forEach(t=>used.set(t,0));
+  seatMembers.forEach(m=>{ if(m.table_no && used.has(m.table_no)) used.set(m.table_no, used.get(m.table_no)+(m.headcount||1)); });
+  const plan=planSeats(un, used);
+  if(!confirm(`將 ${un.length} 位未排桌會員補進會員桌（依相同備註／同公司盡量同桌）？\n已排好的不會動。`)) return;
+  await applySeatPlan(plan, '已補排');
+}
+
+// 全部重排：清掉所有會員桌，把全部出席會員依目前備註/單位重新排一次（貴賓桌不受影響）
+async function reseatAllMembers(){
+  const all = seatMembers.slice();
+  if(!all.length){ alert('目前沒有出席會員。'); return; }
+  if(!confirm(`全部重排：清掉所有會員桌，依目前『備註／單位』把 ${all.length} 位出席會員重新分桌？\n（貴賓桌、主桌不受影響；手動改過的會員桌位會被覆蓋，備註編輯會保留並生效）`)) return;
+  const plan=planSeats(all);   // 從空桌開始
+  await applySeatPlan(plan, '已重排');
+}
+
+// 在桌次頁直接改某位會員的備註（影響分組，改完可按「全部重排」）
+async function editOccNote(uid){
+  const m=seatMembers.find(x=>x.user_id===uid); if(!m) return;
+  const v=prompt(`編輯「${m.display_name}」的備註：\n（相同備註的人會被排在同一桌；改完按「♻️ 全部重排」生效）`, m.note||'');
+  if(v===null) return;
+  const res=await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(uid)}`, {
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({ note: v.trim()||null }) });
+  if(res.ok){ const row=seatMembers.find(x=>x.user_id===uid); if(row) row.note=v.trim()||null; await loadSeating();
+    const st=document.getElementById('seating-status'); st.style.color='#66bb6a'; st.textContent='✓ 備註已更新，按「♻️ 全部重排」套用分組'; }
+  else alert('備註更新失敗：'+await res.text());
 }
 
 // 清空所有會員桌排位（不動貴賓/主桌）
