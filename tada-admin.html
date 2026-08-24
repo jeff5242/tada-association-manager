@@ -3779,11 +3779,14 @@ function renderSeating(){
       const sizeTag=o.size>1?` <span style="color:var(--gold);">×${o.size}</span>`:'';
       const noteBtn = o.kind==='member'
         ? `<button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:10px;" onclick="editOccNote('${escapeHtml(String(o.id))}')" title="改備註（影響分組，改完可重排）">✎</button>` : '';
+      const hideBtn = o.kind==='member'
+        ? `<button class="btn btn-sm" style="padding:1px 5px;font-size:10px;background:rgba(192,57,43,0.12);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="hideOcc('${escapeHtml(String(o.id))}')" title="隱藏此筆（不列入出席與桌次，可還原）">🚫</button>` : '';
       const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:74px;" title="改桌／移除">${tableOptionsHtml(o.table)}</select>`;
-      return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+      return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
         <span style="font-size:12px;">${icon}</span>
         <span style="flex:1;font-size:12.5px;color:var(--white);min-width:0;">${escapeHtml(o.name)}${sizeTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,14))}</span>`:''}</span>
         ${noteBtn}
+        ${hideBtn}
         ${sel}
       </div>`;
     }).join('') : '<div style="color:var(--gray);font-size:12px;padding:8px 0;">（空桌）</div>';
@@ -3803,9 +3806,11 @@ function renderSeating(){
   document.getElementById('seating-unassigned').innerHTML = unassigned.length? unassigned.map(o=>{
     const icon=o.kind==='guest'?'🎩':'👤'; const sizeTag=o.size>1?`×${o.size}`:'';
     const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:78px;margin-left:2px;" title="安排桌次"><option value="">安排…</option>${tableOptionsHtml('').replace('<option value="">未安排</option>','')}</select>`;
+    const hideBtn = o.kind==='member'
+      ? `<button class="btn btn-sm" style="padding:0 5px;font-size:10px;background:rgba(192,57,43,0.12);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="hideOcc('${escapeHtml(String(o.id))}')" title="隱藏此筆（不排、不計）">🚫</button>` : '';
     return `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(196,146,42,0.1);border:1px solid rgba(196,146,42,0.3);border-radius:99px;padding:5px 10px;font-size:12px;color:var(--white);">
       ${icon} ${escapeHtml(o.name)} <span style="color:var(--gold);">${sizeTag}</span>
-      ${sel}
+      ${sel}${hideBtn}
     </span>`;
   }).join('') : '<span style="color:var(--gray);font-size:12px;">全部已排桌 🎉</span>';
 }
@@ -3815,6 +3820,16 @@ async function moveOccSelect(kind, id, val){
   if(kind==='guest') await setGuestSeat(id, val);
   else await setRsvpTable(id, val);
   await loadSeating();
+}
+
+// 隱藏此筆（不列入出席與桌次，可在出席統計還原）
+async function hideOcc(uid){
+  const m=seatMembers.find(x=>x.user_id===uid);
+  if(!confirm(`隱藏「${m?m.display_name:''}」？\n將不列入出席人數與桌次規劃（可到出席統計勾「顯示已隱藏」還原）。`)) return;
+  const res=await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(uid)}`, {
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({ hidden:true, table_no:null }) });
+  if(res.ok){ await loadSeating(); const st=document.getElementById('seating-status'); st.style.color='#66bb6a'; st.textContent='✓ 已隱藏一筆'; }
+  else alert('隱藏失敗：'+await res.text());
 }
 
 // 共用分桌演算法：依 相同備註 > 同公司 分群，整群優先塞進「容量夠」的會員桌
