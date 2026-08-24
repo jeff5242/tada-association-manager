@@ -299,12 +299,13 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <button class="btn btn-gold" onclick="exportGuestsCSV()">⬇ 匯出貴賓名冊</button>
       <button class="btn btn-outline" onclick="exportCSV()" title="理監事＋貴賓合併">匯出全部</button>
       <button class="btn btn-outline" onclick="resetAllGuestCheckins()" title="正式活動前清除測試報到（桌號保留）">↺ 重設全部貴賓報到</button>
-      <span style="font-size:11px;color:var(--gray);white-space:nowrap;">共 <span id="guest-count">0</span> 筆</span>
+      <label style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;" title="只顯示尚未填寫出席回覆的貴賓，方便追邀約"><input type="checkbox" id="guest-unreplied-only" onchange="renderGuests()"> ⚪ 只看未回覆</label>
+      <span style="font-size:11px;color:var(--gray);white-space:nowrap;">共 <span id="guest-count">0</span> 筆<span id="guest-reply-note" style="color:#66bb6a;margin-left:8px;"></span></span>
     </div>
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>姓名 / 職稱</th><th>機關單位</th><th>高鐵接送</th><th>用餐</th><th>邀請狀態</th><th>備註</th><th>現場報到 / 祝福</th><th>操作</th>
+          <th>姓名 / 職稱</th><th>機關單位</th><th>高鐵接送</th><th>用餐</th><th>邀請狀態</th><th>出席回覆<br><small style="font-weight:400;color:var(--gray);">比對出席表</small></th><th>備註</th><th>現場報到 / 祝福</th><th>操作</th>
         </tr></thead>
         <tbody id="guest-tbody"></tbody>
       </table>
@@ -2024,14 +2025,50 @@ function filterGuests(q){ gFilter=q; renderGuests(); }
 function filterGuestsStatus(s){ gStatus=s; renderGuests(); }
 function filterGuestsCat(c){ gCat=c; renderGuests(); }
 
+// ── 貴賓 × 出席回覆 比對（去職稱後對出席表）────────────────
+let guestRsvpIndex = new Map();   // 正規化姓名 -> {attending, headcount}
+async function buildGuestRsvpIndex(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_rsvp?hidden=eq.false&select=display_name,attending,headcount`, { headers: SB_HEADERS });
+    const rows=r.ok?await r.json():[];
+    const idx=new Map();
+    rows.forEach(x=>{
+      const n=x.display_name||'';
+      const keys=new Set([ rsvpKey(n), rsvpKey(rsvpDetitle(n)), ...cjkRuns(n).map(rsvpKey), ...cjkRuns(rsvpDetitle(n)).map(rsvpKey) ]);
+      keys.forEach(k=>{ if(k && k.length>=2 && !idx.has(k)) idx.set(k, { attending:x.attending, headcount:x.headcount }); });
+    });
+    guestRsvpIndex=idx;
+  }catch(e){ console.warn('建立貴賓出席比對索引失敗', e); }
+}
+// 回傳貴賓的出席回覆狀態
+function guestRsvpStatus(g){
+  const n=g.name||'';
+  const cands=new Set([ rsvpKey(n), rsvpKey(rsvpDetitle(n)), ...cjkRuns(rsvpDetitle(n)).map(rsvpKey), ...cjkRuns(n).map(rsvpKey) ]);
+  for(const k of cands){ if(k && guestRsvpIndex.has(k)) return guestRsvpIndex.get(k); }
+  return null;
+}
+function guestReplyBadge(g){
+  const st=guestRsvpStatus(g);
+  if(!st) return '<span class="status" style="background:rgba(158,158,158,0.15);color:var(--gray);">⚪ 未回覆</span>';
+  return st.attending
+    ? `<span class="status" style="background:rgba(46,125,50,0.2);color:#66bb6a;">✅ 已回覆·出席${st.headcount?`<span style="color:var(--gold);"> ${st.headcount}人</span>`:''}</span>`
+    : '<span class="status" style="background:rgba(192,57,43,0.15);color:#ef5350;">已回覆·不克</span>';
+}
+
 function renderGuests(){
+  const unrepliedOnly=document.getElementById('guest-unreplied-only')?.checked;
   const data=guestData.filter(g=>{
     const q=!gFilter||g.name.includes(gFilter)||g.org.includes(gFilter);
     const s=!gStatus||g.status===gStatus;
     const c=!gCat||g.org.includes(gCat==='大學'?'大學':gCat==='農業部'?'農業部':gCat==='中衛'?'中衛':gCat);
-    return q&&s&&c;
+    const rep=!unrepliedOnly || !guestRsvpStatus(g);
+    return q&&s&&c&&rep;
   });
   document.getElementById('guest-count').textContent=data.length;
+  // 出席回覆統計（全體貴賓，不受篩選影響）
+  const replied=guestData.filter(g=>guestRsvpStatus(g)).length;
+  const rn=document.getElementById('guest-reply-note');
+  if(rn) rn.textContent=`· 已回覆 ${replied}／未回覆 ${guestData.length-replied}`;
   const trainBadge=v=>v==='x'?'<span style="color:var(--gray)">不需</span>':v==='?'?'<span style="color:var(--warn)">待確</span>':`<span style="color:var(--gold)">${v}</span>`;
   const mealBadge=v=>v==='x'||v===0?'<span style="color:var(--gray)">–</span>':v==='?'?'<span style="color:var(--warn)">?</span>':`<b style="color:var(--green-lt)">${v}</b>`;
   document.getElementById('guest-tbody').innerHTML=data.map(g=>{
@@ -2043,6 +2080,7 @@ function renderGuests(){
       <td data-label="高鐵">${trainBadge(g.train)}</td>
       <td data-label="用餐">${mealBadge(g.meal)}</td>
       <td data-label="狀態">${statusHTML[g.status]}</td>
+      <td data-label="出席回覆">${guestReplyBadge(g)}</td>
       <td data-label="備註" style="font-size:11px;color:var(--gray);">${g.note?escapeHtml(g.note):'–'}</td>
       <td data-label="現場報到" style="font-size:11px;min-width:150px;">
         ${g.checked_in?`<span style="color:#66bb6a;">✓ 已報到</span> <span style="color:var(--gray);">${gci(g.checked_in_at)}</span>`:'<span style="color:var(--gray);">未報到</span>'}
@@ -2080,6 +2118,7 @@ function guestEditRow(g){
       <label style="display:block;font-size:10px;color:var(--gray);margin-top:2px;cursor:pointer;"><input type="checkbox" id="eg-mealtbc"${(g.meal==='?'||!g.meal||g.meal==='x')?' checked':''}> 待確</label>
     </td>
     <td>${statusHTML[g.status]}</td>
+    <td>${guestReplyBadge(g)}</td>
     <td><input id="eg-note" class="search-input" style="width:100%;min-width:80px;" placeholder="備註" value="${esc(g.note)}"></td>
     <td style="font-size:11px;color:var(--gray);">${g.checked_in?'✓ 已報到':'—'}</td>
     <td style="white-space:nowrap;">
@@ -2164,7 +2203,10 @@ async function resetAllGuestCheckins(){
 
 async function reloadGuests(){
   try{
-    const g=await fetch(`${SB_URL}/rest/v1/tada_guests?order=sort`, {headers:SB_HEADERS}).then(r=>r.ok?r.json():null);
+    const [g]=await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_guests?order=sort`, {headers:SB_HEADERS}).then(r=>r.ok?r.json():null),
+      buildGuestRsvpIndex(),
+    ]);
     if(Array.isArray(g)) guestData=g;
   }catch(e){}
   renderGuests();
@@ -2287,8 +2329,9 @@ function exportGuestsCSV(){
   const trainTxt=v=>v==='x'?'不需':(v==='?'||!v)?'待確認':v;
   const mealTxt=v=>(v==='x'||v===0||v==null)?'':(v==='?'?'待確認':v);
   const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
-  const head=['姓名／職稱','機關單位','高鐵接送','用餐','邀請狀態','備註','桌號','現場報到'];
-  const lines=data.map(g=>[g.name,g.org,trainTxt(g.train),mealTxt(g.meal),GUEST_ST[g.status]||g.status,g.note||'',g.seat||'',g.checked_in?('已報到 '+gci(g.checked_in_at)):'未報到'].map(esc).join(','));
+  const rep=g=>{ const st=guestRsvpStatus(g); return !st?'未回覆':(st.attending?('已回覆·出席'+(st.headcount?` ${st.headcount}人`:'')):'已回覆·不克'); };
+  const head=['姓名／職稱','機關單位','高鐵接送','用餐','邀請狀態','出席回覆','備註','桌號','現場報到'];
+  const lines=data.map(g=>[g.name,g.org,trainTxt(g.train),mealTxt(g.meal),GUEST_ST[g.status]||g.status,rep(g),g.note||'',g.seat||'',g.checked_in?('已報到 '+gci(g.checked_in_at)):'未報到'].map(esc).join(','));
   const csv='﻿'+[head.map(esc).join(','),...lines].join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
@@ -2311,6 +2354,7 @@ async function loadInviteData(){
     const [b,g] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/tada_board?order=sort`, {headers:SB_HEADERS}).then(r=>r.ok?r.json():[]),
       fetch(`${SB_URL}/rest/v1/tada_guests?order=sort`, {headers:SB_HEADERS}).then(r=>r.ok?r.json():[]),
+      buildGuestRsvpIndex(),
     ]);
     if(Array.isArray(b)) boardData = b;
     if(Array.isArray(g)) guestData = g;
