@@ -4552,16 +4552,15 @@ async function checkPass1(){
   if(authMobileLogin){
     const m = (document.getElementById('mobile-input').value||'').replace(/[^0-9]/g,'');
     if(m.length<9){ authErr('請輸入正確手機號碼'); return; }
-    // 查該手機是否為「已開通後台管理」的會員
+    // 查已開通會員，比對「去橫線」的手機（DB 可能存 09XX-XXX-XXX）
     try{
-      const r = await fetch(`${SB_URL}/rest/v1/tada_members?mobile=eq.${encodeURIComponent(m)}&admin_enabled=eq.true&select=name,mobile`, {headers:SB_HEADERS});
-      const rows = r.ok ? await r.json() : [];
-      if(!rows.length){ authErr('此手機未開通後台權限，請洽管理員'); return; }
-      sessionStorage.setItem('tada_admin_who', rows[0].name||m);
-    }catch(e){
-      if(/admin_enabled/.test(String(e))){ authErr('尚未建立 admin_enabled 欄位，請先執行 SQL'); return; }
-      authErr('查詢失敗，請稍後再試'); return;
-    }
+      const r = await fetch(`${SB_URL}/rest/v1/tada_members?admin_enabled=eq.true&select=name,mobile`, {headers:SB_HEADERS});
+      if(!r.ok){ const t=await r.text(); if(/admin_enabled/.test(t)){ authErr('尚未建立 admin_enabled 欄位，請先執行 SQL'); return; } throw new Error(t); }
+      const rows = await r.json();
+      const hit = rows.find(x => (x.mobile||'').replace(/[^0-9]/g,'') === m);
+      if(!hit){ authErr('此手機未開通後台權限，請洽管理員'); return; }
+      sessionStorage.setItem('tada_admin_who', hit.name||m);
+    }catch(e){ authErr('查詢失敗，請稍後再試'); return; }
   } else {
     const val = (document.getElementById('pw-input').value||'').trim().toLowerCase(); // 不分大小寫
     const hash = await sha256(val);
