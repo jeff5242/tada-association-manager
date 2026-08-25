@@ -4554,8 +4554,9 @@ async function downloadDoc(pathEnc, btn){
 
 <script>
 // ── 登入牆：2 段驗證（① 通關密碼 TADA2026 或 已開通會員手機 → ② OTP 1688）──
-const ADMIN_PW_HASH = '0db45166855d1d262b3bb4399a2c0526c16359f9d3663ca8b96e5bc73c61fde0'; // tada2026（大小寫不拘）
-const DEFAULT_OTP = '1688';   // 串接真 OTP 前的預設驗證碼
+const ADMIN_PW_HASH = '0db45166855d1d262b3bb4399a2c0526c16359f9d3663ca8b96e5bc73c61fde0'; // tada2026（文件區 Edge Function 驗此 hash，勿改）
+const LOGIN_PW_HASH = 'ed6f1a565c864f401b0aba93e9623ea1f4616fe7ebd3f8774fa37dedef301aca'; // tada1688（登入通關密碼，大小寫不拘）
+const DEFAULT_OTP = '2026';   // 串接真 OTP 前的預設驗證碼
 let authMobileLogin = false;  // 第 1 段是否走「會員手機」模式
 let authPass1OK = false;
 
@@ -4591,8 +4592,8 @@ async function checkPass1(){
   } else {
     const val = (document.getElementById('pw-input').value||'').trim().toLowerCase(); // 不分大小寫
     const hash = await sha256(val);
-    if(hash !== ADMIN_PW_HASH){ authErr('通關密碼錯誤'); document.getElementById('pw-input').value=''; document.getElementById('pw-input').focus(); return; }
-    sessionStorage.setItem('tada_admin_pwhash', hash);   // 供文件區 Edge Function 驗證
+    if(hash !== LOGIN_PW_HASH){ authErr('通關密碼錯誤'); document.getElementById('pw-input').value=''; document.getElementById('pw-input').focus(); return; }
+    sessionStorage.setItem('tada_admin_pwhash', ADMIN_PW_HASH);   // 文件區 Edge Function 仍驗 tada2026 hash
     sessionStorage.setItem('tada_admin_who', '通關密碼');
   }
   // 進入第 2 段
@@ -4600,7 +4601,7 @@ async function checkPass1(){
   document.getElementById('auth-pass1').style.display='none';
   document.getElementById('auth-pass2').style.display='block';
   document.getElementById('auth-step-dots').textContent = '② OTP 驗證';
-  document.getElementById('auth-hint').textContent = 'OTP 尚未串接簡訊，目前預設驗證碼為 1688';
+  document.getElementById('auth-hint').textContent = 'OTP 尚未串接簡訊，目前預設驗證碼為 2026';
   setTimeout(()=>document.getElementById('otp-input').focus(), 50);
 }
 
