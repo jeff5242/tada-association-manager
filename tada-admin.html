@@ -148,19 +148,45 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 </head>
 <body>
 
-<!-- ══════════ 密碼牆 ══════════ -->
+<!-- ══════════ 登入牆（2 段驗證：密碼 → OTP）══════════ -->
 <div id="auth-wall" style="display:none;position:fixed;inset:0;background:#0d1a0f;z-index:9999;display:flex;align-items:center;justify-content:center;">
   <div style="width:100%;max-width:360px;padding:40px 32px;background:#16221a;border:1px solid #27382b;text-align:center;">
     <div style="font-family:'Noto Serif TC',serif;font-size:20px;font-weight:600;color:#e8c97a;margin-bottom:6px;">TADA 會務後台</div>
-    <div style="font-size:11px;color:#6b8f73;letter-spacing:.15em;margin-bottom:28px;">請輸入存取密碼</div>
-    <input id="pw-input" type="password" placeholder="密碼" autocomplete="current-password"
-      style="width:100%;padding:10px 14px;background:#0d1a0f;border:1px solid #27382b;color:#fff;font-size:14px;outline:none;margin-bottom:10px;"
-      onkeydown="if(event.key==='Enter')checkPw()">
-    <div id="pw-error" style="font-size:11px;color:#ef5350;min-height:16px;margin-bottom:10px;"></div>
-    <button onclick="checkPw()"
-      style="width:100%;padding:11px;background:#c4922a;border:none;color:#0d1a0f;font-family:'Noto Serif TC',serif;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.08em;">
-      進入後台
-    </button>
+    <div id="auth-step-dots" style="font-size:11px;color:#6b8f73;letter-spacing:.15em;margin-bottom:24px;">2 段驗證登入</div>
+
+    <!-- 第 1 段：密碼 或 會員手機 -->
+    <div id="auth-pass1">
+      <div id="pass1-pw-mode">
+        <div style="font-size:11px;color:#6b8f73;margin-bottom:12px;">① 請輸入通關密碼</div>
+        <input id="pw-input" type="password" placeholder="通關密碼" autocomplete="current-password"
+          style="width:100%;padding:10px 14px;background:#0d1a0f;border:1px solid #27382b;color:#fff;font-size:14px;outline:none;margin-bottom:10px;"
+          onkeydown="if(event.key==='Enter')checkPass1()">
+        <div style="font-size:11px;color:#6b8f73;margin-bottom:10px;cursor:pointer;text-decoration:underline;" onclick="authMobileMode(true)">改用會員手機登入 →</div>
+      </div>
+      <div id="pass1-mobile-mode" style="display:none;">
+        <div style="font-size:11px;color:#6b8f73;margin-bottom:12px;">① 請輸入已開通後台的會員手機</div>
+        <input id="mobile-input" type="tel" inputmode="numeric" placeholder="手機號碼（09XXXXXXXX）"
+          style="width:100%;padding:10px 14px;background:#0d1a0f;border:1px solid #27382b;color:#fff;font-size:14px;outline:none;margin-bottom:10px;"
+          onkeydown="if(event.key==='Enter')checkPass1()">
+        <div style="font-size:11px;color:#6b8f73;margin-bottom:10px;cursor:pointer;text-decoration:underline;" onclick="authMobileMode(false)">← 改用通關密碼</div>
+      </div>
+      <button onclick="checkPass1()"
+        style="width:100%;padding:11px;background:#c4922a;border:none;color:#0d1a0f;font-family:'Noto Serif TC',serif;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.08em;">下一步</button>
+    </div>
+
+    <!-- 第 2 段：OTP -->
+    <div id="auth-pass2" style="display:none;">
+      <div style="font-size:11px;color:#6b8f73;margin-bottom:12px;">② 請輸入 OTP 驗證碼</div>
+      <input id="otp-input" type="password" inputmode="numeric" placeholder="OTP 驗證碼" autocomplete="one-time-code"
+        style="width:100%;padding:10px 14px;background:#0d1a0f;border:1px solid #27382b;color:#fff;font-size:14px;outline:none;margin-bottom:10px;letter-spacing:.3em;text-align:center;"
+        onkeydown="if(event.key==='Enter')checkOtp()">
+      <button onclick="checkOtp()"
+        style="width:100%;padding:11px;background:#c4922a;border:none;color:#0d1a0f;font-family:'Noto Serif TC',serif;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.08em;">登入後台</button>
+      <div style="font-size:11px;color:#6b8f73;margin-top:10px;cursor:pointer;text-decoration:underline;" onclick="authReset()">← 重新開始</div>
+    </div>
+
+    <div id="pw-error" style="font-size:11px;color:#ef5350;min-height:16px;margin-top:12px;"></div>
+    <div id="auth-hint" style="font-size:10px;color:#4a5f50;margin-top:14px;line-height:1.6;"></div>
   </div>
 </div>
 
@@ -1329,8 +1355,11 @@ async function loadMembers(){
   const status = document.getElementById('sb-status');
   if(status){ status.style.color='var(--gray)'; status.textContent='載入中…'; }
   try {
-    const sel = 'id,member_no,member_type,name,company,company_status,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name,tax_id,id_number,line_user_id';
-    const res = await fetch(`${SB_URL}/rest/v1/tada_members?select=${sel}&order=member_no.asc.nullslast`, {headers: SB_HEADERS});
+    const base = 'id,member_no,member_type,name,company,company_status,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name,tax_id,id_number,line_user_id';
+    // 先試帶 admin_enabled；欄位未建則退回不帶（名冊照常可用）
+    let res = await fetch(`${SB_URL}/rest/v1/tada_members?select=${base},admin_enabled&order=member_no.asc.nullslast`, {headers: SB_HEADERS});
+    if(res.ok){ adminColReady = true; }
+    else { adminColReady = false; res = await fetch(`${SB_URL}/rest/v1/tada_members?select=${base}&order=member_no.asc.nullslast`, {headers: SB_HEADERS}); }
     if(!res.ok) throw new Error('HTTP '+res.status);
     memberRows = await res.json();
     renderMemberDir();
@@ -1424,6 +1453,19 @@ async function saveFeature(key,on){
 const SESSION_NAMES = {1:'第一屆',2:'第二屆',3:'第三屆',4:'第四屆',5:'第五屆',6:'第六屆'};
 
 let memberRows = [];              // 直接讀寫 tada_members
+let adminColReady = false;        // tada_members.admin_enabled 欄位是否已建立
+
+// 開通／取消會員的後台管理權限（供其以手機＋OTP登入）
+async function toggleMemberAdmin(id, on){
+  if(!adminColReady){ alert('尚未建立 admin_enabled 欄位。\n請先到 Supabase SQL Editor 執行 tada_admin_enabled.sql。'); return; }
+  const m = memberRows.find(x=>x.id===id);
+  if(on && !(m&&m.mobile)){ if(!confirm('此會員沒有填手機號碼，開通後仍需補上手機才能用手機登入。仍要開通嗎？')) return; }
+  if(on && !confirm(`開通「${m?m.name:''}」的後台管理權限？\n開通後，他可用手機（${m&&m.mobile?m.mobile:'未填'}）＋OTP 登入後台。`)) return;
+  const res = await fetch(`${SB_URL}/rest/v1/tada_members?id=eq.${id}`, {
+    method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({admin_enabled:on}) });
+  if(res.ok){ if(m) m.admin_enabled=on; renderMemberDir(); setSbStatus(on?'✓ 已開通後台管理':'已取消後台管理','#66bb6a'); }
+  else alert('更新失敗：'+await res.text());
+}
 let dirFilter = '', dirSession = '', dirType = '';
 let dirStatus = new Set();   // 會員狀態多選過濾
 let editingMemberId = null;
@@ -1500,6 +1542,9 @@ function memberMainRow(m, seq){
       <button class="btn btn-outline btn-sm" style="margin-left:4px;" onclick="openDetailModal('${m.id}')">詳細</button>
       ${email?`<button class="btn btn-outline btn-sm" style="margin-left:4px;color:var(--gold-lt);border-color:rgba(196,146,42,0.4);" onclick="openMemberMail('${m.id}')">✉ 寄信</button>`:''}
       <button class="btn btn-outline btn-sm" style="margin-left:4px;color:var(--gold-lt);border-color:rgba(196,146,42,0.4);" onclick="openReceipt('${m.id}')">🧾 收據</button>
+      ${m.admin_enabled
+        ? `<button class="btn btn-sm" style="margin-left:4px;background:rgba(46,125,50,0.2);color:#66bb6a;border:1px solid rgba(46,125,50,0.4);" onclick="toggleMemberAdmin('${m.id}',false)" title="已開通後台管理（手機：${escapeHtml(m.mobile||'未填')}），點擊取消">🔑 後台已開通</button>`
+        : `<button class="btn btn-outline btn-sm" style="margin-left:4px;" onclick="toggleMemberAdmin('${m.id}',true)" title="開通此會員以手機＋OTP登入後台">🔑 開通後台</button>`}
       <button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);margin-left:4px;" onclick="deleteMemberRow('${m.id}')">刪除</button>
     </td>
   </tr>`;
@@ -4481,26 +4526,78 @@ async function downloadDoc(pathEnc, btn){
 </div><!-- /#main-app -->
 
 <script>
-// ── 密碼牆 ────────────────────────────────────────────────
-const ADMIN_PW_HASH = '0db45166855d1d262b3bb4399a2c0526c16359f9d3663ca8b96e5bc73c61fde0'; // tada2026
+// ── 登入牆：2 段驗證（① 通關密碼 TADA2026 或 已開通會員手機 → ② OTP 1688）──
+const ADMIN_PW_HASH = '0db45166855d1d262b3bb4399a2c0526c16359f9d3663ca8b96e5bc73c61fde0'; // tada2026（大小寫不拘）
+const DEFAULT_OTP = '1688';   // 串接真 OTP 前的預設驗證碼
+let authMobileLogin = false;  // 第 1 段是否走「會員手機」模式
+let authPass1OK = false;
 
 async function sha256(str){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+function authErr(m){ document.getElementById('pw-error').textContent = m||''; }
 
-async function checkPw(){
-  const val = document.getElementById('pw-input').value;
-  const hash = await sha256(val);
-  if(hash === ADMIN_PW_HASH){
-    sessionStorage.setItem('tada_admin_auth','1');
-    sessionStorage.setItem('tada_admin_pwhash', hash);
-    showApp();
+function authMobileMode(on){
+  authMobileLogin = on;
+  document.getElementById('pass1-pw-mode').style.display = on?'none':'block';
+  document.getElementById('pass1-mobile-mode').style.display = on?'block':'none';
+  authErr('');
+  setTimeout(()=>document.getElementById(on?'mobile-input':'pw-input').focus(), 50);
+}
+
+// 第 1 段驗證
+async function checkPass1(){
+  authErr('');
+  if(authMobileLogin){
+    const m = (document.getElementById('mobile-input').value||'').replace(/[^0-9]/g,'');
+    if(m.length<9){ authErr('請輸入正確手機號碼'); return; }
+    // 查該手機是否為「已開通後台管理」的會員
+    try{
+      const r = await fetch(`${SB_URL}/rest/v1/tada_members?mobile=eq.${encodeURIComponent(m)}&admin_enabled=eq.true&select=name,mobile`, {headers:SB_HEADERS});
+      const rows = r.ok ? await r.json() : [];
+      if(!rows.length){ authErr('此手機未開通後台權限，請洽管理員'); return; }
+      sessionStorage.setItem('tada_admin_who', rows[0].name||m);
+    }catch(e){
+      if(/admin_enabled/.test(String(e))){ authErr('尚未建立 admin_enabled 欄位，請先執行 SQL'); return; }
+      authErr('查詢失敗，請稍後再試'); return;
+    }
   } else {
-    document.getElementById('pw-error').textContent = '密碼錯誤，請重試';
-    document.getElementById('pw-input').value = '';
-    document.getElementById('pw-input').focus();
+    const val = (document.getElementById('pw-input').value||'').trim().toLowerCase(); // 不分大小寫
+    const hash = await sha256(val);
+    if(hash !== ADMIN_PW_HASH){ authErr('通關密碼錯誤'); document.getElementById('pw-input').value=''; document.getElementById('pw-input').focus(); return; }
+    sessionStorage.setItem('tada_admin_pwhash', hash);   // 供文件區 Edge Function 驗證
+    sessionStorage.setItem('tada_admin_who', '通關密碼');
   }
+  // 進入第 2 段
+  authPass1OK = true;
+  document.getElementById('auth-pass1').style.display='none';
+  document.getElementById('auth-pass2').style.display='block';
+  document.getElementById('auth-step-dots').textContent = '② OTP 驗證';
+  document.getElementById('auth-hint').textContent = 'OTP 尚未串接簡訊，目前預設驗證碼為 1688';
+  setTimeout(()=>document.getElementById('otp-input').focus(), 50);
+}
+
+// 第 2 段驗證：OTP
+function checkOtp(){
+  authErr('');
+  const otp = (document.getElementById('otp-input').value||'').trim();
+  if(otp !== DEFAULT_OTP){ authErr('OTP 驗證碼錯誤'); document.getElementById('otp-input').value=''; document.getElementById('otp-input').focus(); return; }
+  sessionStorage.setItem('tada_admin_auth','1');
+  // 走會員手機登入時，密碼 hash 仍需帶給文件區 Edge Function
+  if(!sessionStorage.getItem('tada_admin_pwhash')) sessionStorage.setItem('tada_admin_pwhash', ADMIN_PW_HASH);
+  showApp();
+}
+
+function authReset(){
+  authPass1OK = false;
+  document.getElementById('auth-pass2').style.display='none';
+  document.getElementById('auth-pass1').style.display='block';
+  document.getElementById('auth-step-dots').textContent = '2 段驗證登入';
+  document.getElementById('auth-hint').textContent = '';
+  document.getElementById('otp-input').value='';
+  authErr('');
+  setTimeout(()=>document.getElementById(authMobileLogin?'mobile-input':'pw-input').focus(), 50);
 }
 
 function showApp(){
