@@ -554,9 +554,9 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>時間</th><th>會員問題</th><th>狀態</th><th>答覆／備註</th><th>操作</th>
+        <th>時間</th><th>提問者</th><th>會員問題</th><th>狀態</th><th>答覆／備註</th><th>操作</th>
       </tr></thead>
-      <tbody id="unans-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取問題</td></tr></tbody>
+      <tbody id="unans-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取問題</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -3080,16 +3080,41 @@ const UNANS_STATUS_HTML = {
   ignored:  '<span class="status" style="background:rgba(255,255,255,0.06);color:var(--gray);">已忽略</span>',
 };
 
+// line_user_id → { name, member }（會員姓名優先，其次 LINE 暱稱）
+let unansWhoIdx = new Map();
+async function buildUnansWhoIndex(){
+  try{
+    const [luRes, mRes] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_line_users?select=user_id,display_name`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_members?line_user_id=not.is.null&select=name,line_user_id`, { headers: SB_HEADERS }),
+    ]);
+    const idx = new Map();
+    (luRes.ok ? await luRes.json() : []).forEach(u => { if(u.user_id) idx.set(u.user_id, { name:u.display_name||'', member:false }); });
+    (mRes.ok ? await mRes.json() : []).forEach(m => { if(m.line_user_id) idx.set(m.line_user_id, { name:m.name||'', member:true }); }); // 會員覆蓋暱稱
+    unansWhoIdx = idx;
+  }catch(e){ console.warn('建立提問者索引失敗', e); }
+}
+function unansWho(uid){
+  if(!uid) return { html:'<span style="color:var(--gray);">—</span>' };
+  const hit = unansWhoIdx.get(uid);
+  const short = uid.slice(0,6)+'…'+uid.slice(-4);
+  if(hit && hit.name){
+    const tag = hit.member ? '<span style="font-size:10px;color:#66bb6a;border:1px solid rgba(46,125,50,.4);border-radius:99px;padding:0 6px;margin-left:5px;">會員</span>' : '<span style="font-size:10px;color:#5bd88a;border:1px solid rgba(6,199,85,.35);border-radius:99px;padding:0 6px;margin-left:5px;">LINE</span>';
+    return { html:`<span style="color:var(--white);">${escapeHtml(hit.name)}</span>${tag}<div style="font-size:10px;color:var(--gray);font-family:monospace;">${short}</div>` };
+  }
+  return { html:`<span style="color:var(--gray);" title="${escapeHtml(uid)}">（未綁定）</span><div style="font-size:10px;color:var(--gray);font-family:monospace;">${short}</div>` };
+}
+
 async function loadUnanswered() {
   const btn = document.querySelector('[onclick="loadUnanswered()"]');
   const status = document.getElementById('unans-sb-status');
   if (btn) { btn.disabled = true; btn.textContent = '載入中…'; }
   status.textContent = '';
   try {
-    const res = await fetch(
-      `${SB_URL}/rest/v1/tada_unanswered?order=created_at.desc`,
-      { headers: SB_HEADERS }
-    );
+    const [res] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_unanswered?order=created_at.desc`, { headers: SB_HEADERS }),
+      buildUnansWhoIndex(),
+    ]);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     allUnans = await res.json();
     renderUnans();
@@ -3121,7 +3146,7 @@ function renderUnans() {
   document.getElementById('unans-count').textContent = data.length;
 
   if (!data.length) {
-    document.getElementById('unans-tbody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:30px;">目前沒有這類問題 🎉</td></tr>';
+    document.getElementById('unans-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:30px;">目前沒有這類問題 🎉</td></tr>';
     return;
   }
 
@@ -3130,8 +3155,10 @@ function renderUnans() {
     const q = escapeHtml(u.question || '');
     const ans = u.answer ? escapeHtml(u.answer) : (u.admin_notes ? escapeHtml(u.admin_notes) : '–');
     const actions = buildUnansButtons(u);
+    const who = unansWho(u.line_user_id);
     return `<tr>
       <td data-label="時間" style="font-size:11px;color:var(--gray);white-space:nowrap;">${dt}</td>
+      <td data-label="提問者" style="font-size:12px;min-width:120px;">${who.html}</td>
       <td data-label="會員問題" style="font-size:13px;color:var(--white);max-width:280px;">${q}</td>
       <td data-label="狀態">${UNANS_STATUS_HTML[u.status] || u.status}</td>
       <td data-label="答覆" style="font-size:12px;color:var(--gray);max-width:220px;">${ans}</td>
