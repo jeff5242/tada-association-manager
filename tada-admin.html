@@ -3360,7 +3360,7 @@ function updateSortArrows(){
 // ── 桌次安排（會員與貴賓共用同一批現場桌號）────────────────
 // 統一編號：不分主桌/貴賓桌，一律以桌號編（第1–25 桌）＋ 工作桌
 const EVENT_TABLE_GROUPS = [
-  { label:'桌次', tables:Array.from({length:25},(_,i)=>`第${i+1}桌`) },
+  { label:'桌次', tables:Array.from({length:20},(_,i)=>`第${i+1}桌`) },
   { label:'工作桌', tables:['工作桌'] },
 ];
 const TABLE_CAP = 10;   // 每桌基本座位數（以人數/headcount 計）
