@@ -2131,7 +2131,7 @@ function renderGuests(){
       <td data-label="備註" style="font-size:11px;color:var(--gray);">${g.note?escapeHtml(g.note):'–'}</td>
       <td data-label="現場報到" style="font-size:11px;min-width:150px;">
         ${g.checked_in?`<span style="color:#66bb6a;">✓ 已報到</span> <span style="color:var(--gray);">${gci(g.checked_in_at)}</span>`:'<span style="color:var(--gray);">未報到</span>'}
-        <div style="margin-top:3px;"><span style="color:var(--gray);">桌號：</span><select onchange="setGuestSeat('${g.id}',this.value)" class="filter-select" style="width:88px;font-size:12px;${g.seat?'color:var(--gold-lt);border-color:rgba(196,146,42,0.5);':'color:var(--gray);'}">${tableOptionsHtml(g.seat||'')}</select></div>
+        <div style="margin-top:3px;"><span style="color:var(--gray);">桌號：</span><select onchange="setGuestSeat('${g.id}',this.value)" class="filter-select" style="width:120px;font-size:12px;${g.seat?'color:var(--gold-lt);border-color:rgba(196,146,42,0.5);':'color:var(--gray);'}">${tableOptionsHtml(g.seat||'')}</select></div>
         ${g.greeting?`<div style="color:var(--green-lt);margin-top:2px;">🙏 ${escapeHtml(g.greeting)}</div>`:''}
         ${g.signature?`<img src="${g.signature}" onclick="showSig('${g.id}')" style="height:36px;background:#fff;border-radius:4px;padding:2px;margin-top:3px;cursor:pointer;" title="點擊放大簽名">`:''}
       </td>
@@ -3360,7 +3360,7 @@ function updateSortArrows(){
 // ── 桌次安排（會員與貴賓共用同一批現場桌號）────────────────
 // 統一編號：不分主桌/貴賓桌，一律以桌號編（第1–25 桌）＋ 工作桌
 const EVENT_TABLE_GROUPS = [
-  { label:'桌次', tables:Array.from({length:20},(_,i)=>`第${i+1}桌`) },
+  { label:'桌次', tables:Array.from({length:21},(_,i)=>`第${i+1}桌`) },
   { label:'工作桌／備桌', tables:['工作桌'] },
 ];
 const TABLE_CAP = 10;   // 每桌基本座位數（以人數/headcount 計）
@@ -3368,6 +3368,15 @@ const TABLE_CAP = 10;   // 每桌基本座位數（以人數/headcount 計）
 const tableCapWithVeg = veg => TABLE_CAP + (veg||0);
 // 顯示名稱（DB 仍存原值，避免改資料）：工作桌同時作為現場機動備桌
 const tableLabel = t => t==='工作桌' ? '工作桌（備桌）' : t;
+// 各桌現況：renderSeating() 每次重繪時更新，供桌次下拉顯示「團體名 · 人數/容量」
+let TABLE_INFO = new Map();   // table -> {head, cap, veg, grp, full}
+function tableOptText(t){
+  if(!TABLE_INFO.size) return tableLabel(t);        // 桌次資料尚未載入
+  const i=TABLE_INFO.get(t);
+  if(!i || !i.head) return `${tableLabel(t)}（空桌）`;
+  const state = i.head>i.cap ? '超載' : (i.head===i.cap ? '已滿' : `空${i.cap-i.head}`);
+  return `${tableLabel(t)}${i.grp?' · '+i.grp:''} ${i.head}/${i.cap} ${state}`;
+}
 const EVENT_TABLES = EVENT_TABLE_GROUPS.flatMap(g => g.tables);
 function eventTableRank(v){
   if(!v) return 9999;                        // 未安排排最後
@@ -3379,7 +3388,7 @@ function tableOptionsHtml(cur){
   let html = '<option value="">未安排</option>';
   EVENT_TABLE_GROUPS.forEach(g => {
     html += `<optgroup label="${g.label}">` +
-      g.tables.map(t => `<option value="${t}"${t===cur?' selected':''}>${tableLabel(t)}</option>`).join('') +
+      g.tables.map(t => `<option value="${t}"${t===cur?' selected':''}>${tableOptText(t)}</option>`).join('') +
       '</optgroup>';
   });
   if(cur && !EVENT_TABLES.includes(cur)) html += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}（自訂）</option>`;
@@ -3389,7 +3398,7 @@ function tableOptionsHtml(cur){
 const rsvpTableRank = eventTableRank;
 function rsvpTableSelect(uid, cur){
   const assigned = cur ? 'color:var(--gold-lt);border-color:rgba(196,146,42,0.5);' : 'color:var(--gray);';
-  return `<select onchange="setRsvpTable('${uid}',this.value)" class="filter-select" style="width:88px;font-size:12px;${assigned}">${tableOptionsHtml(cur)}</select>`;
+  return `<select onchange="setRsvpTable('${uid}',this.value)" class="filter-select" style="width:120px;font-size:12px;${assigned}">${tableOptionsHtml(cur)}</select>`;
 }
 async function setRsvpTable(uid, val){
   const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(uid)}`, {
@@ -3599,7 +3608,7 @@ function rsvpEditRow(r){
     <td><input id="ed-veg" type="number" min="0" class="search-input" style="width:52px;" value="${r.vegetarian??0}"></td>
     <td><input id="ed-companions" class="search-input" style="width:100%;min-width:90px;" placeholder="同行" value="${escapeHtml(r.companions||'')}"></td>
     <td><input id="ed-note" class="search-input" style="width:100%;min-width:90px;" placeholder="備註" value="${escapeHtml(r.note||'')}"></td>
-    <td><select id="ed-table" class="filter-select" style="width:88px;font-size:12px;">${tableOptionsHtml(r.table_no||'')}</select></td>
+    <td><select id="ed-table" class="filter-select" style="width:130px;font-size:12px;">${tableOptionsHtml(r.table_no||'')}</select></td>
     <td style="font-size:11px;color:var(--gray);white-space:nowrap;">–</td>
     <td style="white-space:nowrap;">
       <button class="btn btn-sm btn-gold" onclick="saveRsvpRow('${uid}')">儲存</button>
@@ -3859,6 +3868,14 @@ function renderSeating(){
   document.getElementById('seat-unassigned').textContent=unHead;
   document.getElementById('seat-tables').textContent=usedTables;
 
+  // 各桌現況快取（供桌次下拉顯示）
+  TABLE_INFO=new Map();
+  byTable.forEach((arr,t)=>{
+    const head=arr.reduce((s,o)=>s+o.size,0);
+    const veg=arr.reduce((s,o)=>s+(o.veg||0),0);
+    TABLE_INFO.set(t,{head,veg,cap:tableCapWithVeg(veg),grp:tableMainGroup(arr)});
+  });
+
   // 桌卡
   const grpOf=t=>{ const g=EVENT_TABLE_GROUPS.find(g=>g.tables.includes(t)); return g?g.label:'其他'; };
   const grpColor={ '主桌':'#e0b458', '貴賓桌':'#4fc3f7', '會員桌':'#66bb6a', '工作桌':'#b0a58c' };
@@ -3878,7 +3895,7 @@ function renderSeating(){
         ? `<button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:10px;" onclick="editOccNote('${escapeHtml(String(o.id))}')" title="改備註（影響分組，改完可重排）">✎</button>` : '';
       const hideBtn = o.kind==='member'
         ? `<button class="btn btn-sm" style="padding:1px 5px;font-size:10px;background:rgba(192,57,43,0.12);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="hideOcc('${escapeHtml(String(o.id))}')" title="隱藏此筆（不列入出席與桌次，可還原）">🚫</button>` : '';
-      const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:74px;" title="改桌／移除">${tableOptionsHtml(o.table)}</select>`;
+      const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:104px;" title="改桌／移除">${tableOptionsHtml(o.table)}</select>`;
       return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
         <span style="font-size:12px;">${icon}</span>
         <span style="flex:1;font-size:12.5px;color:var(--white);min-width:0;">${escapeHtml(o.name)}${sizeTag}${vegTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,14))}</span>`:''}</span>
@@ -3903,7 +3920,7 @@ function renderSeating(){
   document.getElementById('seat-un-count').textContent = unassigned.length?`（${unassigned.length} 組 / ${unHead} 人）`:'（無）';
   document.getElementById('seating-unassigned').innerHTML = unassigned.length? unassigned.map(o=>{
     const icon=o.kind==='guest'?'🎩':'👤'; const sizeTag=o.size>1?`×${o.size}`:'';
-    const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:78px;margin-left:2px;" title="安排桌次"><option value="">安排…</option>${tableOptionsHtml('').replace('<option value="">未安排</option>','')}</select>`;
+    const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:108px;margin-left:2px;" title="安排桌次"><option value="">安排…</option>${tableOptionsHtml('').replace('<option value="">未安排</option>','')}</select>`;
     const hideBtn = o.kind==='member'
       ? `<button class="btn btn-sm" style="padding:0 5px;font-size:10px;background:rgba(192,57,43,0.12);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="hideOcc('${escapeHtml(String(o.id))}')" title="隱藏此筆（不排、不計）">🚫</button>` : '';
     return `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(196,146,42,0.1);border:1px solid rgba(196,146,42,0.3);border-radius:99px;padding:5px 10px;font-size:12px;color:var(--white);">
