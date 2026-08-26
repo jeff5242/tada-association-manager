@@ -513,9 +513,9 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div class="tbl-wrap">
     <table>
       <thead><tr>
-        <th>申請時間</th><th>類型</th><th>姓名／機構</th><th>聯絡方式</th><th>狀態</th><th>備註</th><th>操作</th>
+        <th>申請時間</th><th>類型</th><th>姓名／機構</th><th>聯絡方式</th><th>狀態</th><th>大會出席<br><small style="font-weight:400;color:var(--gray);">比對出席表</small></th><th>備註</th><th>操作</th>
       </tr></thead>
-      <tbody id="app-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取申請資料</td></tr></tbody>
+      <tbody id="app-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">點選「重新載入」讀取申請資料</td></tr></tbody>
     </table>
   </div>
 </div>
@@ -2435,6 +2435,7 @@ async function loadApplications() {
     );
     if (!res.ok) throw new Error('HTTP ' + res.status);
     allApps = await res.json();
+    if(!guestRsvpIndex.size) await buildGuestRsvpIndex();
     renderApps();
     status.style.color = '#66bb6a';
     status.textContent = `✓ 已載入 ${allApps.length} 筆`;
@@ -2464,7 +2465,7 @@ function exportApplicationsCSV(){
   });
   if(!rows.length){ alert('目前沒有可匯出的申請'); return; }
   const esc = v => `"${String(v==null?'':v).replace(/"/g,'""')}"`;
-  const head = ['申請時間','類型','續約','狀態','姓名／機構','公司／機構名稱','職稱','性別','Email','電話','代表人','負責人','立案／統編','會員數','通訊地址','備註'];
+  const head = ['申請時間','類型','續約','狀態','大會出席','姓名／機構','公司／機構名稱','職稱','性別','Email','電話','代表人','負責人','立案／統編','會員數','通訊地址','備註'];
   const lines = rows.map(a => {
     const email = a.email || a.contact_email || a.rep_email || a.rep2_email || a.rep3_email || '';
     const tel = a.tel_mobile || a.contact_tel || a.rep_tel || a.tel_office || a.org_tel || '';
@@ -2474,6 +2475,7 @@ function exportApplicationsCSV(){
       a.type === 'group' ? '團體' : '個人',
       a.is_renewal ? '續約' : '',
       APP_STATUS_LBL[a.status] || a.status || '',
+      (()=>{ const m=appRsvpMatch(a); return m ? (m.attending?`出席${m.headcount>1?' '+m.headcount+'人':''}${m.who!==(a.name||a.org_name)?'（'+m.who+'）':''}`:'不克出席') : '未出席'; })(),
       a.name || a.org_name || '',
       a.org_name || '',
       a.job || '', a.gender || '', email, tel, reps,
@@ -2486,6 +2488,26 @@ function exportApplicationsCSV(){
   el.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
   el.download = `TADA_入會申請_${todayTag()}.csv`;
   el.click();
+}
+
+// ── 入會申請 × 大會出席 比對（個人比姓名；團體比機構名與三位代表）──────
+function appRsvpMatch(a){
+  const cands = a.type==='group'
+    ? [a.org_name, a.rep_name, a.rep2_name, a.rep3_name, a.ceo_name, a.name]
+    : [a.name, a.org_name];
+  for(const n of cands){
+    if(!n) continue;
+    const st=guestRsvpStatus({name:n});
+    if(st) return { who:n, ...st };
+  }
+  return null;
+}
+function appAttendBadge(a){
+  const m=appRsvpMatch(a);
+  if(!m) return '<span class="status" style="background:rgba(158,158,158,0.15);color:var(--gray);">⚪ 未出席</span>';
+  if(!m.attending) return '<span class="status" style="background:rgba(192,57,43,0.15);color:#ef5350;">已回覆·不克</span>';
+  const via = m.who!==(a.name||a.org_name) ? `<br><span style="font-size:10px;color:var(--gray);">（${escapeHtml(m.who)}）</span>` : '';
+  return `<span class="status" style="background:rgba(46,125,50,0.2);color:#66bb6a;">✅ 出席${m.headcount>1?`<span style="color:var(--gold);"> ${m.headcount}人</span>`:''}</span>${via}`;
 }
 
 function renderApps() {
@@ -2520,7 +2542,7 @@ function renderApps() {
 
   if (!data.length) {
     const emptyMsg = wantHidden ? '目前沒有已隱藏的申請' : '無符合條件的申請';
-    document.getElementById('app-tbody').innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:30px;">${emptyMsg}</td></tr>`;
+    document.getElementById('app-tbody').innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">${emptyMsg}</td></tr>`;
     return;
   }
 
@@ -2548,6 +2570,7 @@ function renderApps() {
       <td data-label="姓名" class="name-cell">${nameDisplay}<br><span style="font-size:11px;color:var(--gray);font-weight:400;">${a.job||a.ceo_name||''}</span>${repTag}</td>
       <td data-label="聯絡" style="font-size:12px;">${contact}</td>
       <td data-label="狀態">${APP_STATUS_HTML[a.status] || a.status}</td>
+      <td data-label="大會出席">${appAttendBadge(a)}</td>
       <td data-label="備注" style="font-size:11px;color:var(--gray);max-width:180px;line-height:1.6;">${a.admin_notes ? escapeHtml(a.admin_notes).replace(/\n/g,'<br>') : '–'}</td>
       <td data-label="操作" style="white-space:nowrap;">${actions}</td>
     </tr>`;
