@@ -54,6 +54,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .src-sel:focus{border-color:var(--gold)}
 /* note */
 .card-note{font-size:11px;color:var(--muted);margin-top:6px;font-style:italic}
+/* edit mode */
+.edit-btn{background:none;border:1px solid var(--green);color:var(--muted);font-size:11px;padding:3px 8px;border-radius:6px;cursor:pointer;font-family:var(--sans);flex:0 0 auto}
+.edit-box{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.edit-row{display:flex;gap:6px;align-items:center}
+.edit-row label{font-size:11px;color:var(--muted);width:34px;flex:0 0 auto}
+.edit-box input{flex:1;min-width:0;padding:8px 10px;border-radius:8px;border:1.5px solid var(--green);background:var(--bg);color:var(--text);font-size:15px;font-family:var(--sans);outline:none}
+.edit-box input:focus{border-color:var(--gold)}
+.edit-box input.num{max-width:80px;text-align:center}
+.edit-acts{display:flex;gap:6px;margin-top:2px}
+.edit-acts button{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+.btn-save{background:var(--gold);color:#1a1a12}
+.btn-cancel{background:rgba(255,255,255,.07);color:var(--muted)}
 /* veg badge */
 .veg{color:var(--blue);font-size:11px;margin-left:4px}
 /* source badge */
@@ -106,6 +118,7 @@ const MEAL_LABELS={yes:'會用餐',no:'不用餐',null:'未確認'};
 
 let allItems=[];
 let filterState={source:null,meal:null,table:null};
+let editingKey=null;   // 'src:id' 正在編輯的那張卡
 
 async function sha256(s){const d=new TextEncoder().encode(s);const h=await crypto.subtle.digest('SHA-256',d);return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
 
@@ -204,14 +217,28 @@ function render(){
   if(!items.length){document.getElementById('list').innerHTML='<div class="empty">沒有符合條件的資料</div>';return}
 
   const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  document.getElementById('list').innerHTML=items.map((it,idx)=>{
+  document.getElementById('list').innerHTML=items.map(it=>{
+    const key=itemKey(it);
+    const editing = editingKey===key;
+
     const mealBtns=['yes','no'].map(v=>
-      `<button class="meal-btn ${v}${it.meal===v?' on':''}" onclick="setMeal(${idx},'${v}')">${v==='yes'?'用餐':'不用餐'}</button>`
-    ).join('')+`<button class="meal-btn unk${!it.meal?' on':''}" onclick="setMeal(${idx},null)">?</button>`;
+      `<button class="meal-btn ${v}${it.meal===v?' on':''}" onclick="setMeal('${key}','${v}')">${v==='yes'?'用餐':'不用餐'}</button>`
+    ).join('')+`<button class="meal-btn unk${!it.meal?' on':''}" onclick="setMeal('${key}',null)">?</button>`;
 
     const srcOpts='<option value="">-- 邀請來源 --</option>'+INVITE_SOURCES.map(s=>
       `<option value="${esc(s)}"${it.inv===s?' selected':''}>${esc(s)}</option>`
     ).join('');
+
+    const editBox = editing ? `<div class="edit-box">
+        <div class="edit-row"><label>姓名</label><input id="ed-name" type="text" value="${esc(it.name)}"></div>
+        <div class="edit-row"><label>人數</label><input id="ed-hc" class="num" type="number" min="1" max="20" value="${it.hc}">
+          <label style="width:auto;">素食</label><input id="ed-veg" class="num" type="number" min="0" max="20" value="${it.veg}"${it.src==='guest'?' disabled':''}></div>
+        <div class="edit-row"><label>備註</label><input id="ed-note" type="text" value="${esc(it.note)}" placeholder="（分組依據，可留空）"></div>
+        <div class="edit-acts">
+          <button class="btn-save" onclick="saveEdit('${key}')">儲存</button>
+          <button class="btn-cancel" onclick="cancelEdit()">取消</button>
+        </div>
+      </div>` : '';
 
     return `<div class="card">
       <div class="card-top">
@@ -220,48 +247,78 @@ function render(){
         ${it.hc>1?`<span class="card-hc">x${it.hc}</span>`:''}
         ${it.table?`<span class="card-table">${esc(it.table)}</span>`:''}
         <span class="src-badge ${it.src}">${it.src==='guest'?'貴賓':'出席'}</span>
+        <button class="edit-btn" onclick="${editing?'cancelEdit()':`startEdit('${key}')`}">${editing?'✕':'✎'}</button>
       </div>
       ${it.org?`<div class="card-org">${esc(it.org)}</div>`:''}
       <div class="card-fields">
         <div class="meal-grp">${mealBtns}</div>
-        <select class="src-sel" onchange="setInvSrc(${idx},this.value)">${srcOpts}</select>
+        <select class="src-sel" onchange="setInvSrc('${key}',this.value)">${srcOpts}</select>
       </div>
-      ${it.note?`<div class="card-note">${esc(it.note)}</div>`:''}
+      ${editBox}
+      ${(!editing && it.note)?`<div class="card-note">${esc(it.note)}</div>`:''}
     </div>`;
   }).join('');
+
+  if(editingKey){ const el=document.getElementById('ed-name'); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } }
 }
 
-async function setMeal(idx,val){
-  const it=allItems.find((_,i2)=>i2===filtered().indexOf(filtered()[idx]));
-  const fi=filtered()[idx]; if(!fi) return;
-  // find in allItems
-  const real=allItems.find(a=>a.src===fi.src&&a.id===fi.id);
-  if(!real) return;
-  real.meal=val;
-  render();
-  await saveProp(real,'meal',val);
+const itemKey=it=>`${it.src}:${it.id}`;
+const byKey=key=>allItems.find(a=>itemKey(a)===key);
+
+async function setMeal(key,val){
+  const it=byKey(key); if(!it) return;
+  it.meal=val; render();
+  await saveProps(it,{meal:val});
 }
 
-async function setInvSrc(idx,val){
-  const fi=filtered()[idx]; if(!fi) return;
-  const real=allItems.find(a=>a.src===fi.src&&a.id===fi.id);
-  if(!real) return;
-  real.inv=val||null;
-  render();
-  await saveProp(real,'invite_source',val||null);
+async function setInvSrc(key,val){
+  const it=byKey(key); if(!it) return;
+  it.inv=val||null; render();
+  await saveProps(it,{invite_source:val||null});
 }
 
-async function saveProp(item,field,val){
+function startEdit(key){ editingKey=key; render(); }
+function cancelEdit(){ editingKey=null; render(); }
+
+async function saveEdit(key){
+  const it=byKey(key); if(!it) return;
+  const name=(document.getElementById('ed-name').value||'').trim();
+  const note=(document.getElementById('ed-note').value||'').trim();
+  const hcRaw=parseInt(document.getElementById('ed-hc').value,10);
+  const vegEl=document.getElementById('ed-veg');
+  const vegRaw=vegEl&&!vegEl.disabled ? parseInt(vegEl.value,10) : it.veg;
+
+  if(!name){ alert('姓名不能空白'); return; }
+  const hc=(Number.isFinite(hcRaw)&&hcRaw>0)?hcRaw:1;
+  const veg=(Number.isFinite(vegRaw)&&vegRaw>=0)?vegRaw:0;
+  if(veg>hc){ alert('素食份數不能大於人數'); return; }
+
+  const payload = it.src==='rsvp'
+    ? {display_name:name, note:note||null, headcount:hc, vegetarian:veg}
+    : {name:name, note:note||null, party_size:hc};
+
+  it.name=name; it.note=note; it.hc=hc; if(it.src==='rsvp') it.veg=veg;
+  editingKey=null; render();
+  await saveProps(it,payload);
+}
+
+async function saveProps(item,body){
   const saving=document.getElementById('saving');
-  saving.classList.add('show');
+  saving.textContent='儲存中...'; saving.style.background='var(--gold)'; saving.classList.add('show');
   try{
     const table=item.src==='rsvp'?'tada_rsvp':'tada_guests';
     const idCol=item.src==='rsvp'?'user_id':'id';
-    const body={};body[field]=val;
-    await fetch(`${SB_URL}/rest/v1/${table}?${idCol}=eq.${encodeURIComponent(item.id)}`,{
+    const res=await fetch(`${SB_URL}/rest/v1/${table}?${idCol}=eq.${encodeURIComponent(item.id)}`,{
       method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify(body)
     });
-  }catch(e){console.error('save error',e)}
+    if(!res.ok) throw new Error(await res.text());
+  }catch(e){
+    console.error('save error',e);
+    saving.textContent='儲存失敗'; saving.style.background='var(--red)';
+    setTimeout(()=>saving.classList.remove('show'),2500);
+    alert('儲存失敗，請重新載入確認：'+e.message);
+    return;
+  }
   setTimeout(()=>saving.classList.remove('show'),400);
 }
 </script>
