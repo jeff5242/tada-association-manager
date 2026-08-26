@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>出席名單管理｜TADA</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+:root{--bg:#0f1a12;--card:#1a2b1e;--card-hi:#223a27;--gold:#c4922a;--gold-lt:#e0b458;--green:#2d5235;--green-lt:#3a6b42;--text:#e8e0d0;--muted:#8a9a80;--red:#ef5350;--blue:#4fc3f7;--sans:'Noto Sans TC',system-ui,sans-serif;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;font-size:14px;-webkit-tap-highlight-color:transparent}
+/* gate */
+#gate{display:flex;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;padding:20px}
+.gate-box{background:var(--card);border-radius:16px;padding:32px 28px;text-align:center;width:100%;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.gate-box h2{color:var(--gold-lt);font-size:18px;margin-bottom:6px}
+.gate-box p{color:var(--muted);font-size:12px;margin-bottom:20px}
+.gate-box input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--green);background:var(--bg);color:var(--text);font-size:16px;text-align:center;letter-spacing:.2em;outline:none}
+.gate-box input:focus{border-color:var(--gold)}
+.gate-box button{margin-top:14px;width:100%;padding:12px;border:none;border-radius:10px;background:var(--gold);color:#1a1a12;font-weight:700;font-size:15px;cursor:pointer}
+.gate-err{color:var(--red);font-size:12px;margin-top:8px;min-height:18px}
+/* header */
+#app{display:none}
+.hdr{position:sticky;top:0;z-index:90;background:var(--bg);padding:10px 14px 8px;border-bottom:1px solid rgba(255,255,255,.06)}
+.hdr-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.hdr-title h1{font-size:16px;color:var(--gold-lt);font-weight:700}
+.hdr-title .refresh{background:none;border:1px solid var(--green);color:var(--muted);font-size:12px;padding:4px 10px;border-radius:99px;cursor:pointer}
+.search{width:100%;padding:9px 12px;border-radius:10px;border:1.5px solid var(--green);background:var(--card);color:var(--text);font-size:14px;outline:none}
+.search:focus{border-color:var(--gold)}
+.filters{display:flex;gap:6px;margin-top:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.filters::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:5px 12px;border-radius:99px;font-size:12px;font-weight:500;border:1px solid var(--green);color:var(--muted);background:transparent;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--gold);color:#1a1a12;border-color:var(--gold)}
+/* stats bar */
+.stats{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.stat{font-size:11px;color:var(--muted);background:rgba(255,255,255,.04);padding:3px 8px;border-radius:6px}
+.stat b{color:var(--gold-lt)}
+/* list */
+.list{padding:8px 10px 100px}
+.card{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:1px solid rgba(255,255,255,.04)}
+.card-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.card-name{font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-table{font-size:11px;color:var(--gold);background:rgba(196,146,42,.12);padding:2px 8px;border-radius:99px;white-space:nowrap}
+.card-hc{font-size:11px;color:var(--blue);white-space:nowrap}
+.card-org{font-size:12px;color:var(--muted);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-fields{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* meal toggle */
+.meal-grp{display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--green)}
+.meal-btn{padding:5px 10px;font-size:11px;font-weight:500;border:none;cursor:pointer;background:transparent;color:var(--muted);font-family:var(--sans)}
+.meal-btn.yes.on{background:#2d6b35;color:#a8f0a0}
+.meal-btn.no.on{background:#6b2d2d;color:#f0a0a0}
+.meal-btn.unk.on{background:rgba(255,255,255,.08);color:var(--muted)}
+/* invite source */
+.src-sel{padding:5px 8px;border-radius:8px;border:1px solid var(--green);background:var(--bg);color:var(--text);font-size:11px;font-family:var(--sans);outline:none;max-width:130px}
+.src-sel:focus{border-color:var(--gold)}
+/* note */
+.card-note{font-size:11px;color:var(--muted);margin-top:6px;font-style:italic}
+/* veg badge */
+.veg{color:var(--blue);font-size:11px;margin-left:4px}
+/* source badge */
+.src-badge{font-size:10px;padding:1px 6px;border-radius:99px;white-space:nowrap}
+.src-badge.rsvp{background:rgba(102,187,106,.12);color:#66bb6a}
+.src-badge.guest{background:rgba(79,195,247,.12);color:#4fc3f7}
+/* empty */
+.empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px}
+/* saving indicator */
+.saving{position:fixed;top:12px;right:12px;background:var(--gold);color:#1a1a12;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700;z-index:100;opacity:0;transition:opacity .2s}
+.saving.show{opacity:1}
+@media(min-width:600px){.list{max-width:600px;margin:0 auto}.hdr{padding:10px calc(50% - 290px) 8px}}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <h2>TADA 出席名單管理</h2>
+    <p>第六屆會員大會 2026/9/4</p>
+    <input id="pw" type="password" placeholder="請輸入通關密碼" autocomplete="off">
+    <button onclick="tryLogin()">進入</button>
+    <div class="gate-err" id="gate-err"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-title">
+      <h1>出席名單</h1>
+      <button class="refresh" onclick="loadAll()">重新載入</button>
+    </div>
+    <input class="search" id="q" type="search" placeholder="搜尋姓名、單位、備註..." oninput="render()">
+    <div class="filters" id="filters"></div>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div class="list" id="list"></div>
+</div>
+
+<div class="saving" id="saving">儲存中...</div>
+
+<script>
+const SB_URL='https://ldjugtfxtxnpvkqvjxew.supabase.co';
+const SB_KEY='sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
+const SB_H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+const LOGIN_PW_HASH='ed6f1a565c864f401b0aba93e9623ea1f4616fe7ebd3f8774fa37dedef301aca'; // TADA1688
+
+const INVITE_SOURCES=['協會貴賓','陳總貴賓','長官貴賓','理監事貴賓'];
+const MEAL_LABELS={yes:'會用餐',no:'不用餐',null:'未確認'};
+
+let allItems=[];
+let filterState={source:null,meal:null,table:null};
+
+async function sha256(s){const d=new TextEncoder().encode(s);const h=await crypto.subtle.digest('SHA-256',d);return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+
+async function tryLogin(){
+  const pw=document.getElementById('pw').value.trim().toLowerCase();
+  const h=await sha256(pw);
+  if(h===LOGIN_PW_HASH){
+    document.getElementById('gate').style.display='none';
+    document.getElementById('app').style.display='block';
+    loadAll();
+  } else {
+    document.getElementById('gate-err').textContent='密碼錯誤';
+  }
+}
+document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin()});
+
+async function loadAll(){
+  try{
+    const [rRes,gRes]=await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,table_no,headcount,vegetarian,meal,invite_source&order=table_no.asc.nullslast,display_name.asc`,{headers:SB_H}),
+      fetch(`${SB_URL}/rest/v1/tada_guests?seat=neq.null&select=id,name,org,note,seat,party_size,invite_source,meal&order=seat.asc,name.asc`,{headers:SB_H})
+    ]);
+    const rsvp=await rRes.json(); const guests=await gRes.json();
+    allItems=[];
+    rsvp.forEach(r=>allItems.push({
+      src:'rsvp',id:r.user_id,name:r.display_name,org:r.org||'',
+      table:r.table_no||'',hc:r.headcount||1,veg:r.vegetarian||0,
+      note:r.note||'',meal:r.meal||null,inv:r.invite_source||null
+    }));
+    guests.forEach(g=>allItems.push({
+      src:'guest',id:g.id,name:g.name,org:g.org||'',
+      table:g.seat||'',hc:g.party_size||1,veg:0,
+      note:g.note||'',meal:g.meal||null,inv:g.invite_source||null
+    }));
+    buildFilters();
+    render();
+  }catch(e){console.error(e);alert('載入失敗: '+e.message)}
+}
+
+function buildFilters(){
+  const f=document.getElementById('filters');
+  const tables=[...new Set(allItems.map(i=>i.table).filter(Boolean))].sort((a,b)=>{
+    const na=parseInt(a.replace(/\D/g,''))||999,nb=parseInt(b.replace(/\D/g,''))||999;return na-nb;
+  });
+  let html='<button class="chip'+(filterState.source===null&&filterState.meal===null&&filterState.table===null?' on':'')+'" onclick="clearFilters()">全部</button>';
+  INVITE_SOURCES.forEach(s=>{
+    html+=`<button class="chip${filterState.source===s?' on':''}" onclick="toggleFilter('source','${s}')">${s}</button>`;
+  });
+  html+='<button class="chip'+(filterState.source==='none'?' on':'')+'" onclick="toggleFilter(\'source\',\'none\')">未標註來源</button>';
+  html+='<button class="chip'+(filterState.meal==='yes'?' on':'')+'" onclick="toggleFilter(\'meal\',\'yes\')">會用餐</button>';
+  html+='<button class="chip'+(filterState.meal==='no'?' on':'')+'" onclick="toggleFilter(\'meal\',\'no\')">不用餐</button>';
+  html+='<button class="chip'+(filterState.meal==='null'?' on':'')+'" onclick="toggleFilter(\'meal\',\'null\')">餐未確認</button>';
+  f.innerHTML=html;
+}
+
+function clearFilters(){filterState={source:null,meal:null,table:null};buildFilters();render()}
+function toggleFilter(key,val){
+  filterState[key]=filterState[key]===val?null:val;
+  buildFilters();render();
+}
+
+function filtered(){
+  const q=(document.getElementById('q').value||'').trim().toLowerCase();
+  return allItems.filter(i=>{
+    if(q && !i.name.toLowerCase().includes(q) && !i.org.toLowerCase().includes(q) && !(i.note||'').toLowerCase().includes(q) && !i.table.includes(q)) return false;
+    if(filterState.source){
+      if(filterState.source==='none'){if(i.inv) return false}
+      else{if(i.inv!==filterState.source) return false}
+    }
+    if(filterState.meal){
+      if(filterState.meal==='null'){if(i.meal) return false}
+      else if(filterState.meal==='yes'){if(i.meal!=='yes') return false}
+      else if(filterState.meal==='no'){if(i.meal!=='no') return false}
+    }
+    if(filterState.table && i.table!==filterState.table) return false;
+    return true;
+  });
+}
+
+function render(){
+  const items=filtered();
+  const totalHc=items.reduce((s,i)=>s+i.hc,0);
+  const mealYes=items.filter(i=>i.meal==='yes').reduce((s,i)=>s+i.hc,0);
+  const mealNo=items.filter(i=>i.meal==='no').reduce((s,i)=>s+i.hc,0);
+  const mealUnk=items.filter(i=>!i.meal).reduce((s,i)=>s+i.hc,0);
+  const vegTotal=items.reduce((s,i)=>s+i.veg,0);
+
+  document.getElementById('stats').innerHTML=
+    `<span class="stat">人數 <b>${totalHc}</b></span>`+
+    `<span class="stat">用餐 <b>${mealYes}</b></span>`+
+    `<span class="stat">不用餐 <b>${mealNo}</b></span>`+
+    `<span class="stat">未確認 <b>${mealUnk}</b></span>`+
+    (vegTotal?`<span class="stat">素食 <b>${vegTotal}</b></span>`:'')+
+    `<span class="stat">筆數 <b>${items.length}</b></span>`;
+
+  if(!items.length){document.getElementById('list').innerHTML='<div class="empty">沒有符合條件的資料</div>';return}
+
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  document.getElementById('list').innerHTML=items.map((it,idx)=>{
+    const mealBtns=['yes','no'].map(v=>
+      `<button class="meal-btn ${v}${it.meal===v?' on':''}" onclick="setMeal(${idx},'${v}')">${v==='yes'?'用餐':'不用餐'}</button>`
+    ).join('')+`<button class="meal-btn unk${!it.meal?' on':''}" onclick="setMeal(${idx},null)">?</button>`;
+
+    const srcOpts='<option value="">-- 邀請來源 --</option>'+INVITE_SOURCES.map(s=>
+      `<option value="${esc(s)}"${it.inv===s?' selected':''}>${esc(s)}</option>`
+    ).join('');
+
+    return `<div class="card">
+      <div class="card-top">
+        <span class="card-name">${esc(it.name)}</span>
+        ${it.veg?`<span class="veg">素${it.veg>1?'x'+it.veg:''}</span>`:''}
+        ${it.hc>1?`<span class="card-hc">x${it.hc}</span>`:''}
+        ${it.table?`<span class="card-table">${esc(it.table)}</span>`:''}
+        <span class="src-badge ${it.src}">${it.src==='guest'?'貴賓':'出席'}</span>
+      </div>
+      ${it.org?`<div class="card-org">${esc(it.org)}</div>`:''}
+      <div class="card-fields">
+        <div class="meal-grp">${mealBtns}</div>
+        <select class="src-sel" onchange="setInvSrc(${idx},this.value)">${srcOpts}</select>
+      </div>
+      ${it.note?`<div class="card-note">${esc(it.note)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function setMeal(idx,val){
+  const it=allItems.find((_,i2)=>i2===filtered().indexOf(filtered()[idx]));
+  const fi=filtered()[idx]; if(!fi) return;
+  // find in allItems
+  const real=allItems.find(a=>a.src===fi.src&&a.id===fi.id);
+  if(!real) return;
+  real.meal=val;
+  render();
+  await saveProp(real,'meal',val);
+}
+
+async function setInvSrc(idx,val){
+  const fi=filtered()[idx]; if(!fi) return;
+  const real=allItems.find(a=>a.src===fi.src&&a.id===fi.id);
+  if(!real) return;
+  real.inv=val||null;
+  render();
+  await saveProp(real,'invite_source',val||null);
+}
+
+async function saveProp(item,field,val){
+  const saving=document.getElementById('saving');
+  saving.classList.add('show');
+  try{
+    const table=item.src==='rsvp'?'tada_rsvp':'tada_guests';
+    const idCol=item.src==='rsvp'?'user_id':'id';
+    const body={};body[field]=val;
+    await fetch(`${SB_URL}/rest/v1/${table}?${idCol}=eq.${encodeURIComponent(item.id)}`,{
+      method:'PATCH',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify(body)
+    });
+  }catch(e){console.error('save error',e)}
+  setTimeout(()=>saving.classList.remove('show'),400);
+}
+</script>
+</body>
+</html>

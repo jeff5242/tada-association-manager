@@ -815,6 +815,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <button class="btn btn-outline btn-sm" onclick="copyRsvpLink()" title="複製客戶自填表單連結">🔗 客戶自填連結</button>
       <button class="btn btn-outline btn-sm" onclick="loadRsvp()">↻ 重新載入</button>
       <button class="btn btn-outline btn-sm" onclick="exportRsvpCSV()">匯出 CSV</button>
+      <a class="btn btn-outline btn-sm" href="/attendance/" target="_blank" style="text-decoration:none;">📱 手機名單</a>
       <span id="rsvp-sb-status" style="font-size:11px;"></span>
     </div>
   </div>
@@ -3818,7 +3819,7 @@ async function loadSeating(){
 function readableGroup(m){
   const note=(m.note||'').trim();
   if(/第五屆理(監事|事長)/.test(note)) return '第五屆理監事';
-  const trivial = !note || ['無','無。','none','-'].includes(note);
+  const trivial = !note || ['無','無。','none','-'].includes(note) || /@/.test(note);
   if(!trivial) return note.length>10 ? note.slice(0,10) : note;
   if(m.org) return (m.org||'').length>10 ? m.org.slice(0,10) : m.org;
   return '';
