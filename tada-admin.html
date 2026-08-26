@@ -3361,11 +3361,13 @@ function updateSortArrows(){
 // 統一編號：不分主桌/貴賓桌，一律以桌號編（第1–25 桌）＋ 工作桌
 const EVENT_TABLE_GROUPS = [
   { label:'桌次', tables:Array.from({length:20},(_,i)=>`第${i+1}桌`) },
-  { label:'工作桌', tables:['工作桌'] },
+  { label:'工作桌／備桌', tables:['工作桌'] },
 ];
 const TABLE_CAP = 10;   // 每桌基本座位數（以人數/headcount 計）
 // 素食是套餐、另外出，不佔共享桌菜的位子 → 每 1 份素食該桌可多坐 1 人
 const tableCapWithVeg = veg => TABLE_CAP + (veg||0);
+// 顯示名稱（DB 仍存原值，避免改資料）：工作桌同時作為現場機動備桌
+const tableLabel = t => t==='工作桌' ? '工作桌（備桌）' : t;
 const EVENT_TABLES = EVENT_TABLE_GROUPS.flatMap(g => g.tables);
 function eventTableRank(v){
   if(!v) return 9999;                        // 未安排排最後
@@ -3377,7 +3379,7 @@ function tableOptionsHtml(cur){
   let html = '<option value="">未安排</option>';
   EVENT_TABLE_GROUPS.forEach(g => {
     html += `<optgroup label="${g.label}">` +
-      g.tables.map(t => `<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('') +
+      g.tables.map(t => `<option value="${t}"${t===cur?' selected':''}>${tableLabel(t)}</option>`).join('') +
       '</optgroup>';
   });
   if(cur && !EVENT_TABLES.includes(cur)) html += `<option value="${escapeHtml(cur)}" selected>${escapeHtml(cur)}（自訂）</option>`;
@@ -3888,7 +3890,7 @@ function renderSeating(){
     return `<div style="background:var(--surface,rgba(255,255,255,0.03));border:1px solid ${over?'#ef5350':'var(--border,rgba(196,146,42,0.25))'};border-radius:12px;padding:12px 13px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
         <span style="width:8px;height:8px;border-radius:50%;background:${col};"></span>
-        <b style="color:${col};font-size:14px;">${t}</b>
+        <b style="color:${col};font-size:14px;">${tableLabel(t)}</b>
         ${mainGrp?`<span style="font-size:11px;color:var(--gold-lt);font-weight:700;">· ${escapeHtml(mainGrp)}</span>`:''}
         ${vegTotal>0?`<span style="font-size:10px;color:#4fc3f7;background:rgba(41,182,246,0.15);border-radius:99px;padding:1px 7px;">🥗 素食 ${vegTotal} 份</span>`:''}
         <span style="margin-left:auto;font-size:12px;color:${over?'#ef5350':'var(--gray)'};font-weight:700;">${head}/${capT}${vegTotal>0?`<span style="font-weight:400;color:var(--gray);font-size:10px;"> (10+${vegTotal}素)</span>`:''}</span>
