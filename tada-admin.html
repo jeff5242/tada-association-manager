@@ -3363,7 +3363,9 @@ const EVENT_TABLE_GROUPS = [
   { label:'桌次', tables:Array.from({length:25},(_,i)=>`第${i+1}桌`) },
   { label:'工作桌', tables:['工作桌'] },
 ];
-const TABLE_CAP = 10;   // 每桌座位數（以人數/headcount 計）
+const TABLE_CAP = 10;   // 每桌基本座位數（以人數/headcount 計）
+// 素食是套餐、另外出，不佔共享桌菜的位子 → 每 1 份素食該桌可多坐 1 人
+const tableCapWithVeg = veg => TABLE_CAP + (veg||0);
 const EVENT_TABLES = EVENT_TABLE_GROUPS.flatMap(g => g.tables);
 function eventTableRank(v){
   if(!v) return 9999;                        // 未安排排最後
@@ -3864,7 +3866,8 @@ function renderSeating(){
     const lbl=grpOf(t); const col=grpColor[lbl]||'var(--gold)';
     const mainGrp=tableMainGroup(arr);                       // 主要團體名
     const vegTotal=arr.reduce((s,o)=>s+(o.veg||0),0);         // 該桌素食份數
-    const over=head>TABLE_CAP;
+    const capT=tableCapWithVeg(vegTotal);
+    const over=head>capT;
     const rows=arr.length? arr.map(o=>{
       const icon=o.kind==='guest'?'🎩':'👤';
       const sizeTag=o.size>1?` <span style="color:var(--gold);">×${o.size}</span>`:'';
@@ -3888,7 +3891,7 @@ function renderSeating(){
         <b style="color:${col};font-size:14px;">${t}</b>
         ${mainGrp?`<span style="font-size:11px;color:var(--gold-lt);font-weight:700;">· ${escapeHtml(mainGrp)}</span>`:''}
         ${vegTotal>0?`<span style="font-size:10px;color:#4fc3f7;background:rgba(41,182,246,0.15);border-radius:99px;padding:1px 7px;">🥗 素食 ${vegTotal} 份</span>`:''}
-        <span style="margin-left:auto;font-size:12px;color:${over?'#ef5350':'var(--gray)'};font-weight:700;">${head}/${TABLE_CAP}</span>
+        <span style="margin-left:auto;font-size:12px;color:${over?'#ef5350':'var(--gray)'};font-weight:700;">${head}/${capT}${vegTotal>0?`<span style="font-weight:400;color:var(--gray);font-size:10px;"> (10+${vegTotal}素)</span>`:''}</span>
       </div>
       ${rows}
     </div>`;
@@ -3932,22 +3935,29 @@ function seatGroupKey(m){
   if(m.org) return 'org:'+m.org.trim();
   return 'solo:'+m.user_id;
 }
-// members: 要排的人；usedInit: 各桌已占用（Map），預設全空
-function planSeats(members, usedInit){
-  const used=new Map(); MEMBER_TABLES.forEach(t=>used.set(t, usedInit?(usedInit.get(t)||0):0));
+// members: 要排的人；usedInit/vegInit: 各桌已占用人數／已有素食份數（Map），預設全空
+// 容量以「10 + 該桌素食份數」計（素食另出套餐，不佔共享桌菜位）
+function planSeats(members, usedInit, vegInit){
+  const used=new Map(), vegs=new Map();
+  MEMBER_TABLES.forEach(t=>{ used.set(t, usedInit?(usedInit.get(t)||0):0); vegs.set(t, vegInit?(vegInit.get(t)||0):0); });
+  const capOf=t=>tableCapWithVeg(vegs.get(t));
+  const fits=(t,need,addVeg)=>used.get(t)+need <= TABLE_CAP+vegs.get(t)+(addVeg||0);
   const groups=new Map();
   members.forEach(m=>{ const k=seatGroupKey(m); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });
   const gh=g=>g.reduce((s,m)=>s+(m.headcount||1),0);
+  const gv=g=>g.reduce((s,m)=>s+(m.vegetarian||0),0);
   const arr=[...groups.values()].sort((a,b)=>gh(b)-gh(a));
   const plan=[];
-  const placeOne=m=>{ const need=m.headcount||1;
-    const t=MEMBER_TABLES.find(t=>used.get(t)+need<=TABLE_CAP) || MEMBER_TABLES[MEMBER_TABLES.length-1];
-    used.set(t,used.get(t)+need); plan.push({user_id:m.user_id,table_no:t}); };
+  const seat=(t,m)=>{ used.set(t,used.get(t)+(m.headcount||1)); vegs.set(t,vegs.get(t)+(m.vegetarian||0));
+                      plan.push({user_id:m.user_id,table_no:t}); };
+  const placeOne=m=>{ const need=m.headcount||1, v=m.vegetarian||0;
+    const t=MEMBER_TABLES.find(t=>fits(t,need,v)) || MEMBER_TABLES[MEMBER_TABLES.length-1];
+    seat(t,m); };
   for(const grp of arr){
-    const total=gh(grp);
-    if(total<=TABLE_CAP){
-      const t=MEMBER_TABLES.find(t=>used.get(t)+total<=TABLE_CAP);
-      if(t){ grp.forEach(m=>{ used.set(t,used.get(t)+(m.headcount||1)); plan.push({user_id:m.user_id,table_no:t}); }); continue; }
+    const total=gh(grp), tv=gv(grp);
+    if(total<=TABLE_CAP+tv){
+      const t=MEMBER_TABLES.find(t=>fits(t,total,tv));
+      if(t){ grp.forEach(m=>seat(t,m)); continue; }
     }
     grp.forEach(placeOne);   // 整群放不下 → 逐一補位
   }
@@ -3966,9 +3976,12 @@ async function applySeatPlan(plan, verb){
 async function autoSeatMembers(){
   const un = seatMembers.filter(m=>!m.table_no && m.note!=='工作人員');
   if(!un.length){ alert('沒有未排桌的出席會員。'); return; }
-  const used=new Map(); MEMBER_TABLES.forEach(t=>used.set(t,0));
-  seatMembers.forEach(m=>{ if(m.table_no && used.has(m.table_no)) used.set(m.table_no, used.get(m.table_no)+(m.headcount||1)); });
-  const plan=planSeats(un, used);
+  const used=new Map(), vegs=new Map();
+  MEMBER_TABLES.forEach(t=>{ used.set(t,0); vegs.set(t,0); });
+  seatMembers.forEach(m=>{ if(m.table_no && used.has(m.table_no)){
+    used.set(m.table_no, used.get(m.table_no)+(m.headcount||1));
+    vegs.set(m.table_no, vegs.get(m.table_no)+(m.vegetarian||0)); } });
+  const plan=planSeats(un, used, vegs);
   if(!confirm(`將 ${un.length} 位未排桌會員補進會員桌（依相同備註／同公司盡量同桌）？\n已排好的不會動。`)) return;
   await applySeatPlan(plan, '已補排');
 }
