@@ -3795,7 +3795,8 @@ async function submitRsvpProxy(){
 
 // ══════════ 桌次規劃 ══════════
 let seatGuests = [], seatMembers = [];
-const MEMBER_TABLES = EVENT_TABLE_GROUPS.find(g=>g.label==='會員桌').tables;
+// 可排的桌號（非工作桌那一組；相容舊「會員桌」標籤）
+const MEMBER_TABLES = (EVENT_TABLE_GROUPS.find(g=>g.label==='桌次') || EVENT_TABLE_GROUPS.find(g=>g.label==='會員桌') || {tables:[]}).tables;
 
 async function loadSeating(){
   const st=document.getElementById('seating-status');
@@ -3803,7 +3804,7 @@ async function loadSeating(){
   try{
     const [gRes, mRes] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category`, { headers: SB_HEADERS }),
-      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,companions,headcount,table_no`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,companions,headcount,vegetarian,table_no`, { headers: SB_HEADERS }),
     ]);
     seatGuests  = gRes.ok ? await gRes.json() : [];
     seatMembers = mRes.ok ? await mRes.json() : [];
@@ -3813,12 +3814,29 @@ async function loadSeating(){
 }
 
 // 統一「座位人」模型
+// 可讀的「團體名」：理監事 > 備註 > 單位
+function readableGroup(m){
+  const note=(m.note||'').trim();
+  if(/第五屆理(監事|事長)/.test(note)) return '第五屆理監事';
+  const trivial = !note || ['無','無。','none','-'].includes(note);
+  if(!trivial) return note.length>10 ? note.slice(0,10) : note;
+  if(m.org) return (m.org||'').length>10 ? m.org.slice(0,10) : m.org;
+  return '';
+}
 function seatOccupants(){
   const list=[];
   // 貴賓只顯示「已實際排位」者（依原則：桌次以出席回報為主，長官貴賓回報後由貴賓名冊指定桌號才進場）
-  seatGuests.filter(g=>g.seat).forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:g.seat, size:(g.party_size||1), checked:g.checked_in }));
-  seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:m.org||m.note||m.companions||'', table:m.table_no||'', size:(m.headcount||1) }));
+  seatGuests.filter(g=>g.seat).forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'' }));
+  seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:m.org||m.note||m.companions||'', table:m.table_no||'', size:(m.headcount||1), veg:(m.vegetarian||0), grp:readableGroup(m) }));
   return list;
+}
+// 一桌的主要團體名（占最多人的團體，需至少 2 人）
+function tableMainGroup(arr){
+  const cnt=new Map();
+  arr.forEach(o=>{ if(o.grp){ cnt.set(o.grp, (cnt.get(o.grp)||0)+o.size); } });
+  let best='', n=0;
+  cnt.forEach((v,k)=>{ if(v>n){ n=v; best=k; } });
+  return n>=2 ? best : '';
 }
 
 function renderSeating(){
@@ -3843,10 +3861,13 @@ function renderSeating(){
   document.getElementById('seating-grid').innerHTML = orderTables.map(t=>{
     const arr=byTable.get(t); const head=arr.reduce((s,o)=>s+o.size,0);
     const lbl=grpOf(t); const col=grpColor[lbl]||'var(--gold)';
+    const mainGrp=tableMainGroup(arr);                       // 主要團體名
+    const vegTotal=arr.reduce((s,o)=>s+(o.veg||0),0);         // 該桌素食份數
     const over=head>TABLE_CAP;
     const rows=arr.length? arr.map(o=>{
       const icon=o.kind==='guest'?'🎩':'👤';
       const sizeTag=o.size>1?` <span style="color:var(--gold);">×${o.size}</span>`:'';
+      const vegTag=o.veg>0?` <span style="background:rgba(41,182,246,0.18);color:#4fc3f7;font-size:10px;border-radius:99px;padding:0 6px;">🥗 素${o.veg>1?'×'+o.veg:''}</span>`:'';
       const noteBtn = o.kind==='member'
         ? `<button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:10px;" onclick="editOccNote('${escapeHtml(String(o.id))}')" title="改備註（影響分組，改完可重排）">✎</button>` : '';
       const hideBtn = o.kind==='member'
@@ -3854,17 +3875,18 @@ function renderSeating(){
       const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:74px;" title="改桌／移除">${tableOptionsHtml(o.table)}</select>`;
       return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
         <span style="font-size:12px;">${icon}</span>
-        <span style="flex:1;font-size:12.5px;color:var(--white);min-width:0;">${escapeHtml(o.name)}${sizeTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,14))}</span>`:''}</span>
+        <span style="flex:1;font-size:12.5px;color:var(--white);min-width:0;">${escapeHtml(o.name)}${sizeTag}${vegTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,14))}</span>`:''}</span>
         ${noteBtn}
         ${hideBtn}
         ${sel}
       </div>`;
     }).join('') : '<div style="color:var(--gray);font-size:12px;padding:8px 0;">（空桌）</div>';
     return `<div style="background:var(--surface,rgba(255,255,255,0.03));border:1px solid ${over?'#ef5350':'var(--border,rgba(196,146,42,0.25))'};border-radius:12px;padding:12px 13px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
         <span style="width:8px;height:8px;border-radius:50%;background:${col};"></span>
         <b style="color:${col};font-size:14px;">${t}</b>
-        <span style="font-size:10px;color:var(--gray);">${lbl}</span>
+        ${mainGrp?`<span style="font-size:11px;color:var(--gold-lt);font-weight:700;">· ${escapeHtml(mainGrp)}</span>`:''}
+        ${vegTotal>0?`<span style="font-size:10px;color:#4fc3f7;background:rgba(41,182,246,0.15);border-radius:99px;padding:1px 7px;">🥗 素食 ${vegTotal} 份</span>`:''}
         <span style="margin-left:auto;font-size:12px;color:${over?'#ef5350':'var(--gray)'};font-weight:700;">${head}/${TABLE_CAP}</span>
       </div>
       ${rows}
