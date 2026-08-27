@@ -48,16 +48,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 #sheets{display:none}
 .ballot{
   position:relative;width:210mm;height:297mm;background:#fff;color:#000;
-  padding:15mm;page-break-after:always;break-after:page;
+  /* 上下留 24/26mm，讓內容避開四角定位標記所佔的 10~20mm 與 277~287mm 兩條帶 */
+  padding:24mm 15mm 26mm;overflow:hidden;
+  page-break-after:always;break-after:page;
   font-family:var(--sans);
 }
 .ballot:last-child{page-break-after:auto;break-after:auto}
 /* 四角定位標記 */
-.fid{position:absolute;width:10mm;height:10mm;background:#000}
+.fid{position:absolute;width:10mm;height:10mm;background:#000;z-index:10}
 .fid.tl{top:10mm;left:10mm}.fid.tr{top:10mm;right:10mm}
 .fid.bl{bottom:10mm;left:10mm}.fid.br{bottom:10mm;right:10mm}
 
-.b-head{display:flex;justify-content:space-between;align-items:flex-start;margin:6mm 0 4mm;padding-top:4mm}
+.b-head{display:flex;justify-content:space-between;align-items:flex-start;margin:0 0 4mm}
 .b-title{flex:1}
 .b-title .org{font-size:12pt;font-weight:700;letter-spacing:.06em}
 .b-title .ttl{font-size:19pt;font-weight:900;letter-spacing:.1em;margin-top:1.5mm}
@@ -318,7 +320,7 @@ function build(preview){
                  +`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   // A4 一頁可用高度有限：列數多時自動壓縮列高與姓名字級，確保不溢頁
   const totalRows=list.length+wn;
-  const rh = totalRows<=12 ? 12 : (totalRows<=15 ? 10.5 : (totalRows<=18 ? 9.2 : 8.2));
+  const rh = totalRows<=12 ? 12 : (totalRows<=15 ? 10 : (totalRows<=18 ? 8.5 : 7.6));
   const fs = totalRows<=12 ? 15 : (totalRows<=15 ? 13.5 : 12);
   if(totalRows>20){ alert(`候選人 ${list.length} 位 + 自填 ${wn} 欄 = ${totalRows} 列，單頁放不下，請減少自填欄。`); return; }
 
@@ -375,10 +377,35 @@ function build(preview){
   }
   const sheets=document.getElementById('sheets');
   sheets.innerHTML=pages.join('');
+  checkOverflow(sheets);
   sheets.className = preview ? 'preview' : '';
   if(preview){ sheets.style.display='block'; window.scrollTo(0,0); }
   else { sheets.style.display=''; }
 }
+/* 實際量測第一張票：內容是否溢出可用區、是否碰到四角定位標記 */
+function checkOverflow(sheets){
+  const b=sheets.querySelector('.ballot');
+  if(!b) return;
+  const prevDisplay=sheets.style.display, prevClass=sheets.className;
+  sheets.style.display='block';                       // 量測需要實際排版
+  const mm = 96/25.4;                                 // CSS px per mm
+  const rect=b.getBoundingClientRect();
+  const foot=b.querySelector('.b-foot');
+  const bottomMarkerTop = rect.top + 277*mm;          // 下方標記上緣
+  let msg='';
+  if(foot){
+    const fr=foot.getBoundingClientRect();
+    if(fr.bottom > bottomMarkerTop) {
+      msg=`內容超出可用區 ${((fr.bottom-bottomMarkerTop)/mm).toFixed(1)}mm，會壓到下方定位標記。請減少自填欄或候選人數。`;
+    }
+  }
+  if(b.scrollHeight > b.clientHeight + 2){
+    msg = msg || `內容高度 ${(b.scrollHeight/mm).toFixed(0)}mm 超出頁面，部分內容會被裁切。`;
+  }
+  sheets.style.display=prevDisplay; sheets.className=prevClass;
+  if(msg) alert('⚠️ 版面警告\n\n'+msg);
+}
+
 function closePreview(){
   const s=document.getElementById('sheets');
   s.className=''; s.style.display=''; s.innerHTML='';
