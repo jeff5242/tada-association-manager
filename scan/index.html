@@ -88,10 +88,10 @@ video{width:100%;max-width:420px;border-radius:10px;background:#000;display:bloc
     <div class="row">
       <div class="fld"><label>票種</label>
         <select id="kind" onchange="onKind()">
-          <option value="director">理事票（應選 11）</option>
-          <option value="supervisor">監事票（應選 3）</option>
+          <option value="director">理事票（應選 11 席）</option>
+          <option value="supervisor">監事票（應選 3 席）</option>
         </select></div>
-      <div class="fld"><label>應選席次</label><input id="seats" type="number" value="11" min="1" style="width:80px"></div>
+      <div class="fld"><label>每票圈選上限</label><input id="limit" type="number" value="6" min="1" style="width:90px"></div>
       <div class="fld"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
         <input type="checkbox" id="test" onchange="document.getElementById('testmode').classList.toggle('on',this.checked)">
         測試模式（彩排用）</label></div>
@@ -99,7 +99,8 @@ video{width:100%;max-width:420px;border-radius:10px;background:#000;display:bloc
         <select id="par"><option>4</option><option selected>6</option><option>8</option></select></div>
     </div>
     <div class="warn">
-      票種要跟實際掃描的票對應。判讀時若 AI 讀到的票種與此處不符，該張會標為待複核。
+      票種要跟實際掃描的票對應。判讀時若 AI 讀到的票種與此處不符，該張會標為待複核。<br>
+      <b>圈選上限</b>是廢票判定依據（理事每票 6 人、監事每票 1 人），與應選席次不同，請勿填錯。
     </div>
   </div>
 
@@ -169,7 +170,7 @@ async function tryLogin(){
 document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin()});
 
 function onKind(){
-  document.getElementById('seats').value = document.getElementById('kind').value==='director'?11:3;
+  document.getElementById('limit').value = document.getElementById('kind').value==='director'?6:1;
 }
 
 /* ── 檔案收集 ── */
@@ -228,7 +229,7 @@ async function start(){
 
 async function handle(item){
   item.status='run'; render();
-  const seats=parseInt(document.getElementById('seats').value,10)||11;
+  const limit=parseInt(document.getElementById('limit').value,10)||6;
   const kind=document.getElementById('kind').value;
   const isTest=document.getElementById('test').checked;
   try{
@@ -236,7 +237,7 @@ async function handle(item){
 
     const r=await fetch(`${SB_URL}/functions/v1/ballot-ocr`,{
       method:'POST',headers:SB_H,
-      body:JSON.stringify({imageBase64:b64,mediaType:'image/jpeg',seats})
+      body:JSON.stringify({imageBase64:b64,mediaType:'image/jpeg',maxMarks:limit})
     });
     const d=await r.json();
     if(!r.ok||d.error) throw new Error(d.error||('HTTP '+r.status));

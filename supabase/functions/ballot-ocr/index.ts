@@ -138,10 +138,11 @@ Deno.serve(async (req) => {
 
   const imageBase64 = body.imageBase64 as string;
   const mediaType   = (body.mediaType as string) ?? 'image/jpeg';
-  const seats       = Number(body.seats);           // 應選席次，由前端依票種帶入
+  // 每票圈選上限（限制連記法）：理事 6、監事 1。與「應選席次」是不同概念，廢票依此判定。
+  const maxMarks = Number(body.maxMarks ?? body.seats);
 
   if (!imageBase64) return json({ error: '缺少圖片資料' }, 400);
-  if (!Number.isFinite(seats) || seats < 1) return json({ error: '缺少應選席次' }, 400);
+  if (!Number.isFinite(maxMarks) || maxMarks < 1) return json({ error: '缺少圈選上限' }, 400);
 
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!apiKey) return json({ error: '判讀服務未設定 API Key' }, 500);
@@ -184,7 +185,7 @@ Deno.serve(async (req) => {
                                        { verdict = 'manual'; reason = `有 ${unclear.length + wUnclear.length} 格無法確定或有塗改`; }
   else if (!r1.ballot_no)              { verdict = 'manual'; reason = '票號無法辨識'; }
   else if (totalMarked === 0)          { verdict = 'invalid_blank'; reason = '空白票'; }
-  else if (totalMarked > seats)        { verdict = 'invalid_over';  reason = `圈選 ${totalMarked} 人，超過應選 ${seats} 人`; }
+  else if (totalMarked > maxMarks)     { verdict = 'invalid_over';  reason = `圈選 ${totalMarked} 人，超過每票上限 ${maxMarks} 人`; }
   // 手寫姓名必須由人確認對應到哪位會員，不可由 AI 逕行認定
   else if (wMarked.length > 0)         { verdict = 'manual';
                                          reason = `有 ${wMarked.length} 筆自行填寫（${wMarked.map(w => w.name || '姓名未辨識').join('、')}）需人工認定`
@@ -204,6 +205,7 @@ Deno.serve(async (req) => {
     unclear_nos: unclear.map(m => m.no),
     verdict,
     reason,
+    max_marks: maxMarks,
     read1: r1,
     read2: r2,
   });

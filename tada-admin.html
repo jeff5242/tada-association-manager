@@ -845,9 +845,10 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         </div>
       </div>
       <div style="background:rgba(255,255,255,.03);border:1px solid rgba(196,146,42,.2);border-radius:8px;padding:11px 13px;">
-        <div style="color:var(--gold);font-size:12px;font-weight:700;margin-bottom:4px;">應選席次</div>
+        <div style="color:var(--gold);font-size:12px;font-weight:700;margin-bottom:4px;">席次與圈選上限</div>
         <div style="font-size:12px;color:var(--gray);line-height:1.9;">
-          理事 <b>11</b> 人（候補 3）<br>監事 <b>3</b> 人（候補 1）<span style="color:var(--gray);">・章程第十六條</span>
+          應選：理事 <b>11</b>（候補 3）／監事 <b>3</b>（候補 1）<br>
+          <span style="color:#ffa726;">每票限圈：理事 <b>6</b> 人／監事 <b>1</b> 人</span>
         </div>
       </div>
     </div>
@@ -4832,6 +4833,9 @@ function showApp(){
 
 /* ══════════ 紙本選票：開票看板與人工複核 ══════════ */
 const BALLOT_ELECTION_ID='66666666-6666-4666-8666-666666666666';
+// 應選席次（章程第十六條）與「每票圈選上限」（限制連記法）是兩回事，廢票依上限判定
+const BALLOT_SEATS = { director:11, supervisor:3 };
+const BALLOT_LIMIT = { director:6,  supervisor:1 };
 let ballotAutoTimer=null;
 
 function toggleBallotAuto(){
@@ -4884,13 +4888,14 @@ function renderBallotPending(rows){
   }
   tb.innerHTML=rows.map(r=>{
     const pos=r.position==='director'?'理事':'監事';
-    const seats=r.position==='director'?11:3;
+    const seats=BALLOT_SEATS[r.position]||11;
+    const limit=BALLOT_LIMIT[r.position]||6;
     const nos=(r.marked_nos||[]).join('、')||'—';
     const why=[];
     if(r.agree===false) why.push('兩次判讀不一致');
     if(r.image_quality && r.image_quality!=='good') why.push('影像 '+r.image_quality);
     if(!r.ballot_no) why.push('票號讀不到');
-    if(r.verdict==='invalid_over') why.push(`圈選 ${r.marked_count} 人超過 ${seats} 人`);
+    if(r.verdict==='invalid_over') why.push(`圈選 ${r.marked_count} 人超過每票上限 ${limit} 人`);
     if(r.verdict==='invalid_blank') why.push('空白票');
     const img = r.image_path
       ? `<a href="${SB_URL}/storage/v1/object/public/tada-uploads/${r.image_path}" target="_blank" style="color:var(--gold-lt);font-size:11px;">看影像 ↗</a>` : '';
@@ -4910,7 +4915,7 @@ function renderBallotPending(rows){
       <td style="font-size:12px;">${pos}</td>
       <td><span style="font-size:10px;padding:2px 7px;border-radius:99px;background:rgba(255,167,38,.15);color:#ffa726;">待複核</span></td>
       <td style="font-size:12px;line-height:1.9;">
-        圈選 <b style="color:var(--gold-lt);">${nos}</b>（${r.marked_count??0} 人 / 應選 ${seats}）
+        圈選 <b style="color:var(--gold-lt);">${nos}</b>（${r.marked_count??0} 人 / 每票上限 ${limit}）
         ${why.length?`<br><span style="color:#ffa726;font-size:11px;">${why.join('、')}</span>`:''}
         ${wiHtml}
       </td>
@@ -4932,10 +4937,10 @@ async function ballotReview(id, decision){
     const r=await fetch(`${SB_URL}/rest/v1/tada_ballot_scans?id=eq.${id}&select=marked_nos,marked_count,position,verdict`,{headers:SB_HEADERS});
     const row=(await r.json())[0];
     if(!row) throw new Error('找不到該筆紀錄');
-    const seats=row.position==='director'?11:3;
+    const limit=BALLOT_LIMIT[row.position]||6;
     if(decision==='valid'){
       if(!row.marked_nos||!row.marked_nos.length) throw new Error('無圈選內容，不能裁為有效票');
-      if(row.marked_count>seats) throw new Error(`圈選 ${row.marked_count} 人超過應選 ${seats} 人，依規定為廢票`);
+      if(row.marked_count>limit) throw new Error(`圈選 ${row.marked_count} 人超過每票上限 ${limit} 人，依規定為廢票`);
     }
 
     const badVerdict = (!row.marked_count || row.marked_count===0) ? 'invalid_blank' : 'invalid_over';
@@ -4995,9 +5000,9 @@ async function resolveWriteIn(scanId, slot){
 
     const nos=[...new Set([...(row.marked_nos||[]), cr.no])].sort((a,b)=>a-b);
     const wi=(row.write_ins||[]).map(w=>w.slot===slot?{...w,state:'resolved',name:nm,resolved_no:cr.no}:w);
-    const seats=row.position==='director'?11:3;
-    if(nos.length>seats){
-      if(!confirm(`加入後圈選數為 ${nos.length}，已超過應選 ${seats} 人。\n仍要認定嗎？（之後只能裁為廢票）`)) return;
+    const limit=BALLOT_LIMIT[row.position]||6;
+    if(nos.length>limit){
+      if(!confirm(`加入後圈選數為 ${nos.length}，已超過每票上限 ${limit} 人。\n仍要認定嗎？（之後只能裁為廢票）`)) return;
     }
 
     const up=await fetch(`${SB_URL}/rest/v1/tada_ballot_scans?id=eq.${scanId}`,{

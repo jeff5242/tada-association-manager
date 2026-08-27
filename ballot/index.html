@@ -135,6 +135,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="fld"><label>起始序號</label><input id="start" class="w80" type="number" value="1" min="1" max="999"></div>
       <div class="fld"><label>份數</label><input id="count" class="w80" type="number" value="150" min="1" max="500"></div>
       <div class="fld"><label>應選席次</label><input id="seats" class="w80" type="number" value="11" min="1"></div>
+      <div class="fld"><label>每票圈選上限</label><input id="limit" class="w80" type="number" value="6" min="1"></div>
       <div class="fld"><label>候補席次</label><input id="alt" class="w80" type="number" value="3" min="0"></div>
       <div class="fld"><label>自填欄</label><input id="writein" class="w80" type="number" value="3" min="0" max="6"></div>
       <div class="fld"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:9px;">
@@ -261,8 +262,9 @@ async function loadVoterCount(){
 function onKindChange(){
   const k=document.getElementById('kind').value;
   document.getElementById('start').value = k==='director'?1:501;
-  document.getElementById('seats').value = k==='director'?11:3;
-  document.getElementById('alt').value   = k==='director'?3:1;
+  document.getElementById('seats').value  = k==='director'?11:3;
+  document.getElementById('limit').value  = k==='director'?6:1;
+  document.getElementById('alt').value    = k==='director'?3:1;
   document.getElementById('writein').value = k==='director'?3:1;
   updateSample(); loadCands();
 }
@@ -296,6 +298,7 @@ function build(preview){
   const start=Math.max(1,parseInt(document.getElementById('start').value,10)||1);
   const count=Math.max(1,parseInt(document.getElementById('count').value,10)||1);
   const seats=Math.max(1,parseInt(document.getElementById('seats').value,10)||1);
+  const limit=Math.max(1,parseInt(document.getElementById('limit').value,10)||1);
   const alt=Math.max(0,parseInt(document.getElementById('alt').value,10)||0);
   const isTest=document.getElementById('testmode').checked;
   const wn=Math.max(0,Math.min(6,parseInt(document.getElementById('writein').value,10)||0));
@@ -303,6 +306,7 @@ function build(preview){
 
   if(!list.length){ alert('請先輸入候選人名單'); return; }
   if(seats>list.length){ alert(`應選席次(${seats}) 大於候選人數(${list.length})，請確認。`); return; }
+  if(limit>seats){ alert(`圈選上限(${limit}) 不應大於應選席次(${seats})，請確認。`); return; }
   if(count>500){ alert('單次最多 500 份'); return; }
 
   if(start+count-1>999){ alert(`起始序號 ${start} + 份數 ${count} 會超過 999，請調整。`); return; }
@@ -350,14 +354,14 @@ function build(preview){
 
       <div class="b-info">
         應選出${posName} <b>${seats}</b> 人${alt?`（另得選出候補${posName} <b>${alt}</b> 人）`:''}<br>
-        <span class="must">★ 限圈選 ${seats} 人以內（含自行填寫者），超過 ${seats} 人之選票以廢票論。</span><br>
+        <span class="must">★ 本張選票<b>限圈選 ${limit} 人</b>（含自行填寫者），超過 ${limit} 人之選票以廢票論。</span><br>
         <span class="must">★ 圈選方式：在候選人左方空格內畫 ○ 或 ✓，請勿塗滿整格。</span>
       </div>
 
       <div class="b-sec">
         <div class="b-sec-h">${posName}候選人</div>
         ${rows}
-        ${wn?`<div class="w-hd">另行填寫 <span>（如欲圈選名單以外之會員，請於空格右方正楷書寫姓名，並於左方空格畫 ○）</span></div>
+        ${wn?`<div class="w-hd">另行填寫 <span>（如欲圈選名單以外之會員，請於空格右方正楷書寫姓名，並於左方空格畫 ○；仍計入 ${limit} 人上限）</span></div>
         ${Array.from({length:wn},()=>`<div class="w-row"><span class="c-box"></span><span class="w-line"></span></div>`).join('')}`:''}
       </div>
 
