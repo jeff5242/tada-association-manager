@@ -97,7 +97,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
     <div class="hdr-title">
       <h1>出席名單</h1>
       <div style="display:flex;gap:6px;">
-        <button class="refresh" onclick="exportXls()" title="下載目前篩選結果">⬇ Excel</button>
+        <button class="refresh" onclick="exportXls()" title="一筆報名一列">⬇ Excel</button>
+        <button class="refresh" onclick="exportPerPerson()" title="同行者展開成獨立列，一人一列">⬇ 逐人明細</button>
         <button class="refresh" onclick="loadAll()">重新載入</button>
       </div>
     </div>
@@ -141,7 +142,7 @@ document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')
 async function loadAll(){
   try{
     const [rRes,gRes]=await Promise.all([
-      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,table_no,headcount,vegetarian,meal,invite_source&order=table_no.asc.nullslast,display_name.asc`,{headers:SB_H}),
+      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,table_no,headcount,vegetarian,meal,invite_source,companions&order=table_no.asc.nullslast,display_name.asc`,{headers:SB_H}),
       fetch(`${SB_URL}/rest/v1/tada_guests?seat=neq.null&select=id,name,org,note,seat,party_size,invite_source,meal&order=seat.asc,name.asc`,{headers:SB_H})
     ]);
     const rsvp=await rRes.json(); const guests=await gRes.json();
@@ -149,12 +150,12 @@ async function loadAll(){
     rsvp.forEach(r=>allItems.push({
       src:'rsvp',id:r.user_id,name:r.display_name,org:r.org||'',
       table:r.table_no||'',hc:r.headcount||1,veg:r.vegetarian||0,
-      note:r.note||'',meal:r.meal||null,inv:r.invite_source||null
+      note:r.note||'',meal:r.meal||null,inv:r.invite_source||null,comp:r.companions||''
     }));
     guests.forEach(g=>allItems.push({
       src:'guest',id:g.id,name:g.name,org:g.org||'',
       table:g.seat||'',hc:g.party_size||1,veg:0,
-      note:g.note||'',meal:g.meal||null,inv:g.invite_source||null
+      note:g.note||'',meal:g.meal||null,inv:g.invite_source||null,comp:''
     }));
     buildFilters();
     render();
@@ -336,6 +337,63 @@ function exportXls(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
   a.download=`TADA_出席名單_${tag}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+/* 逐人明細：把「同行」欄展開成獨立列，一人一列。
+   只影響輸出，不動資料庫 —— headcount 仍是計算人數的唯一依據。 */
+function splitCompanions(text){
+  return String(text||'')
+    .split(/[,，、;；。／/\n]+/)          // 實際資料這幾種分隔符都出現過
+    .map(t=>t.replace(/^\s*(眷屬|同行)\s*[:：]\s*/,'').trim())
+    .filter(t=>t && !['無','無。','none','-','na','n/a','nil'].includes(t.toLowerCase()));
+}
+
+function exportPerPerson(){
+  const rows=filtered();
+  if(!rows.length){ alert('目前沒有可匯出的資料'); return; }
+  const MEAL={yes:'會用餐',no:'不用餐'};
+  const head=['序','桌次','姓名','身分','單位','用餐','素食','邀請來源','主報名人','備註'];
+  const esc=v=>{ const t=(v===null||v===undefined)?'':String(v);
+    return /[",\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t; };
+
+  const out=[]; let mismatch=0;
+  rows.forEach(it=>{
+    const comps=splitCompanions(it.comp);
+    const names=[it.name, ...comps];
+    // 補足或標記：以 headcount 為準
+    let flag='';
+    if(names.length<it.hc){
+      while(names.length<it.hc) names.push('（同行者）');
+    }else if(names.length>it.hc){
+      flag='⚠ 人數欄 '+it.hc+' 與同行欄 '+names.length+' 人不符';
+      mismatch++;
+    }
+    names.forEach((nm,i)=>out.push([
+      0, it.table, nm,
+      i===0 ? (it.src==='guest'?'貴賓':'本人') : '同行',
+      i===0 ? it.org : '',
+      MEAL[it.meal]||'未確認',
+      i===0 ? (it.veg||'') : '',
+      i===0 ? (it.inv||'') : '',
+      i===0 ? '' : it.name,
+      i===0 ? [it.note,flag].filter(Boolean).join('／') : ''
+    ]));
+  });
+  out.forEach((r,i)=>r[0]=i+1);
+
+  const lines=out.map(r=>r.map(esc).join(','));
+  lines.push('');
+  lines.push(esc(`合計 ${out.length} 人（報名 ${rows.length} 筆）`));
+  if(mismatch) lines.push(esc(`⚠ 有 ${mismatch} 筆的人數欄與同行欄人數不符，已於備註標示`));
+
+  const csv='\ufeff'+[head.join(','),...lines].join('\r\n');
+  const d=new Date();
+  const tag=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`TADA_逐人明細_${tag}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
