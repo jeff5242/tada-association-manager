@@ -682,10 +682,11 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <button class="btn btn-gold btn-sm" onclick="addCandidate()">＋ 新增</button>
         <button class="btn btn-outline btn-sm" onclick="copyFifthCandidates()" title="把第五屆此職位的候選人複製進本場次">⧉ 帶入第五屆</button>
         <button class="btn btn-outline btn-sm" onclick="fillCandidateCompanies()" title="依姓名比對主名冊，補上空白的公司欄">🏢 依名冊帶入公司</button>
+        <button class="btn btn-outline btn-sm" onclick="renumberCandidates()" title="依目前順序重新編為 1,2,3…（票號會變動，印票前請確認）">🔢 重編票號</button>
       </div>
       <p id="el-cat-hint" style="font-size:12px;color:var(--gray);margin:4px 2px 10px;line-height:1.7;"></p>
-      <div class="tbl-wrap"><table><thead><tr><th>票號</th><th>姓名</th><th>公司</th><th>得票</th><th>協會推薦</th><th>操作</th></tr></thead>
-        <tbody id="cand-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr></tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th style="width:74px;">順序</th><th>票號</th><th>姓名</th><th>公司</th><th>得票</th><th>協會推薦</th><th>操作</th></tr></thead>
+        <tbody id="cand-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr></tbody></table></div>
     </div>
 
     <div id="el-cat-roster" style="display:none;">
@@ -4575,13 +4576,75 @@ async function renderCandidates(){
     ? '常務理事由當選理事於第二階段互選產生，通常不在會員票上；此處僅供第二階段登錄使用。' : '';
   const r=await sbEl(`tada_v_candidates?election_id=eq.${election.id}&position=eq.${elCat}&order=sort,no`); const arr=r.ok?await r.json():[];
   const tb=document.getElementById('cand-tbody');
-  if(!arr.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr>'; return; }
-  tb.innerHTML=arr.map((c)=>`<tr>
-    <td>${c.no??'–'}</td><td class="name-cell">${escapeHtml(c.name)}</td>
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;">尚無候選人</td></tr>'; return; }
+  candOrder=arr.map(c=>c.id);                       // 供上下移動使用
+  tb.innerHTML=arr.map((c,i)=>`<tr>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:11px;" ${i===0?'disabled':''}
+        onclick="moveCandidate('${c.id}',-1)" title="上移">▲</button>
+      <button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:11px;" ${i===arr.length-1?'disabled':''}
+        onclick="moveCandidate('${c.id}',1)" title="下移">▼</button>
+    </td>
+    <td style="cursor:pointer;" title="點擊修改票號" onclick="editCandidateNo('${c.id}',${c.no??'null'})"><b style="color:var(--gold-lt);">${c.no??'–'}</b></td>
+    <td class="name-cell">${escapeHtml(c.name)}</td>
     <td style="color:var(--gray);font-size:12px;cursor:pointer;" title="點擊編輯公司" onclick="editCandidateCompany('${c.id}',this)" data-co="${escapeHtml(c.company||'')}">${escapeHtml(c.company||'✎ 點擊填寫')}</td>
     <td style="font-weight:700;color:var(--gold);">${votesFor(c.id)}</td>
     <td><button class="btn btn-sm ${c.recommended?'':'btn-outline'}" style="${c.recommended?'background:var(--gold);color:#1a1a14;border:1px solid var(--gold);':''}" onclick="toggleRecommend('${c.id}',${c.recommended?'true':'false'})">${c.recommended?'★ 推薦':'☆ 設推薦'}</button></td>
     <td><button class="btn btn-sm" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="delCandidate('${c.id}')">刪除</button></td></tr>`).join('');
+}
+
+let candOrder=[];   // 目前畫面上的候選人 id 順序
+
+/* 上下移動：與相鄰者對調 sort 值。
+   sort 若原本都是 0（舊資料），先依畫面順序重新填號再對調，避免全部同值時無法排序。 */
+async function moveCandidate(id, dir){
+  const i=candOrder.indexOf(id);
+  const j=i+dir;
+  if(i<0||j<0||j>=candOrder.length) return;
+  const next=[...candOrder];
+  [next[i],next[j]]=[next[j],next[i]];
+  await writeCandOrder(next);
+}
+
+async function writeCandOrder(ids){
+  const st=document.getElementById('el-status');
+  if(st){ st.style.color='var(--gray)'; st.textContent='排序中…'; }
+  // sort 從 1 起連續編號，順序即畫面順序
+  for(let k=0;k<ids.length;k++){
+    const r=await sbEl(`tada_v_candidates?id=eq.${ids[k]}`,{method:'PATCH',
+      headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({sort:k+1})});
+    if(!r.ok){ alert('排序失敗：'+await r.text()); break; }
+  }
+  if(st){ st.style.color='#66bb6a'; st.textContent='✓ 已調整順序'; }
+  renderCandidates();
+}
+
+/* 直接修改票號。票號是印在選票上的編號，與畫面順序分開，
+   因為有時票號已定案（選票印好）但想調整顯示順序。 */
+async function editCandidateNo(id, cur){
+  const v=prompt('票號（印在選票上的編號，留空可清除）：', cur??'');
+  if(v===null) return;
+  const t=v.trim();
+  const no = t==='' ? null : parseInt(t,10);
+  if(t!=='' && (!Number.isFinite(no)||no<1)){ alert('請輸入正整數'); return; }
+  const r=await sbEl(`tada_v_candidates?id=eq.${id}`,{method:'PATCH',
+    headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({no})});
+  if(r.ok) renderCandidates(); else alert('更新失敗：'+await r.text());
+}
+
+/* 依目前順序把票號重編為 1,2,3… */
+async function renumberCandidates(){
+  if(!candOrder.length){ alert('目前沒有候選人'); return; }
+  if(!confirm(`將依目前順序把 ${candOrder.length} 位候選人的票號重編為 1～${candOrder.length}。\n\n選票若已印製，票號變動會與實體票不符，請先確認。`)) return;
+  const st=document.getElementById('el-status');
+  if(st){ st.style.color='var(--gray)'; st.textContent='重編中…'; }
+  for(let k=0;k<candOrder.length;k++){
+    const r=await sbEl(`tada_v_candidates?id=eq.${candOrder[k]}`,{method:'PATCH',
+      headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({no:k+1,sort:k+1})});
+    if(!r.ok){ alert('重編失敗：'+await r.text()); break; }
+  }
+  if(st){ st.style.color='#66bb6a'; st.textContent='✓ 票號已重編'; }
+  renderCandidates();
 }
 
 async function toggleRecommend(id, cur){
