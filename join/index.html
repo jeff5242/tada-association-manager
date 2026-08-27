@@ -747,5 +747,22 @@ async function submitRenew(e) {
   if(f==='renew') switchFlow('renew');
 })();
 </script>
+
+<script>
+/* 電話統一格式：手機自動轉 09XX-XXX-XXX；市話/分機保留原樣 */
+(function(){
+  function fmtTel(v){
+    if(!v) return v;
+    const s=String(v).trim(); let d=s.replace(/\D/g,'');
+    if(d.startsWith('886')) d='0'+d.slice(3);
+    return (d.startsWith('09') && d.length===10) ? `${d.slice(0,4)}-${d.slice(4,7)}-${d.slice(7)}` : s;
+  }
+  document.addEventListener('blur', e=>{
+    const el=e.target;
+    if(el && el.tagName==='INPUT' && el.type==='tel' && el.value) el.value=fmtTel(el.value);
+  }, true);
+  window.fmtTel=fmtTel;
+})();
+</script>
 </body>
 </html>
