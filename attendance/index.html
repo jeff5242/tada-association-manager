@@ -96,7 +96,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
   <div class="hdr">
     <div class="hdr-title">
       <h1>出席名單</h1>
-      <button class="refresh" onclick="loadAll()">重新載入</button>
+      <div style="display:flex;gap:6px;">
+        <button class="refresh" onclick="exportXls()" title="下載目前篩選結果">⬇ Excel</button>
+        <button class="refresh" onclick="loadAll()">重新載入</button>
+      </div>
     </div>
     <input class="search" id="q" type="search" placeholder="搜尋姓名、單位、備註..." oninput="render()">
     <div class="filters" id="filters"></div>
@@ -300,6 +303,41 @@ async function saveEdit(key){
   it.name=name; it.note=note; it.hc=hc; if(it.src==='rsvp') it.veg=veg;
   editingKey=null; render();
   await saveProps(it,payload);
+}
+
+/* 匯出目前「篩選後」的名單。用 UTF-8 BOM CSV，Excel / Numbers 直接開，
+   中文不亂碼，也不必引入任何函式庫。 */
+function exportXls(){
+  const rows=filtered();
+  if(!rows.length){ alert('目前沒有可匯出的資料'); return; }
+  const MEAL={yes:'會用餐',no:'不用餐'};
+  const head=['姓名','單位','桌次','人數','素食','用餐','邀請來源','備註','來源'];
+  const esc=v=>{
+    const t=(v===null||v===undefined)?'':String(v);
+    return /[",\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t;
+  };
+  const lines=rows.map(i=>[
+    i.name, i.org, i.table, i.hc, i.veg||'',
+    MEAL[i.meal]||'未確認', i.inv||'', i.note,
+    i.src==='guest'?'貴賓名冊':'出席回報'
+  ].map(esc).join(','));
+
+  // 合計列，方便直接對帳
+  const tot=rows.reduce((s,i)=>s+i.hc,0);
+  const yes=rows.filter(i=>i.meal==='yes').reduce((s,i)=>s+i.hc,0);
+  const no =rows.filter(i=>i.meal==='no').reduce((s,i)=>s+i.hc,0);
+  const veg=rows.reduce((s,i)=>s+i.veg,0);
+  lines.push('');
+  lines.push(esc(`合計 ${rows.length} 筆／${tot} 人　用餐 ${yes}　不用餐 ${no}　素食 ${veg}`));
+
+  const csv='\ufeff'+[head.join(','),...lines].join('\r\n');
+  const d=new Date();
+  const tag=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`TADA_出席名單_${tag}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
 async function saveProps(item,body){
