@@ -94,6 +94,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .w-hd span{font-weight:400;color:#333;letter-spacing:0}
 .w-row{display:flex;align-items:center;gap:4mm;height:var(--rh,12mm)}
 .w-line{flex:1;border-bottom:0.4mm solid #000;height:8mm}
+/* 用印區：協會關防（左）＋主任委員私章（右），比照官方選票 */
+.b-seal{display:flex;align-items:flex-start;gap:6mm;margin-top:3mm;flex:0 0 auto}
+.b-seal .col{flex:1;text-align:center;position:relative}
+.b-seal .cap{font-size:10.5pt;font-weight:700;letter-spacing:.06em;margin-bottom:2mm;white-space:nowrap}
+.b-seal img{display:block;margin:0 auto}
+.b-seal .big img{height:31mm}
+.b-seal .chair img{height:15mm}
+.b-date{text-align:center;font-size:11pt;letter-spacing:.5em;margin-top:2.5mm;flex:0 0 auto}
+.b-note{font-size:8.5pt;line-height:1.65;margin-top:2.5mm;flex:0 0 auto;color:#000}
+.b-note .em{color:#c00;font-weight:700}
+.b-note .li{display:flex;gap:1.5mm}
+.b-note .li .n{flex:0 0 auto}
 .b-foot{margin-top:auto;flex:0 0 auto;border:0.4mm solid #000;padding:3mm 4mm;font-size:9.5pt;display:flex;gap:6mm;align-items:center}
 .b-foot .cell{white-space:nowrap}
 .b-foot .line{display:inline-block;border-bottom:0.3mm solid #000;width:22mm;height:4mm;vertical-align:bottom}
@@ -133,8 +145,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
     <div class="row">
       <div class="fld"><label>票種</label>
         <select id="kind" onchange="onKindChange()">
-          <option value="director">理事票（白紙）</option>
-          <option value="supervisor">監事票（建議用色紙）</option>
+          <option value="director">理事選舉票</option>
+          <option value="supervisor">監事選舉票</option>
+          <option value="executive">常務理事選舉票</option>
+          <option value="exec_supervisor">常務監事選舉票</option>
         </select></div>
       <div class="fld"><label>列印日期</label><input id="pdate" class="w120" type="date"></div>
       <div class="fld"><label>起始序號</label><input id="start" class="w80" type="number" value="1" min="1" max="999"></div>
@@ -188,6 +202,15 @@ const SB_H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 const LOGIN_PW_HASH='ed6f1a565c864f401b0aba93e9623ea1f4616fe7ebd3f8774fa37dedef301aca'; // TADA1688
 const ELECTION_ID='66666666-6666-4666-8666-666666666666';
 const ORG_NAME='台灣科技農企業發展協會';
+
+/* 四種選票規格（依官方已用印選票）
+   採不記名連記法：限圈選人數 = 應選名額；未達額仍為有效票，超額為無效票 */
+const BALLOT_SPEC = {
+  director:        { label:'理事',     seats:11, limit:11, alt:3, writein:3, serial:1   },
+  supervisor:      { label:'監事',     seats:3,  limit:3,  alt:1, writein:0, serial:301 },
+  executive:       { label:'常務理事', seats:3,  limit:3,  alt:0, writein:0, serial:601 },
+  exec_supervisor: { label:'常務監事', seats:1,  limit:1,  alt:0, writein:0, serial:801 },
+};
 
 let cands=[];   // [{name, company}]
 
@@ -265,12 +288,12 @@ async function loadVoterCount(){
   }catch(e){}
 }
 function onKindChange(){
-  const k=document.getElementById('kind').value;
-  document.getElementById('start').value = k==='director'?1:501;
-  document.getElementById('seats').value  = k==='director'?11:3;
-  document.getElementById('limit').value  = k==='director'?6:1;
-  document.getElementById('alt').value    = k==='director'?3:1;
-  document.getElementById('writein').value = k==='director'?3:1;
+  const sp=BALLOT_SPEC[document.getElementById('kind').value]||BALLOT_SPEC.director;
+  document.getElementById('start').value   = sp.serial;
+  document.getElementById('seats').value   = sp.seats;
+  document.getElementById('limit').value   = sp.limit;
+  document.getElementById('alt').value     = sp.alt;
+  document.getElementById('writein').value = sp.writein;
   updateSample(); loadCands();
 }
 function dateTag(){
@@ -316,15 +339,15 @@ function build(preview){
 
   if(start+count-1>999){ alert(`起始序號 ${start} + 份數 ${count} 會超過 999，請調整。`); return; }
 
-  const posName = kind==='director'?'理事':'監事';
+  const posName = (BALLOT_SPEC[kind]||{}).label || '理事';
   const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const now=new Date();
   const printedAt=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} `
                  +`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   // A4 一頁可用高度有限：列數多時自動壓縮列高與姓名字級，確保不溢頁
   const totalRows=list.length+wn;
-  const rh = totalRows<=12 ? 12 : (totalRows<=15 ? 10.6 : (totalRows<=18 ? 9 : 8));
-  const fs = totalRows<=12 ? 15 : (totalRows<=15 ? 13.5 : 12);
+  const rh = totalRows<=4 ? 12 : (totalRows<=8 ? 10 : (totalRows<=12 ? 7.4 : (totalRows<=15 ? 6.2 : 5.4)));
+  const fs = totalRows<=8 ? 15 : (totalRows<=12 ? 13 : (totalRows<=15 ? 12 : 11));
   if(totalRows>20){ alert(`候選人 ${list.length} 位 + 自填 ${wn} 欄 = ${totalRows} 列，單頁放不下，請減少自填欄。`); return; }
 
   const pages=[];
@@ -332,8 +355,8 @@ function build(preview){
     const no=dtag+String(start+i).padStart(3,'0');
     const rows=list.map((c,idx)=>`
       <div class="c-row">
-        <span class="c-box"></span>
         <span class="c-no">${idx+1}</span>
+        <span class="c-box"></span>
         <span class="c-name">${esc(c.name)}</span>
         <span class="c-org">${esc(c.company)}</span>
       </div>`).join('');
@@ -359,15 +382,31 @@ function build(preview){
 
       <div class="b-info">
         應選出${posName} <b>${seats}</b> 人${alt?`（另得候補 <b>${alt}</b> 人）`:''}　
-        <span class="must">★ 本張選票<b>限圈選 ${limit} 人</b>（含自行填寫者），超過即為廢票</span><br>
-        <span class="must">★ 圈選方式：在候選人左方空格內畫 ○ 或 ✓，請勿塗滿整格</span>
+        <span class="must">★ 限圈選 <b>${limit}</b> 人${wn?'（含自行填寫者）':''}，超過即為無效票</span><br>
+        <span class="must">★ 圈選方式：在候選人左方空格內畫「○」，請勿塗滿整格</span>
       </div>
 
       <div class="b-sec">
         <div class="b-sec-h">${posName}候選人</div>
         ${rows}
         ${wn?`<div class="w-hd">另行填寫 <span>（如欲圈選名單以外之會員，請於空格右方正楷書寫姓名，並於左方空格畫 ○；仍計入 ${limit} 人上限）</span></div>
-        ${Array.from({length:wn},()=>`<div class="w-row"><span class="c-box"></span><span class="w-line"></span></div>`).join('')}`:''}
+        ${Array.from({length:wn},()=>`<div class="w-row"><span class="c-no"></span><span class="c-box"></span><span class="w-line"></span></div>`).join('')}`:''}
+      </div>
+
+      <div class="b-seal">
+        <div class="col big">
+          <div class="cap">${ORG_NAME}</div>
+          <img src="../assets/seal/tada-seal-big.png" alt="">
+        </div>
+        <div class="col chair">
+          <div class="cap">主任委員　胡 炳 輝</div>
+          <img src="../assets/seal/tada-seal-chair.png" alt="">
+        </div>
+      </div>
+      <div class="b-date">中 華 民 國 一 一 五 年 九 月 四 日</div>
+      <div class="b-note">
+        <div class="li"><span class="n">注意事項：一、</span><span>本屆${posName}應選名額<span class="em">${seats} 人</span>，採用不記名連記法，每張選票<span class="em">限圈選 ${limit} 人</span>，圈選方式係在「圈選」欄打<span class="em">「○」</span>之記號。</span></div>
+        <div class="li"><span class="n">　　　　　二、</span><span>圈選人數超過 ${limit} 人該選票則為無效票，圈選人數未滿 ${limit} 人時，該選票仍為有效票。</span></div>
       </div>
 
       <div class="b-foot">
