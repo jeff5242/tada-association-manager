@@ -34,9 +34,13 @@ CREATE TABLE IF NOT EXISTS tada_ballot_scans (
   counted       BOOLEAN NOT NULL DEFAULT FALSE,   -- 是否已寫入 tada_v_votes
   counted_at    TIMESTAMPTZ,
 
+  write_ins     JSONB,                      -- 自填欄原始判讀 [{slot,state,name}]
   is_test       BOOLEAN NOT NULL DEFAULT FALSE,   -- 彩排測試票，不計入正式票數
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- 舊版已建表時補欄位（重複執行安全）
+ALTER TABLE tada_ballot_scans ADD COLUMN IF NOT EXISTS write_ins JSONB;
 
 -- 同一場次、同一票號只能有一張正式票（防止重複掃描／重複計票）
 CREATE UNIQUE INDEX IF NOT EXISTS uq_ballot_no_live
@@ -117,6 +121,47 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION tada_ballot_commit(UUID) TO anon, authenticated;
+
+
+-- ── 自填欄：把手寫姓名登記為候選人，以便計票 ────────────────────────
+-- 名單外的會員仍可被圈選（章程未限制），故需要能動態建立候選人。
+-- 編號自 90 起編，與正式候選人（1~n）區隔，開票畫面一眼可辨。
+CREATE OR REPLACE FUNCTION tada_writein_candidate(
+  p_election_id UUID, p_position TEXT, p_name TEXT, p_company TEXT DEFAULT NULL)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_id  UUID;
+  v_no  INTEGER;
+BEGIN
+  IF p_name IS NULL OR btrim(p_name) = '' THEN
+    RETURN jsonb_build_object('ok', false, 'error', '姓名不可空白');
+  END IF;
+
+  SELECT id, no INTO v_id, v_no
+    FROM tada_v_candidates
+   WHERE election_id = p_election_id AND position = p_position AND name = btrim(p_name)
+   LIMIT 1;
+
+  IF v_id IS NOT NULL THEN
+    RETURN jsonb_build_object('ok', true, 'id', v_id, 'no', v_no, 'created', false);
+  END IF;
+
+  SELECT GREATEST(COALESCE(MAX(no), 89) + 1, 90) INTO v_no
+    FROM tada_v_candidates
+   WHERE election_id = p_election_id AND position = p_position;
+
+  INSERT INTO tada_v_candidates (election_id, position, no, name, company, sort)
+  VALUES (p_election_id, p_position, v_no, btrim(p_name), NULLIF(btrim(COALESCE(p_company,'')), ''), v_no)
+  RETURNING id INTO v_id;
+
+  RETURN jsonb_build_object('ok', true, 'id', v_id, 'no', v_no, 'created', true);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION tada_writein_candidate(UUID, TEXT, TEXT, TEXT) TO anon, authenticated;
 
 
 -- ── 統計看板 ────────────────────────────────────────────────────────

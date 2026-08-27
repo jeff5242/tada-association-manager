@@ -23,11 +23,14 @@ const PROMPT = `這是一張台灣某協會的紙本選舉選票照片。
    - "empty"：格內全白，無任何筆跡
    - "unclear"：有淡痕、污漬、或無法確定
    - "erased"：有塗改、劃掉、或重複塗寫的痕跡
+5. 候選人名單下方有「另行填寫」區，每列是一個空格加一條橫線，供選民自行書寫姓名。
+   逐列回報：空格狀態（同上四種），以及橫線上的手寫姓名（辨識不出或空白則填 null）。
 
 【重要】
 - 不要推測選民意圖，看到什麼就回報什麼。
 - 不要判斷這張票是否有效或廢票，那不是你的工作。
-- 印刷的方框線本身不算筆跡。
+- 印刷的方框線本身不算筆跡；「另行填寫」區的橫線也是印刷的，不算筆跡。
+- 自填姓名請逐字照抄你看到的字，不要猜測、不要對照候選人名單自動更正。看不清的字用「〇」代替。
 - 若整張圖看不清楚、歪斜嚴重或有裁切，如實填 image_quality。
 
 只輸出 JSON，不要任何說明文字或 markdown 標記：
@@ -38,15 +41,21 @@ const PROMPT = `這是一張台灣某協會的紙本選舉選票照片。
     {"no": 1, "name": "陳肇浩", "state": "marked"},
     {"no": 2, "name": "唐迎華", "state": "empty"}
   ],
+  "write_ins": [
+    {"slot": 1, "state": "marked", "name": "王大明"},
+    {"slot": 2, "state": "empty", "name": null}
+  ],
   "image_quality": "good",
   "notes": ""
 }`;
 
 type Mark = { no: number; name?: string; state: string };
+type WriteIn = { slot: number; state: string; name: string | null };
 type Read = {
   ballot_no: string | null;
   ballot_type: string | null;
   marks: Mark[];
+  write_ins: WriteIn[];
   image_quality: string;
   notes: string;
 };
@@ -86,11 +95,22 @@ async function readOnce(apiKey: string, imageBase64: string, mediaType: string, 
           }))
           .sort((a: Mark, b: Mark) => a.no - b.no)
       : [];
+    const writeIns: WriteIn[] = Array.isArray(raw.write_ins)
+      ? raw.write_ins
+          .filter((x: WriteIn) => Number.isFinite(Number(x?.slot)))
+          .map((x: WriteIn) => ({
+            slot: Number(x.slot),
+            state: ['marked', 'empty', 'unclear', 'erased'].includes(x?.state) ? x.state : 'unclear',
+            name: typeof x.name === 'string' && x.name.trim() ? x.name.trim().slice(0, 20) : null,
+          }))
+          .sort((a: WriteIn, b: WriteIn) => a.slot - b.slot)
+      : [];
     const no = typeof raw.ballot_no === 'string' ? raw.ballot_no.replace(/\D/g, '') : '';
     return {
       ballot_no: /^\d{11}$/.test(no) ? no : null,
       ballot_type: raw.ballot_type === 'supervisor' ? 'supervisor' : (raw.ballot_type === 'director' ? 'director' : null),
       marks,
+      write_ins: writeIns,
       image_quality: ['good', 'blurry', 'skewed', 'partial'].includes(raw.image_quality) ? raw.image_quality : 'good',
       notes: typeof raw.notes === 'string' ? raw.notes.slice(0, 300) : '',
     };
@@ -104,7 +124,10 @@ function sameRead(a: Read, b: Read): boolean {
   if (a.ballot_no !== b.ballot_no) return false;
   if (a.ballot_type !== b.ballot_type) return false;
   if (a.marks.length !== b.marks.length) return false;
-  return a.marks.every((m, i) => m.no === b.marks[i].no && m.state === b.marks[i].state);
+  if (!a.marks.every((m, i) => m.no === b.marks[i].no && m.state === b.marks[i].state)) return false;
+  if (a.write_ins.length !== b.write_ins.length) return false;
+  // 自填欄：狀態必須一致；姓名兩次不同不算「不一致」（本來就要人工認定），但會記錄下來
+  return a.write_ins.every((w, i) => w.slot === b.write_ins[i].slot && w.state === b.write_ins[i].state);
 }
 
 Deno.serve(async (req) => {
@@ -143,15 +166,29 @@ Deno.serve(async (req) => {
   const marked   = r1.marks.filter(m => m.state === 'marked');
   const unclear  = r1.marks.filter(m => m.state === 'unclear' || m.state === 'erased');
 
+  // 自填欄
+  const wMarked  = r1.write_ins.filter(w => w.state === 'marked');
+  const wUnclear = r1.write_ins.filter(w => w.state === 'unclear' || w.state === 'erased');
+  // 兩次判讀的自填姓名若不同，一併列為需人工確認
+  const nameConflict = r1.write_ins.some((w, i) =>
+    w.state === 'marked' && (r2.write_ins[i]?.name ?? null) !== (w.name ?? null));
+
+  const totalMarked = marked.length + wMarked.length;
+
   let verdict: 'valid' | 'invalid_blank' | 'invalid_over' | 'manual';
   let reason = '';
 
   if (!agree)                          { verdict = 'manual'; reason = '兩次判讀結果不一致'; }
   else if (r1.image_quality !== 'good'){ verdict = 'manual'; reason = `影像品質不佳（${r1.image_quality}）`; }
-  else if (unclear.length > 0)         { verdict = 'manual'; reason = `有 ${unclear.length} 格無法確定或有塗改`; }
+  else if (unclear.length + wUnclear.length > 0)
+                                       { verdict = 'manual'; reason = `有 ${unclear.length + wUnclear.length} 格無法確定或有塗改`; }
   else if (!r1.ballot_no)              { verdict = 'manual'; reason = '票號無法辨識'; }
-  else if (marked.length === 0)        { verdict = 'invalid_blank'; reason = '空白票'; }
-  else if (marked.length > seats)      { verdict = 'invalid_over';  reason = `圈選 ${marked.length} 人，超過應選 ${seats} 人`; }
+  else if (totalMarked === 0)          { verdict = 'invalid_blank'; reason = '空白票'; }
+  else if (totalMarked > seats)        { verdict = 'invalid_over';  reason = `圈選 ${totalMarked} 人，超過應選 ${seats} 人`; }
+  // 手寫姓名必須由人確認對應到哪位會員，不可由 AI 逕行認定
+  else if (wMarked.length > 0)         { verdict = 'manual';
+                                         reason = `有 ${wMarked.length} 筆自行填寫（${wMarked.map(w => w.name || '姓名未辨識').join('、')}）需人工認定`
+                                                + (nameConflict ? '；兩次判讀姓名不同' : ''); }
   else                                 { verdict = 'valid'; }
 
   return json({
@@ -160,8 +197,10 @@ Deno.serve(async (req) => {
     ballot_type: r1.ballot_type,
     image_quality: r1.image_quality,
     agree,
-    marked_count: marked.length,
+    marked_count: totalMarked,
     marked_nos: marked.map(m => m.no),
+    write_ins: r1.write_ins,
+    write_ins_marked: wMarked.map(w => ({ slot: w.slot, name: w.name, name2: r2.write_ins.find(x => x.slot === w.slot)?.name ?? null })),
     unclear_nos: unclear.map(m => m.no),
     verdict,
     reason,

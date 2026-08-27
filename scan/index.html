@@ -263,6 +263,7 @@ async function handle(item){
       ballot_no:d.ballot_no, image_path:path,
       read1:d.read1, read2:d.read2, agree:d.agree,
       marked_count:d.marked_count, marked_nos:d.marked_nos,
+      write_ins:d.write_ins||null,
       image_quality:d.image_quality,
       verdict,
       review_status: verdict==='valid' ? 'auto' : 'pending',
@@ -349,12 +350,14 @@ function render(){
     const r=q.result||{};
     const nos=(r.marked_nos&&r.marked_nos.length)?`<div class="nos">圈選 <b>${r.marked_nos.join('、')}</b> 號　共 ${r.marked_count} 人</div>`:'';
     const dis=r.agree===false?'<div class="nos" style="color:var(--warn)">兩次判讀不一致</div>':'';
+    const wi=(r.write_ins_marked&&r.write_ins_marked.length)
+      ?`<div class="nos" style="color:var(--blue)">自填：<b>${r.write_ins_marked.map(w=>esc(w.name||'（未辨識）')).join('、')}</b></div>`:'';
     return `<div class="item ${q.status}">
       <span class="tag ${cls}">${label}</span>
       <div class="main">
         <div class="no">${r.ballot_no||'—'}</div>
         <div class="fn">${esc(q.name)}</div>
-        ${nos}${dis}
+        ${nos}${dis}${wi}
         ${r.reason?`<div class="msg" style="color:var(--warn)">${esc(r.reason)}</div>`:''}
       </div>
     </div>`;

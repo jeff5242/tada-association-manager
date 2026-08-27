@@ -4894,6 +4894,17 @@ function renderBallotPending(rows){
     if(r.verdict==='invalid_blank') why.push('空白票');
     const img = r.image_path
       ? `<a href="${SB_URL}/storage/v1/object/public/tada-uploads/${r.image_path}" target="_blank" style="color:var(--gold-lt);font-size:11px;">看影像 ↗</a>` : '';
+    const wm=(r.write_ins||[]).filter(w=>w.state==='marked');
+    if(wm.length) why.push(`${wm.length} 筆自填待認定`);
+    const wiHtml = wm.length ? `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.12);">
+        ${wm.map(w=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:#4fc3f7;">自填 ${w.slot}：</span>
+          <b style="font-size:12.5px;color:var(--white);">${escapeHtml(w.name||'（未辨識）')}</b>
+          <button class="btn btn-sm btn-outline" style="padding:1px 7px;font-size:10px;"
+            onclick="resolveWriteIn('${r.id}',${w.slot})"
+            title="確認這位是誰，並把票加到他身上">認定</button>
+        </div>`).join('')}
+      </div>` : '';
     return `<tr>
       <td style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">${r.ballot_no||'<span style="color:#ef5350">無</span>'}<br>${img}</td>
       <td style="font-size:12px;">${pos}</td>
@@ -4901,6 +4912,7 @@ function renderBallotPending(rows){
       <td style="font-size:12px;line-height:1.9;">
         圈選 <b style="color:var(--gold-lt);">${nos}</b>（${r.marked_count??0} 人 / 應選 ${seats}）
         ${why.length?`<br><span style="color:#ffa726;font-size:11px;">${why.join('、')}</span>`:''}
+        ${wiHtml}
       </td>
       <td style="white-space:nowrap;">
         <button class="btn btn-sm btn-gold" onclick="ballotReview('${r.id}','valid')" title="確認為有效票並計入票數">✓ 有效</button>
@@ -4946,6 +4958,58 @@ async function ballotReview(id, decision){
   }catch(e){
     alert('裁決失敗：'+e.message);
     if(st){ st.style.color='#ef5350'; st.textContent='裁決失敗'; }
+  }
+}
+
+
+/* 自填欄認定：把手寫姓名對應到候選人（名單外者自動建為 90 號起的候選人），
+   認定後把該候選人的編號加進 marked_nos，後續「有效」裁決即可正常計票。 */
+async function resolveWriteIn(scanId, slot){
+  const pre=await fetch(`${SB_URL}/rest/v1/tada_ballot_scans?id=eq.${scanId}&select=position,write_ins`,{headers:SB_HEADERS});
+  const preRow=(await pre.json())[0];
+  if(!preRow){ alert('找不到該筆紀錄'); return; }
+  const position=preRow.position;
+  const aiName=((preRow.write_ins||[]).find(w=>w.slot===slot)||{}).name||'';
+  const posLabel = position==='director'?'理事':'監事';
+  const name=prompt(
+    `自填第 ${slot} 欄 — 請確認姓名（${posLabel}）\n\n`
+    +`AI 判讀為：${aiName||'（未辨識）'}\n`
+    +`請核對實體選票後填入正確姓名；名單外的會員也可以，系統會自動建立為候選人。\n`
+    +`留空或取消則不認定。`,
+    aiName||'');
+  if(name===null) return;
+  const nm=name.trim();
+  if(!nm) return;
+
+  const st=document.getElementById('bs-status');
+  try{
+    const c=await fetch(`${SB_URL}/rest/v1/rpc/tada_writein_candidate`,{
+      method:'POST',headers:SB_HEADERS,
+      body:JSON.stringify({p_election_id:BALLOT_ELECTION_ID,p_position:position,p_name:nm})});
+    const cr=await c.json();
+    if(!cr?.ok) throw new Error(cr?.error||'建立候選人失敗');
+
+    const g=await fetch(`${SB_URL}/rest/v1/tada_ballot_scans?id=eq.${scanId}&select=marked_nos,write_ins,position`,{headers:SB_HEADERS});
+    const row=(await g.json())[0];
+    if(!row) throw new Error('找不到該筆紀錄');
+
+    const nos=[...new Set([...(row.marked_nos||[]), cr.no])].sort((a,b)=>a-b);
+    const wi=(row.write_ins||[]).map(w=>w.slot===slot?{...w,state:'resolved',name:nm,resolved_no:cr.no}:w);
+    const seats=row.position==='director'?11:3;
+    if(nos.length>seats){
+      if(!confirm(`加入後圈選數為 ${nos.length}，已超過應選 ${seats} 人。\n仍要認定嗎？（之後只能裁為廢票）`)) return;
+    }
+
+    const up=await fetch(`${SB_URL}/rest/v1/tada_ballot_scans?id=eq.${scanId}`,{
+      method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},
+      body:JSON.stringify({marked_nos:nos,marked_count:nos.length,write_ins:wi})});
+    if(!up.ok) throw new Error(await up.text());
+
+    if(st){ st.style.color='#66bb6a';
+      st.textContent=`✓ 已認定「${nm}」${cr.created?`（新建 ${cr.no} 號候選人）`:`（${cr.no} 號）`}`; }
+    loadBallotScans();
+  }catch(e){
+    alert('認定失敗：'+e.message);
   }
 }
 
