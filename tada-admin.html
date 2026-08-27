@@ -222,6 +222,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <button class="tab tab-parent" onclick="toggleGroup(this)">🏛️ 選舉 ▾</button>
       <div class="tab-menu">
         <button data-tab="election" onclick="switchTab('election')">理監事選舉</button>
+        <button data-tab="ballot" onclick="switchTab('ballot')">🖨️ 紙本選票</button>
         <button data-tab="votes" onclick="switchTab('votes')">🗳️ 投票結果</button>
       </div>
     </div>
@@ -804,6 +805,73 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
   <div id="poll-list" style="margin:16px 0;"></div>
   <div id="vote-result" style="font-size:14px;color:var(--gray);"></div>
+</div>
+
+<!-- ══════════ 紙本選票 ══════════ -->
+<div class="page" id="page-ballot">
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">🖨️ 紙本選票（電子辨識用）</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <a class="btn btn-gold btn-sm" href="/ballot/" target="_blank" style="text-decoration:none;">開啟選票產生器 ↗</a>
+      <a class="btn btn-outline btn-sm" href="/docs/紙本選票設計_VLM判讀.md" target="_blank" style="text-decoration:none;">設計說明文件</a>
+    </div>
+  </div>
+
+  <div class="section-card" style="margin-bottom:16px;">
+    <div style="font-size:13px;line-height:2;color:var(--white);">
+      供選務人員產生、查閱與列印 <b style="color:var(--gold-lt);">9/4 第六屆理監事改選</b> 紙本選票。
+      票面依 AI 視覺判讀（VLM）需求設計，投票後拍照即可自動計票，人工複核。
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:14px;">
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(196,146,42,.2);border-radius:8px;padding:11px 13px;">
+        <div style="color:var(--gold);font-size:12px;font-weight:700;margin-bottom:4px;">票號格式</div>
+        <div style="font-size:12px;color:var(--gray);line-height:1.9;">
+          <code style="color:var(--gold-lt);">20260904001</code><br>
+          列印日期 + 3 位序號。每張票並印出<b>列印時間</b>，可追溯是哪一批印的。
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(196,146,42,.2);border-radius:8px;padding:11px 13px;">
+        <div style="color:var(--gold);font-size:12px;font-weight:700;margin-bottom:4px;">序號區間</div>
+        <div style="font-size:12px;color:var(--gray);line-height:1.9;">
+          理事票 <b>001</b> 起、監事票 <b>501</b> 起。<br>
+          同日列印才不會撞號。
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(196,146,42,.2);border-radius:8px;padding:11px 13px;">
+        <div style="color:var(--gold);font-size:12px;font-weight:700;margin-bottom:4px;">判讀輔助</div>
+        <div style="font-size:12px;color:var(--gray);line-height:1.9;">
+          四角定位黑方塊（拍照校正）<br>
+          Code 39 條碼（掃描槍可讀）
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(196,146,42,.2);border-radius:8px;padding:11px 13px;">
+        <div style="color:var(--gold);font-size:12px;font-weight:700;margin-bottom:4px;">應選席次</div>
+        <div style="font-size:12px;color:var(--gray);line-height:1.9;">
+          理事 <b>11</b> 人（候補 3）<br>監事 <b>3</b> 人（候補 1）<span style="color:var(--gray);">・章程第十六條</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" style="margin-bottom:16px;">
+    <div style="color:var(--gold);font-size:13px;font-weight:700;margin-bottom:10px;">列印注意事項</div>
+    <ol style="font-size:12.5px;color:var(--gray);line-height:2;padding-left:20px;">
+      <li>列印設定：<b style="color:var(--white);">A4 直式、邊界「無」、縮放 100%、關閉頁首頁尾</b>。</li>
+      <li>四角黑方塊若被裁掉，拍照無法做透視校正，判讀率會明顯下降 —— 印完先抽一張確認四角完整。</li>
+      <li>理事票用白紙、監事票建議用<b style="color:var(--white);">淺色色紙</b>（印刷仍為純黑），避免現場混淆。</li>
+      <li>發票時於報到冊登記票號區間，開匭後核對<b style="color:var(--white);">發出張數 vs 開匭張數</b> —— 這是計票信任的基礎，不可省略。</li>
+      <li>票號與投票人身分<b style="color:var(--white);">不建立關聯</b>，維持投票匿名性。</li>
+    </ol>
+  </div>
+
+  <div class="section-card">
+    <div style="color:var(--gold);font-size:13px;font-weight:700;margin-bottom:10px;">現場流程</div>
+    <div style="font-size:12.5px;color:var(--gray);line-height:2.1;">
+      報到領票（理事票＋監事票各 1 張，登記票號）→ 圈選投匭 → 監票人開匭清點、與發出張數核對 →
+      逐張掃描／拍照（<b style="color:var(--white);">四角須入鏡</b>）→ VLM 雙重判讀，一致者自動入帳 →
+      不一致／模糊／廢票送人工複核並於票面簽章 → 產出票數、監票人簽名確認 → 選票與影像檔封存。
+    </div>
+  </div>
 </div>
 
 <!-- ══════════ 出席統計 ══════════ -->

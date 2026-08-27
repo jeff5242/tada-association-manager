@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>紙本選票產生器｜TADA 第六屆理監事選舉</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+:root{--bg:#0f1a12;--card:#1a2b1e;--gold:#c4922a;--gold-lt:#e0b458;--green:#2d5235;--text:#e8e0d0;--muted:#8a9a80;--red:#ef5350;
+      --sans:'Noto Sans TC',"PingFang TC",system-ui,sans-serif;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+
+/* ── 登入 ── */
+#gate{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.gate-box{background:var(--card);border-radius:16px;padding:32px 28px;text-align:center;width:100%;max-width:340px}
+.gate-box h2{color:var(--gold-lt);font-size:17px;margin-bottom:18px}
+.gate-box input{width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--green);background:var(--bg);color:var(--text);font-size:16px;text-align:center;letter-spacing:.2em;outline:none}
+.gate-box button{margin-top:12px;width:100%;padding:12px;border:none;border-radius:10px;background:var(--gold);color:#1a1a12;font-weight:700;font-size:15px;cursor:pointer}
+.gate-err{color:var(--red);font-size:12px;margin-top:8px;min-height:18px}
+
+/* ── 控制列 ── */
+#app{display:none}
+.panel{max-width:900px;margin:0 auto;padding:22px 18px 40px}
+.panel h1{font-size:19px;color:var(--gold-lt);margin-bottom:4px}
+.panel .sub{color:var(--muted);font-size:12.5px;margin-bottom:20px}
+.box{background:var(--card);border:1px solid rgba(196,146,42,.2);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.box h3{font-size:14px;color:var(--gold);margin-bottom:12px;font-weight:700}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld label{font-size:11.5px;color:var(--muted)}
+.fld input,.fld select{padding:8px 10px;border-radius:8px;border:1.5px solid var(--green);background:var(--bg);color:var(--text);font-size:14px;font-family:var(--sans);outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--gold)}
+.fld input.w80{width:90px}.fld input.w120{width:130px}
+.btn{padding:10px 20px;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--sans)}
+.btn-gold{background:var(--gold);color:#1a1a12}
+.btn-out{background:transparent;color:var(--muted);border:1px solid var(--green)}
+.cand-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.cand{display:flex;gap:8px;align-items:center}
+.cand .no{width:30px;text-align:right;color:var(--gold);font-weight:700;font-size:13px;flex:0 0 auto}
+.cand input{flex:1;min-width:0;padding:6px 9px;border-radius:6px;border:1px solid var(--green);background:var(--bg);color:var(--text);font-size:13px;font-family:var(--sans);outline:none}
+.cand input.nm{max-width:130px}
+.cand button{background:rgba(192,57,43,.12);color:var(--red);border:1px solid rgba(192,57,43,.3);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer}
+.hint{font-size:11.5px;color:var(--muted);line-height:1.8;margin-top:8px}
+.warn{background:rgba(196,146,42,.1);border-left:3px solid var(--gold);padding:10px 13px;border-radius:6px;font-size:12.5px;color:#d8cbaa;margin-top:10px}
+
+/* ══════════ 選票（列印） ══════════ */
+#sheets{display:none}
+.ballot{
+  position:relative;width:210mm;height:297mm;background:#fff;color:#000;
+  padding:15mm;page-break-after:always;break-after:page;
+  font-family:var(--sans);
+}
+.ballot:last-child{page-break-after:auto;break-after:auto}
+/* 四角定位標記 */
+.fid{position:absolute;width:10mm;height:10mm;background:#000}
+.fid.tl{top:10mm;left:10mm}.fid.tr{top:10mm;right:10mm}
+.fid.bl{bottom:10mm;left:10mm}.fid.br{bottom:10mm;right:10mm}
+
+.b-head{display:flex;justify-content:space-between;align-items:flex-start;margin:6mm 0 4mm;padding-top:4mm}
+.b-title{flex:1}
+.b-title .org{font-size:12pt;font-weight:700;letter-spacing:.06em}
+.b-title .ttl{font-size:19pt;font-weight:900;letter-spacing:.1em;margin-top:1.5mm}
+.b-no{text-align:right;flex:0 0 auto;padding-left:6mm}
+.b-no .lbl{font-size:8pt;color:#555;letter-spacing:.1em}
+.b-no .val{font-size:17pt;font-weight:900;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em;line-height:1.1}
+.barcode{display:flex;align-items:flex-end;height:9mm;margin-top:1.5mm;justify-content:flex-end}
+.barcode i{display:block;height:100%}
+
+.b-no .printed{font-size:7.5pt;color:#555;margin-top:1mm;letter-spacing:.02em}
+.b-rule{border-top:1.2mm solid #000;margin:3mm 0 4mm}
+.b-info{font-size:10.5pt;line-height:1.85;margin-bottom:4mm}
+.b-info b{font-size:12pt}
+.b-info .must{font-weight:700}
+.b-sec{border:0.5mm solid #000;border-radius:1mm;padding:4mm 5mm 3mm}
+.b-sec-h{text-align:center;font-size:13pt;font-weight:900;letter-spacing:.5em;margin-bottom:4mm;padding-bottom:2mm;border-bottom:0.3mm solid #000}
+.c-row{display:flex;align-items:center;gap:4mm;height:12mm}
+.c-box{width:8mm;height:8mm;border:0.6mm solid #000;background:#fff;flex:0 0 auto}
+.c-no{width:8mm;text-align:right;font-size:12pt;font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;flex:0 0 auto}
+.c-name{font-size:15pt;font-weight:700;letter-spacing:.28em;flex:0 0 auto;min-width:42mm}
+.c-org{font-size:9.5pt;color:#333;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.b-foot{margin-top:5mm;border:0.4mm solid #000;padding:3mm 4mm;font-size:9.5pt;display:flex;gap:6mm;align-items:center}
+.b-foot .cell{white-space:nowrap}
+.b-foot .line{display:inline-block;border-bottom:0.3mm solid #000;width:22mm;height:4mm;vertical-align:bottom}
+.b-foot .chk{display:inline-block;width:4mm;height:4mm;border:0.4mm solid #000;vertical-align:-0.5mm;margin-right:1mm}
+
+@media print{
+  body{background:#fff}
+  #gate,#app{display:none !important}
+  #sheets{display:block !important}
+  .ballot{margin:0;box-shadow:none}
+  @page{size:A4 portrait;margin:0}
+}
+@media screen{
+  #sheets.preview{display:block;padding:20px;background:#555}
+  #sheets.preview .ballot{margin:0 auto 20px;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <h2>紙本選票產生器</h2>
+    <input id="pw" type="password" placeholder="通關密碼" autocomplete="off">
+    <button onclick="tryLogin()">進入</button>
+    <div class="gate-err" id="gate-err"></div>
+  </div>
+</div>
+
+<div id="app">
+<div class="panel">
+  <h1>紙本選票產生器</h1>
+  <div class="sub">台灣科技農企業發展協會 第六屆理監事改選 · 2026/9/4</div>
+
+  <div class="box">
+    <h3>① 票種與份數</h3>
+    <div class="row">
+      <div class="fld"><label>票種</label>
+        <select id="kind" onchange="onKindChange()">
+          <option value="director">理事票（白紙）</option>
+          <option value="supervisor">監事票（建議用色紙）</option>
+        </select></div>
+      <div class="fld"><label>列印日期</label><input id="pdate" class="w120" type="date"></div>
+      <div class="fld"><label>起始序號</label><input id="start" class="w80" type="number" value="1" min="1" max="999"></div>
+      <div class="fld"><label>份數</label><input id="count" class="w80" type="number" value="150" min="1" max="500"></div>
+      <div class="fld"><label>應選席次</label><input id="seats" class="w80" type="number" value="11" min="1"></div>
+      <div class="fld"><label>候補席次</label><input id="alt" class="w80" type="number" value="3" min="0"></div>
+    </div>
+    <div class="hint">
+      有投票權會員 <b id="voter-n">–</b> 位。建議份數 = 會員數 × 1.3（含備用與作廢重領）。<br>
+      票號格式 <b id="no-sample">20260904001</b>（列印日期 + 3 位序號）。
+      理事票與監事票同日列印時序號會撞號，故監事票預設自 <b>501</b> 起編。
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>② 候選人名單</h3>
+    <div class="row">
+      <button class="btn btn-out" onclick="loadCands()">↻ 從系統載入</button>
+      <button class="btn btn-out" onclick="addCand()">＋ 新增一位</button>
+      <span id="cand-status" style="font-size:12px;color:var(--muted);align-self:center;"></span>
+    </div>
+    <div class="cand-list" id="cands"></div>
+    <div class="hint">順序即票面順序。姓名建議 2–4 字；公司留空則票面該欄不印。</div>
+  </div>
+
+  <div class="box">
+    <h3>③ 產生</h3>
+    <div class="row">
+      <button class="btn btn-gold" onclick="build(true)">預覽</button>
+      <button class="btn btn-gold" onclick="build(false);setTimeout(()=>window.print(),400)">產生並列印</button>
+      <button class="btn btn-out" onclick="closePreview()">關閉預覽</button>
+    </div>
+    <div class="warn">
+      列印設定務必確認：<b>紙張 A4</b>、<b>邊界「無」</b>、<b>縮放 100%</b>、<b>關閉「頁首及頁尾」</b>。<br>
+      四角黑方塊是拍照校正用的定位標記，若被裁掉，VLM 判讀率會明顯下降。
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="sheets"></div>
+
+<script>
+const SB_URL='https://ldjugtfxtxnpvkqvjxew.supabase.co';
+const SB_KEY='sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
+const SB_H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+const LOGIN_PW_HASH='ed6f1a565c864f401b0aba93e9623ea1f4616fe7ebd3f8774fa37dedef301aca'; // TADA1688
+const ELECTION_ID='66666666-6666-4666-8666-666666666666';
+const ORG_NAME='台灣科技農企業發展協會';
+
+let cands=[];   // [{name, company}]
+
+/* ── 登入 ── */
+async function sha256(s){const d=new TextEncoder().encode(s);const h=await crypto.subtle.digest('SHA-256',d);
+  return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+async function tryLogin(){
+  const h=await sha256(document.getElementById('pw').value.trim().toLowerCase());
+  if(h!==LOGIN_PW_HASH){document.getElementById('gate-err').textContent='密碼錯誤';return}
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('pdate').valueAsDate=new Date();
+  updateSample();
+  document.getElementById('start').addEventListener('input',updateSample);
+  document.getElementById('pdate').addEventListener('change',updateSample);
+  loadCands(); loadVoterCount();
+}
+document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin()});
+
+/* ══════════ Code 39 條碼 ══════════
+   每字元 9 個元素（5 條 4 空），其中 3 個為寬元素；寬:窄 = 3:1。
+   字元間以 1 個窄空白分隔，前後加起訖字元 '*'。 */
+const C39={
+ '0':'nnnwwnwnn','1':'wnnwnnnnw','2':'nnwwnnnnw','3':'wnwwnnnnn','4':'nnnwwnnnw',
+ '5':'wnnwwnnnn','6':'nnwwwnnnn','7':'nnnwnnwnw','8':'wnnwnnwnn','9':'nnwwnnwnn',
+ 'A':'wnnnnwnnw','B':'nnwnnwnnw','C':'wnwnnwnnn','D':'nnnnwwnnw','E':'wnnnwwnnn',
+ 'F':'nnwnwwnnn','G':'nnnnnwwnw','H':'wnnnnwwnn','I':'nnwnnwwnn','J':'nnnnwwwnn',
+ 'K':'wnnnnnnww','L':'nnwnnnnww','M':'wnwnnnnwn','N':'nnnnwnnww','O':'wnnnwnnwn',
+ 'P':'nnwnwnnwn','Q':'nnnnnnwww','R':'wnnnnnwwn','S':'nnwnnnwwn','T':'nnnnwnwwn',
+ 'U':'wwnnnnnnw','V':'nwwnnnnnw','W':'wwwnnnnnn','X':'nwnnwnnnw','Y':'wwnnwnnnn',
+ 'Z':'nwwnwnnnn','-':'nwnnnnwnw','.':'wwnnnnwnn',' ':'nwwnnnwnn','*':'nwnnwnwnn'
+};
+// 依字元數回推窄元素寬度，使條碼總寬 ≈ targetMM
+function c39Unit(text,targetMM){
+  const n=String(text).length+2;              // 含起訖字元 *
+  const units=n*15+(n-1);                     // 每字元 15u（3寬+6窄）+ 字元間隔 1u
+  return Math.max(0.18, Math.min(0.40, targetMM/units));
+}
+// 回傳條碼 HTML（unit = 窄元素寬度，mm）
+function code39(text,unit){
+  const s='*'+String(text).toUpperCase()+'*';
+  let html='';
+  for(let i=0;i<s.length;i++){
+    const pat=C39[s[i]];
+    if(!pat) continue;                       // 不支援的字元直接略過
+    for(let j=0;j<9;j++){
+      const w=(pat[j]==='w'?3:1)*unit;
+      const bar=(j%2===0);                   // 偶數位為條（黑）
+      html+=`<i style="width:${w}mm;background:${bar?'#000':'#fff'}"></i>`;
+    }
+    if(i<s.length-1) html+=`<i style="width:${unit}mm;background:#fff"></i>`;  // 字元間隔
+  }
+  return html;
+}
+
+/* ── 載入候選人 ── */
+async function loadCands(){
+  const kind=document.getElementById('kind').value;
+  const st=document.getElementById('cand-status');
+  st.textContent='載入中…';
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_v_candidates?election_id=eq.${ELECTION_ID}&position=eq.${kind}&select=no,name,company&order=no.asc`,{headers:SB_H});
+    const d=await r.json();
+    cands=d.map(x=>({name:x.name||'',company:x.company||''}));
+    st.textContent=`已載入 ${cands.length} 位`;
+  }catch(e){ st.textContent='載入失敗：'+e.message; }
+  renderCands();
+}
+async function loadVoterCount(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${ELECTION_ID}&select=id`,{headers:{...SB_H,'Prefer':'count=exact','Range':'0-0'}});
+    const cr=r.headers.get('content-range')||'';
+    const n=cr.split('/')[1];
+    if(n && n!=='*') document.getElementById('voter-n').textContent=n;
+  }catch(e){}
+}
+function onKindChange(){
+  const k=document.getElementById('kind').value;
+  document.getElementById('start').value = k==='director'?1:501;
+  document.getElementById('seats').value = k==='director'?11:3;
+  document.getElementById('alt').value   = k==='director'?3:1;
+  updateSample(); loadCands();
+}
+function dateTag(){
+  const v=document.getElementById('pdate').value;
+  const d=v?new Date(v+'T00:00:00'):new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+function updateSample(){
+  const st=parseInt(document.getElementById('start').value,10)||1;
+  const el=document.getElementById('no-sample');
+  if(el) el.textContent=dateTag()+String(st).padStart(3,'0');
+}
+function renderCands(){
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  document.getElementById('cands').innerHTML=cands.map((c,i)=>`
+    <div class="cand">
+      <span class="no">${i+1}.</span>
+      <input class="nm" value="${esc(c.name)}" placeholder="姓名" oninput="cands[${i}].name=this.value">
+      <input value="${esc(c.company)}" placeholder="公司／機構（可留空）" oninput="cands[${i}].company=this.value">
+      <button onclick="delCand(${i})">刪</button>
+    </div>`).join('') || '<div class="hint">尚無候選人，請按「從系統載入」或「新增一位」。</div>';
+}
+function addCand(){ cands.push({name:'',company:''}); renderCands(); }
+function delCand(i){ cands.splice(i,1); renderCands(); }
+
+/* ── 產生選票 ── */
+function build(preview){
+  const kind=document.getElementById('kind').value;
+  const dtag=dateTag();
+  const start=Math.max(1,parseInt(document.getElementById('start').value,10)||1);
+  const count=Math.max(1,parseInt(document.getElementById('count').value,10)||1);
+  const seats=Math.max(1,parseInt(document.getElementById('seats').value,10)||1);
+  const alt=Math.max(0,parseInt(document.getElementById('alt').value,10)||0);
+  const list=cands.filter(c=>c.name.trim());
+
+  if(!list.length){ alert('請先輸入候選人名單'); return; }
+  if(seats>list.length){ alert(`應選席次(${seats}) 大於候選人數(${list.length})，請確認。`); return; }
+  if(count>500){ alert('單次最多 500 份'); return; }
+
+  if(start+count-1>999){ alert(`起始序號 ${start} + 份數 ${count} 會超過 999，請調整。`); return; }
+
+  const posName = kind==='director'?'理事':'監事';
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const now=new Date();
+  const printedAt=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} `
+                 +`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const pages=[];
+  for(let i=0;i<count;i++){
+    const no=dtag+String(start+i).padStart(3,'0');
+    const rows=list.map((c,idx)=>`
+      <div class="c-row">
+        <span class="c-box"></span>
+        <span class="c-no">${idx+1}</span>
+        <span class="c-name">${esc(c.name)}</span>
+        <span class="c-org">${esc(c.company)}</span>
+      </div>`).join('');
+    pages.push(`
+    <div class="ballot">
+      <span class="fid tl"></span><span class="fid tr"></span>
+      <span class="fid bl"></span><span class="fid br"></span>
+
+      <div class="b-head">
+        <div class="b-title">
+          <div class="org">${ORG_NAME}</div>
+          <div class="ttl">第六屆${posName}選舉選票</div>
+        </div>
+        <div class="b-no">
+          <div class="lbl">票號 BALLOT NO.</div>
+          <div class="val">${no}</div>
+          <div class="barcode">${code39(no,c39Unit(no,62))}</div>
+          <div class="printed">列印 ${printedAt}</div>
+        </div>
+      </div>
+      <div class="b-rule"></div>
+
+      <div class="b-info">
+        應選出${posName} <b>${seats}</b> 人${alt?`（另得選出候補${posName} <b>${alt}</b> 人）`:''}<br>
+        <span class="must">★ 限圈選 ${seats} 人以內，超過 ${seats} 人之選票以廢票論。</span><br>
+        <span class="must">★ 圈選方式：在候選人左方空格內畫 ○ 或 ✓，請勿塗滿整格。</span>
+      </div>
+
+      <div class="b-sec">
+        <div class="b-sec-h">${posName}候選人</div>
+        ${rows}
+      </div>
+
+      <div class="b-foot">
+        <span class="cell"><b>【監票人複核】</b></span>
+        <span class="cell">圈選數：<span class="line"></span></span>
+        <span class="cell"><span class="chk"></span>有效　<span class="chk"></span>廢票</span>
+        <span class="cell">複核簽章：<span class="line" style="width:34mm"></span></span>
+      </div>
+    </div>`);
+  }
+  const sheets=document.getElementById('sheets');
+  sheets.innerHTML=pages.join('');
+  sheets.className = preview ? 'preview' : '';
+  if(preview){ sheets.style.display='block'; window.scrollTo(0,0); }
+  else { sheets.style.display=''; }
+}
+function closePreview(){
+  const s=document.getElementById('sheets');
+  s.className=''; s.style.display=''; s.innerHTML='';
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
