@@ -69,6 +69,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .b-no .printed{font-size:7.5pt;color:#555;margin-top:1mm;letter-spacing:.02em}
 .b-rule{border-top:1.2mm solid #000;margin:3mm 0 4mm}
+/* 測試票浮水印：斜向大字，確保不會混進正式票 */
+.wm{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-32deg);
+    font-size:58pt;font-weight:900;color:rgba(0,0,0,.13);letter-spacing:.1em;
+    white-space:nowrap;pointer-events:none;z-index:5}
+.wm-note{position:absolute;bottom:22mm;left:0;right:0;text-align:center;
+    font-size:10pt;font-weight:700;color:#000;letter-spacing:.1em}
 .b-info{font-size:10.5pt;line-height:1.85;margin-bottom:4mm}
 .b-info b{font-size:12pt}
 .b-info .must{font-weight:700}
@@ -126,6 +132,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="fld"><label>份數</label><input id="count" class="w80" type="number" value="150" min="1" max="500"></div>
       <div class="fld"><label>應選席次</label><input id="seats" class="w80" type="number" value="11" min="1"></div>
       <div class="fld"><label>候補席次</label><input id="alt" class="w80" type="number" value="3" min="0"></div>
+      <div class="fld"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:9px;">
+        <input type="checkbox" id="testmode"> 測試票（彩排用）</label></div>
     </div>
     <div class="hint">
       有投票權會員 <b id="voter-n">–</b> 位。建議份數 = 會員數 × 1.3（含備用與作廢重領）。<br>
@@ -283,6 +291,7 @@ function build(preview){
   const count=Math.max(1,parseInt(document.getElementById('count').value,10)||1);
   const seats=Math.max(1,parseInt(document.getElementById('seats').value,10)||1);
   const alt=Math.max(0,parseInt(document.getElementById('alt').value,10)||0);
+  const isTest=document.getElementById('testmode').checked;
   const list=cands.filter(c=>c.name.trim());
 
   if(!list.length){ alert('請先輸入候選人名單'); return; }
@@ -310,6 +319,7 @@ function build(preview){
     <div class="ballot">
       <span class="fid tl"></span><span class="fid tr"></span>
       <span class="fid bl"></span><span class="fid br"></span>
+      ${isTest?'<div class="wm">測試票 TEST</div><div class="wm-note">※ 本張為彩排測試票，不得作為正式選票使用 ※</div>':''}
 
       <div class="b-head">
         <div class="b-title">

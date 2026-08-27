@@ -854,6 +854,48 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 
   <div class="section-card" style="margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+      <span style="color:var(--gold);font-size:13px;font-weight:700;">開票看板</span>
+      <label style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:5px;cursor:pointer;">
+        <input type="checkbox" id="bs-test" onchange="loadBallotScans()"> 顯示測試票
+      </label>
+      <a class="btn btn-outline btn-sm" href="/scan/" target="_blank" style="text-decoration:none;">開啟掃描判讀 ↗</a>
+      <button class="btn btn-outline btn-sm" onclick="loadBallotScans()">↻ 重新載入</button>
+      <label style="font-size:12px;color:var(--gray);display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto;">
+        <input type="checkbox" id="bs-auto" onchange="toggleBallotAuto()"> 每 15 秒自動更新
+      </label>
+      <span id="bs-status" style="font-size:11px;color:var(--gray);"></span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:9px;">
+      <div class="stat-card"><div class="stat-label">已掃描</div><div class="stat-num" id="bs-total">–</div></div>
+      <div class="stat-card"><div class="stat-label">理事票</div><div class="stat-num" style="color:#4fc3f7;" id="bs-dir">–</div></div>
+      <div class="stat-card"><div class="stat-label">監事票</div><div class="stat-num" style="color:#4fc3f7;" id="bs-sup">–</div></div>
+      <div class="stat-card"><div class="stat-label">有效</div><div class="stat-num" style="color:#66bb6a;" id="bs-valid">–</div></div>
+      <div class="stat-card"><div class="stat-label">廢票</div><div class="stat-num" style="color:#ef5350;" id="bs-invalid">–</div></div>
+      <div class="stat-card"><div class="stat-label">待複核</div><div class="stat-num" style="color:#ffa726;" id="bs-pending">–</div></div>
+      <div class="stat-card"><div class="stat-label">已計入</div><div class="stat-num" style="color:var(--gold-lt);" id="bs-counted">–</div></div>
+    </div>
+    <div id="bs-warn" style="margin-top:11px;"></div>
+  </div>
+
+  <div class="section-card" style="margin-bottom:16px;">
+    <div style="color:var(--gold);font-size:13px;font-weight:700;margin-bottom:4px;">待複核選票</div>
+    <div style="font-size:11.5px;color:var(--gray);margin-bottom:11px;">
+      兩次判讀不一致、影像不佳、有塗改或票號讀不到的票會落在這裡。請調出實體票確認後裁決。
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:110px;">票號</th><th style="width:64px;">票種</th>
+          <th style="width:70px;">判定</th><th>AI 判讀</th><th style="width:190px;">裁決</th>
+        </tr></thead>
+        <tbody id="bs-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:26px;">點「重新載入」讀取</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-card" style="margin-bottom:16px;">
     <div style="color:var(--gold);font-size:13px;font-weight:700;margin-bottom:10px;">列印注意事項</div>
     <ol style="font-size:12.5px;color:var(--gray);line-height:2;padding-left:20px;">
       <li>列印設定：<b style="color:var(--white);">A4 直式、邊界「無」、縮放 100%、關閉頁首頁尾</b>。</li>
@@ -1483,6 +1525,7 @@ function switchTab(id){
   if(id==='lineusers') loadLineUsers();
   if(id==='rsvp') loadRsvp();
   if(id==='seating') loadSeating();
+  if(id==='ballot') loadBallotScans();
   if(id==='payments') loadPayments();
   if(id==='mailtpl') loadMailTemplates();
   if(id==='mailcenter') loadMailCenter();
@@ -4786,6 +4829,126 @@ function showApp(){
     setTimeout(()=>document.getElementById('pw-input').focus(), 100);
   }
 })();
+
+/* ══════════ 紙本選票：開票看板與人工複核 ══════════ */
+const BALLOT_ELECTION_ID='66666666-6666-4666-8666-666666666666';
+let ballotAutoTimer=null;
+
+function toggleBallotAuto(){
+  const on=document.getElementById('bs-auto').checked;
+  if(ballotAutoTimer){ clearInterval(ballotAutoTimer); ballotAutoTimer=null; }
+  if(on) ballotAutoTimer=setInterval(loadBallotScans, 15000);
+}
+
+async function loadBallotScans(){
+  const st=document.getElementById('bs-status');
+  const isTest=document.getElementById('bs-test')?.checked||false;
+  if(st) st.textContent='載入中…';
+  try{
+    const [sRes,rRes]=await Promise.all([
+      fetch(`${SB_URL}/rest/v1/rpc/tada_ballot_stats`,{method:'POST',headers:SB_HEADERS,
+        body:JSON.stringify({p_election_id:BALLOT_ELECTION_ID,p_test:isTest})}),
+      fetch(`${SB_URL}/rest/v1/tada_ballot_scans?election_id=eq.${BALLOT_ELECTION_ID}&is_test=eq.${isTest}`
+            +`&review_status=eq.pending&select=*&order=created_at.asc`,{headers:SB_HEADERS})
+    ]);
+    const stat=await sRes.json();
+    const pend=await rRes.json();
+    renderBallotStats(stat);
+    renderBallotPending(Array.isArray(pend)?pend:[]);
+    if(st){ st.style.color='var(--gray)'; st.textContent='更新於 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+  }catch(e){
+    if(st){ st.style.color='#ef5350'; st.textContent='載入失敗：'+e.message; }
+  }
+}
+
+function renderBallotStats(s){
+  const g=(k,v)=>{const el=document.getElementById(k); if(el) el.textContent=(v??0)};
+  g('bs-total',s.total); g('bs-dir',s.director); g('bs-sup',s.supervisor);
+  g('bs-valid',s.valid); g('bs-invalid',s.invalid); g('bs-pending',s.pending);
+  g('bs-counted',s.counted);
+  const w=document.getElementById('bs-warn');
+  const msgs=[];
+  if(s.disagree>0)  msgs.push(`${s.disagree} 張兩次判讀不一致`);
+  if(s.bad_image>0) msgs.push(`${s.bad_image} 張影像品質不佳`);
+  if(s.pending>0)   msgs.push(`${s.pending} 張待人工複核`);
+  w.innerHTML = msgs.length
+    ? `<div style="background:rgba(255,167,38,.1);border-left:3px solid #ffa726;padding:9px 13px;border-radius:6px;font-size:12.5px;color:#e8d5b0;">⚠️ ${msgs.join('、')}</div>`
+    : (s.total>0?'<div style="font-size:12.5px;color:#66bb6a;">✓ 目前沒有待處理項目</div>':'');
+}
+
+function renderBallotPending(rows){
+  const tb=document.getElementById('bs-tbody');
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:26px;">沒有待複核的選票</td></tr>';
+    return;
+  }
+  tb.innerHTML=rows.map(r=>{
+    const pos=r.position==='director'?'理事':'監事';
+    const seats=r.position==='director'?11:3;
+    const nos=(r.marked_nos||[]).join('、')||'—';
+    const why=[];
+    if(r.agree===false) why.push('兩次判讀不一致');
+    if(r.image_quality && r.image_quality!=='good') why.push('影像 '+r.image_quality);
+    if(!r.ballot_no) why.push('票號讀不到');
+    if(r.verdict==='invalid_over') why.push(`圈選 ${r.marked_count} 人超過 ${seats} 人`);
+    if(r.verdict==='invalid_blank') why.push('空白票');
+    const img = r.image_path
+      ? `<a href="${SB_URL}/storage/v1/object/public/tada-uploads/${r.image_path}" target="_blank" style="color:var(--gold-lt);font-size:11px;">看影像 ↗</a>` : '';
+    return `<tr>
+      <td style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">${r.ballot_no||'<span style="color:#ef5350">無</span>'}<br>${img}</td>
+      <td style="font-size:12px;">${pos}</td>
+      <td><span style="font-size:10px;padding:2px 7px;border-radius:99px;background:rgba(255,167,38,.15);color:#ffa726;">待複核</span></td>
+      <td style="font-size:12px;line-height:1.9;">
+        圈選 <b style="color:var(--gold-lt);">${nos}</b>（${r.marked_count??0} 人 / 應選 ${seats}）
+        ${why.length?`<br><span style="color:#ffa726;font-size:11px;">${why.join('、')}</span>`:''}
+      </td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-sm btn-gold" onclick="ballotReview('${r.id}','valid')" title="確認為有效票並計入票數">✓ 有效</button>
+        <button class="btn btn-sm btn-outline" onclick="ballotReview('${r.id}','invalid')" title="判為廢票，不計入">廢票</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function ballotReview(id, decision){
+  const who=(sessionStorage.getItem('tada_login_who')||'').trim()||'admin';
+  const label = decision==='valid' ? '有效票並計入票數' : '廢票（不計入）';
+  if(!confirm(`確認裁決為「${label}」？\n\n選票裁決會直接影響開票結果，請先核對實體選票。`)) return;
+  const st=document.getElementById('bs-status');
+  try{
+    // 圈選數超過席次者不得裁為有效 —— 由前端先擋，RPC 端也會再擋一次
+    const r=await fetch(`${SB_URL}/rest/v1/tada_ballot_scans?id=eq.${id}&select=marked_nos,marked_count,position,verdict`,{headers:SB_HEADERS});
+    const row=(await r.json())[0];
+    if(!row) throw new Error('找不到該筆紀錄');
+    const seats=row.position==='director'?11:3;
+    if(decision==='valid'){
+      if(!row.marked_nos||!row.marked_nos.length) throw new Error('無圈選內容，不能裁為有效票');
+      if(row.marked_count>seats) throw new Error(`圈選 ${row.marked_count} 人超過應選 ${seats} 人，依規定為廢票`);
+    }
+
+    const badVerdict = (!row.marked_count || row.marked_count===0) ? 'invalid_blank' : 'invalid_over';
+    const patch = decision==='valid'
+      ? {verdict:'valid', review_status:'confirmed', reviewed_by:who, reviewed_at:new Date().toISOString()}
+      : {verdict:badVerdict, review_status:'confirmed', reviewed_by:who, reviewed_at:new Date().toISOString()};
+
+    const up=await fetch(`${SB_URL}/rest/v1/tada_ballot_scans?id=eq.${id}`,{
+      method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify(patch)});
+    if(!up.ok) throw new Error(await up.text());
+
+    if(decision==='valid'){
+      const c=await fetch(`${SB_URL}/rest/v1/rpc/tada_ballot_commit`,{
+        method:'POST',headers:SB_HEADERS,body:JSON.stringify({p_scan_id:id})});
+      const cr=await c.json();
+      if(!cr?.ok) throw new Error(cr?.error||'計票失敗');
+    }
+    if(st){ st.style.color='#66bb6a'; st.textContent='✓ 已裁決'; }
+    loadBallotScans();
+  }catch(e){
+    alert('裁決失敗：'+e.message);
+    if(st){ st.style.color='#ef5350'; st.textContent='裁決失敗'; }
+  }
+}
+
 </script>
 </body>
 </html>

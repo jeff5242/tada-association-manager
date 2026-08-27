@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>選票掃描判讀｜TADA</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+:root{--bg:#0f1a12;--card:#1a2b1e;--gold:#c4922a;--gold-lt:#e0b458;--green:#2d5235;--text:#e8e0d0;--muted:#8a9a80;
+      --red:#ef5350;--ok:#66bb6a;--warn:#ffa726;--blue:#4fc3f7;--sans:'Noto Sans TC',"PingFang TC",system-ui,sans-serif;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+#gate{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.gate-box{background:var(--card);border-radius:16px;padding:32px 28px;text-align:center;width:100%;max-width:340px}
+.gate-box h2{color:var(--gold-lt);font-size:17px;margin-bottom:18px}
+.gate-box input{width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--green);background:var(--bg);color:var(--text);font-size:16px;text-align:center;letter-spacing:.2em;outline:none}
+.gate-box button{margin-top:12px;width:100%;padding:12px;border:none;border-radius:10px;background:var(--gold);color:#1a1a12;font-weight:700;font-size:15px;cursor:pointer}
+.gate-err{color:var(--red);font-size:12px;margin-top:8px;min-height:18px}
+
+#app{display:none}
+.wrap{max-width:960px;margin:0 auto;padding:18px 14px 60px}
+h1{font-size:19px;color:var(--gold-lt)}
+.sub{color:var(--muted);font-size:12.5px;margin-bottom:16px}
+.box{background:var(--card);border:1px solid rgba(196,146,42,.2);border-radius:12px;padding:15px 17px;margin-bottom:13px}
+.box h3{font-size:13.5px;color:var(--gold);margin-bottom:11px;font-weight:700}
+.row{display:flex;gap:11px;flex-wrap:wrap;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld label{font-size:11.5px;color:var(--muted)}
+.fld select,.fld input{padding:8px 10px;border-radius:8px;border:1.5px solid var(--green);background:var(--bg);color:var(--text);font-size:14px;font-family:var(--sans);outline:none}
+.btn{padding:10px 18px;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;font-family:var(--sans)}
+.btn-gold{background:var(--gold);color:#1a1a12}
+.btn-out{background:transparent;color:var(--muted);border:1px solid var(--green)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.drop{border:2px dashed var(--green);border-radius:12px;padding:26px 18px;text-align:center;color:var(--muted);cursor:pointer;transition:.15s}
+.drop:hover,.drop.over{border-color:var(--gold);color:var(--gold-lt);background:rgba(196,146,42,.05)}
+.drop b{display:block;color:var(--text);font-size:15px;margin-bottom:5px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:9px}
+.st{background:rgba(255,255,255,.03);border:1px solid rgba(196,146,42,.18);border-radius:9px;padding:9px 11px;text-align:center}
+.st .n{font-size:20px;font-weight:900;line-height:1.2}
+.st .l{font-size:10.5px;color:var(--muted);margin-top:2px}
+.bar{height:6px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:11px}
+.bar i{display:block;height:100%;background:var(--gold);transition:width .3s}
+.item{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border-radius:9px;background:rgba(255,255,255,.03);margin-bottom:6px;border-left:3px solid var(--muted)}
+.item.valid{border-left-color:var(--ok)}
+.item.invalid{border-left-color:var(--red)}
+.item.manual{border-left-color:var(--warn)}
+.item.err{border-left-color:var(--red);background:rgba(192,57,43,.08)}
+.item.run{border-left-color:var(--blue)}
+.item .fn{font-size:11.5px;color:var(--muted);word-break:break-all}
+.item .main{flex:1;min-width:0}
+.item .no{font-family:ui-monospace,Menlo,monospace;font-weight:700;color:var(--gold-lt);font-size:13.5px}
+.item .msg{font-size:12px;margin-top:2px}
+.tag{font-size:10px;padding:1px 7px;border-radius:99px;white-space:nowrap;flex:0 0 auto}
+.tag.valid{background:rgba(46,125,50,.2);color:var(--ok)}
+.tag.invalid{background:rgba(192,57,43,.18);color:var(--red)}
+.tag.manual{background:rgba(255,167,38,.15);color:var(--warn)}
+.tag.run{background:rgba(79,195,247,.15);color:var(--blue)}
+.nos{font-size:11.5px;color:var(--muted);margin-top:2px}
+.nos b{color:var(--text)}
+.warn{background:rgba(196,146,42,.1);border-left:3px solid var(--gold);padding:10px 13px;border-radius:6px;font-size:12.5px;color:#d8cbaa;line-height:1.9;margin-top:11px}
+.testmode{background:rgba(255,167,38,.12);border:1px solid rgba(255,167,38,.4);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:700;margin-bottom:13px;display:none}
+.testmode.on{display:block}
+video{width:100%;max-width:420px;border-radius:10px;background:#000;display:block}
+.cam{display:none;margin-top:11px}
+.cam.on{display:block}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <h2>選票掃描判讀</h2>
+    <input id="pw" type="password" placeholder="通關密碼" autocomplete="off">
+    <button onclick="tryLogin()">進入</button>
+    <div class="gate-err" id="gate-err"></div>
+  </div>
+</div>
+
+<div id="app">
+<div class="wrap">
+  <h1>選票掃描判讀</h1>
+  <div class="sub">第六屆理監事改選 · AI 判讀 + 人工複核</div>
+
+  <div class="testmode" id="testmode">⚠️ 測試模式 — 判讀結果標記為測試票，不計入正式票數</div>
+
+  <div class="box">
+    <h3>① 設定</h3>
+    <div class="row">
+      <div class="fld"><label>票種</label>
+        <select id="kind" onchange="onKind()">
+          <option value="director">理事票（應選 11）</option>
+          <option value="supervisor">監事票（應選 3）</option>
+        </select></div>
+      <div class="fld"><label>應選席次</label><input id="seats" type="number" value="11" min="1" style="width:80px"></div>
+      <div class="fld"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="test" onchange="document.getElementById('testmode').classList.toggle('on',this.checked)">
+        測試模式（彩排用）</label></div>
+      <div class="fld"><label>並行數</label>
+        <select id="par"><option>4</option><option selected>6</option><option>8</option></select></div>
+    </div>
+    <div class="warn">
+      票種要跟實際掃描的票對應。判讀時若 AI 讀到的票種與此處不符，該張會標為待複核。
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>② 上傳選票影像</h3>
+    <div class="drop" id="drop" onclick="document.getElementById('file').click()">
+      <b>點此選檔，或把掃描檔拖進來</b>
+      支援多選 · JPG / PNG · 建議掃描器 300dpi 灰階
+    </div>
+    <input type="file" id="file" multiple accept="image/*" style="display:none">
+    <div class="row" style="margin-top:11px">
+      <button class="btn btn-out" onclick="toggleCam()" id="cam-btn">📷 改用手機相機</button>
+      <button class="btn btn-out" onclick="clearAll()">清空清單</button>
+    </div>
+    <div class="cam" id="cam">
+      <video id="video" playsinline muted></video>
+      <div class="row" style="margin-top:9px">
+        <button class="btn btn-gold" onclick="shoot()">拍攝並判讀</button>
+        <span style="font-size:12px;color:var(--muted);align-self:center;">正上方俯拍，四角黑方塊須完整入鏡</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>③ 判讀進度</h3>
+    <div class="stats">
+      <div class="st"><div class="n" id="s-total">0</div><div class="l">總張數</div></div>
+      <div class="st"><div class="n" style="color:var(--ok)" id="s-valid">0</div><div class="l">有效</div></div>
+      <div class="st"><div class="n" style="color:var(--red)" id="s-invalid">0</div><div class="l">廢票</div></div>
+      <div class="st"><div class="n" style="color:var(--warn)" id="s-manual">0</div><div class="l">待複核</div></div>
+      <div class="st"><div class="n" style="color:var(--red)" id="s-err">0</div><div class="l">失敗</div></div>
+    </div>
+    <div class="bar"><i id="bar" style="width:0%"></i></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn btn-gold" id="go" onclick="start()" disabled>開始判讀</button>
+      <a class="btn btn-out" href="/tada-admin.html" target="_blank" style="text-decoration:none;">開票看板 ↗</a>
+      <span id="prog" style="font-size:12px;color:var(--muted);align-self:center;"></span>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>④ 逐張結果</h3>
+    <div id="list"><div style="color:var(--muted);font-size:12.5px;">尚未判讀。</div></div>
+  </div>
+</div>
+</div>
+
+<script>
+const SB_URL='https://ldjugtfxtxnpvkqvjxew.supabase.co';
+const SB_KEY='sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj';
+const SB_H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+const LOGIN_PW_HASH='ed6f1a565c864f401b0aba93e9623ea1f4616fe7ebd3f8774fa37dedef301aca';
+const ELECTION_ID='66666666-6666-4666-8666-666666666666';
+const BUCKET='tada-uploads';
+
+let queue=[];       // {file, name, status, result}
+let running=false;
+
+async function sha256(s){const d=new TextEncoder().encode(s);const h=await crypto.subtle.digest('SHA-256',d);
+  return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+async function tryLogin(){
+  const h=await sha256(document.getElementById('pw').value.trim().toLowerCase());
+  if(h!==LOGIN_PW_HASH){document.getElementById('gate-err').textContent='密碼錯誤';return}
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin()});
+
+function onKind(){
+  document.getElementById('seats').value = document.getElementById('kind').value==='director'?11:3;
+}
+
+/* ── 檔案收集 ── */
+const drop=document.getElementById('drop');
+['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
+document.getElementById('file').addEventListener('change',e=>addFiles(e.target.files));
+
+function addFiles(fl){
+  [...fl].filter(f=>f.type.startsWith('image/')).forEach(f=>queue.push({file:f,name:f.name,status:'wait'}));
+  queue.sort((a,b)=>a.name.localeCompare(b.name,'zh-TW',{numeric:true}));
+  render(); refresh();
+}
+function clearAll(){ if(running){alert('判讀進行中，無法清空');return} queue=[]; render(); refresh(); }
+function refresh(){
+  const n=queue.filter(q=>q.status==='wait').length;
+  document.getElementById('go').disabled = running || !n;
+  document.getElementById('go').textContent = n?`開始判讀（${n} 張）`:'開始判讀';
+}
+
+/* ── 縮圖：長邊 1600px，降低上傳量與 API 成本，仍足以判讀勾選格 ── */
+function toJpeg(file,maxSide=1600,q=0.85){
+  return new Promise((res,rej)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      const s=Math.min(1,maxSide/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      res(c.toDataURL('image/jpeg',q).split(',')[1]);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('圖片無法讀取'))};
+    img.src=url;
+  });
+}
+
+/* ── 主流程 ── */
+async function start(){
+  if(running) return;
+  running=true; refresh();
+  const par=parseInt(document.getElementById('par').value,10)||6;
+  const idx=queue.map((q,i)=>i).filter(i=>queue[i].status==='wait');
+  let p=0;
+  const worker=async()=>{
+    while(p<idx.length){
+      const i=idx[p++];
+      await handle(queue[i]);
+      render();
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(par,idx.length)},worker));
+  running=false; refresh(); render();
+}
+
+async function handle(item){
+  item.status='run'; render();
+  const seats=parseInt(document.getElementById('seats').value,10)||11;
+  const kind=document.getElementById('kind').value;
+  const isTest=document.getElementById('test').checked;
+  try{
+    const b64=await toJpeg(item.file);
+
+    const r=await fetch(`${SB_URL}/functions/v1/ballot-ocr`,{
+      method:'POST',headers:SB_H,
+      body:JSON.stringify({imageBase64:b64,mediaType:'image/jpeg',seats})
+    });
+    const d=await r.json();
+    if(!r.ok||d.error) throw new Error(d.error||('HTTP '+r.status));
+
+    // 票種不符 → 強制人工複核，避免計錯區
+    let verdict=d.verdict, reason=d.reason||'';
+    if(d.ballot_type && d.ballot_type!==kind){
+      verdict='manual';
+      reason=`票面為「${d.ballot_type==='director'?'理事':'監事'}票」，與目前設定不符`;
+    }
+
+    // 影像存檔（失敗不阻斷判讀，僅記錄）
+    let path=null;
+    try{
+      path=`ballots/${isTest?'test':'live'}/${d.ballot_no||('noid-'+Date.now())}.jpg`;
+      const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+      await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${path}`,{
+        method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'image/jpeg','x-upsert':'true'},
+        body:bin});
+    }catch(e){ path=null; }
+
+    const row={
+      election_id:ELECTION_ID, position:kind,
+      ballot_no:d.ballot_no, image_path:path,
+      read1:d.read1, read2:d.read2, agree:d.agree,
+      marked_count:d.marked_count, marked_nos:d.marked_nos,
+      image_quality:d.image_quality,
+      verdict,
+      review_status: verdict==='valid' ? 'auto' : 'pending',
+      is_test:isTest
+    };
+    const ins=await fetch(`${SB_URL}/rest/v1/tada_ballot_scans`,{
+      method:'POST',headers:{...SB_H,'Prefer':'return=representation'},body:JSON.stringify(row)});
+    const txt=await ins.text();
+    if(!ins.ok){
+      if(txt.includes('uq_ballot_no_live')) throw new Error(`票號 ${d.ballot_no} 已掃描過，本張略過（防重複計票）`);
+      throw new Error('寫入失敗：'+txt.slice(0,120));
+    }
+    const saved=JSON.parse(txt)[0];
+
+    // 有效票且雙讀一致 → 直接計入；其餘留待人工複核
+    if(verdict==='valid' && !isTest){
+      const c=await fetch(`${SB_URL}/rest/v1/rpc/tada_ballot_commit`,{
+        method:'POST',headers:SB_H,body:JSON.stringify({p_scan_id:saved.id})});
+      const cr=await c.json();
+      if(!cr?.ok) reason=(reason?reason+'；':'')+'計票未完成：'+(cr?.error||'unknown');
+    }
+
+    item.status = verdict==='valid'?'valid':(verdict==='manual'?'manual':'invalid');
+    item.result = {...d, verdict, reason};
+  }catch(e){
+    item.status='err';
+    item.result={reason:e.message};
+  }
+}
+
+/* ── 相機 ── */
+let stream=null;
+async function toggleCam(){
+  const cam=document.getElementById('cam');
+  if(cam.classList.contains('on')){
+    cam.classList.remove('on');
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+    document.getElementById('cam-btn').textContent='📷 改用手機相機';
+    return;
+  }
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:2400}}});
+    document.getElementById('video').srcObject=stream;
+    await document.getElementById('video').play();
+    cam.classList.add('on');
+    document.getElementById('cam-btn').textContent='✕ 關閉相機';
+  }catch(e){ alert('無法開啟相機：'+e.message); }
+}
+async function shoot(){
+  const v=document.getElementById('video');
+  if(!v.videoWidth){alert('相機尚未就緒');return}
+  const c=document.createElement('canvas');
+  c.width=v.videoWidth; c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.9));
+  const name=`cam-${new Date().toISOString().replace(/[:.]/g,'-')}.jpg`;
+  const item={file:new File([blob],name,{type:'image/jpeg'}),name,status:'wait'};
+  queue.push(item); render(); refresh();
+  await handle(item); render();
+}
+
+/* ── 畫面 ── */
+function render(){
+  const c={total:queue.length,valid:0,invalid:0,manual:0,err:0,done:0};
+  queue.forEach(q=>{
+    if(q.status==='valid'){c.valid++;c.done++}
+    else if(q.status==='invalid'){c.invalid++;c.done++}
+    else if(q.status==='manual'){c.manual++;c.done++}
+    else if(q.status==='err'){c.err++;c.done++}
+  });
+  document.getElementById('s-total').textContent=c.total;
+  document.getElementById('s-valid').textContent=c.valid;
+  document.getElementById('s-invalid').textContent=c.invalid;
+  document.getElementById('s-manual').textContent=c.manual;
+  document.getElementById('s-err').textContent=c.err;
+  document.getElementById('bar').style.width=(c.total?c.done/c.total*100:0)+'%';
+  document.getElementById('prog').textContent=c.total?`${c.done} / ${c.total}`:'';
+
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const TAG={valid:['valid','有效'],invalid:['invalid','廢票'],manual:['manual','待複核'],
+             err:['invalid','失敗'],run:['run','判讀中'],wait:['run','等待']};
+  document.getElementById('list').innerHTML = queue.length ? queue.map(q=>{
+    const [cls,label]=TAG[q.status]||TAG.wait;
+    const r=q.result||{};
+    const nos=(r.marked_nos&&r.marked_nos.length)?`<div class="nos">圈選 <b>${r.marked_nos.join('、')}</b> 號　共 ${r.marked_count} 人</div>`:'';
+    const dis=r.agree===false?'<div class="nos" style="color:var(--warn)">兩次判讀不一致</div>':'';
+    return `<div class="item ${q.status}">
+      <span class="tag ${cls}">${label}</span>
+      <div class="main">
+        <div class="no">${r.ballot_no||'—'}</div>
+        <div class="fn">${esc(q.name)}</div>
+        ${nos}${dis}
+        ${r.reason?`<div class="msg" style="color:var(--warn)">${esc(r.reason)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('') : '<div style="color:var(--muted);font-size:12.5px;">尚未判讀。</div>';
+}
+</script>
+</body>
+</html>
