@@ -504,12 +504,17 @@ async function agentPrint(res, uuids){
       table=(rows[0]&&rows[0].table_no)||'';
     }catch(_){}
     const hasProxy=(res.proxy_vote_count||0)>0;
+    // 領取清單：名片/禮物人人有；選票=領得到本人電子票的有效會員；委託票=受託投票者
+    const checklist=['名片','禮物'];
+    if(uuids.length && res.self_ballot!==0) checklist.push('選票');
+    if(hasProxy) checklist.push('委託票');
     const jobs = uuids.length ? uuids.map((u,i)=>({
       name:res.name, member_no:res.member_no, table_no:table,
+      checklist:(i===0?checklist:[]),   // 清單只印在第一張
       qr:VOTE_BASE+'?t='+u, title:'第六屆會員大會・報到',
       footer:(hasProxy?((res.self_ballot!==0&&i===0)?'【本人選票】':'【代理選票】')+' ':'')+'請持本單入座，以 LINE 掃描 QR 投票',
     })) : [{
-      name:res.name, member_no:res.member_no, table_no:table,
+      name:res.name, member_no:res.member_no, table_no:table, checklist,
       qr:'', title:'第六屆會員大會・報到', footer:'已完成出席報到，請持本單入座',
     }];
     for(const j of jobs){

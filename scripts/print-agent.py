@@ -30,8 +30,24 @@ LEASE_PATH = "/var/lib/NetworkManager/dnsmasq-eth0.leases"
 FONT_REGULAR = os.path.expanduser("~/fonts/NotoSansCJKtc-Regular.otf")
 FONT_BOLD = os.path.expanduser("~/fonts/NotoSansCJKtc-Bold.otf")
 FONT_FALLBACK = "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"
-PAPER_DOTS = 576          # 80mm 紙、72mm 可印寬 @203dpi
-ROW_BYTES = PAPER_DOTS // 8
+HEAD_DOTS = 576           # 印字頭全寬（80mm 紙、72mm 可印區 @203dpi）
+ROW_BYTES = HEAD_DOTS // 8
+
+
+def content_dots():
+    """實際紙寬的可印點數：conf 設 PAPER_MM=58 時內容縮到 400 點並靠右。"""
+    try:
+        with open(CONF_PATH) as f:
+            for line in f:
+                if line.startswith("PAPER_MM="):
+                    if line.split("=", 1)[1].strip() == "58":
+                        return 400
+    except OSError:
+        pass
+    return HEAD_DOTS
+
+
+PAPER_DOTS = HEAD_DOTS  # render_slip 以 content_dots() 為準；此常數保留給舊引用
 
 
 def scan_for_printer():
@@ -115,22 +131,42 @@ def render_slip(data):
     footer = str(data.get("footer") or "").strip()
     qr_text = str(data.get("qr") or "").strip()
 
-    img = Image.new("L", (PAPER_DOTS, 2200), 255)
+    w = content_dots()
+    sc = w / HEAD_DOTS          # 58mm 紙時等比縮小字級
+    fs = lambda n: max(14, int(n * sc))
+    img = Image.new("L", (w, 2400), 255)
     d = ImageDraw.Draw(img)
     y = 16
-    y = draw_center(d, y, "台灣科技農企業發展協會", font(30))
-    y = draw_center(d, y, title, font(40, bold=True))
+    y = draw_center(d, y, "台灣科技農企業發展協會", font(fs(30)), w)
+    y = draw_center(d, y, title, font(fs(40), bold=True), w)
     y += 8
-    d.line([(24, y), (PAPER_DOTS - 24, y)], fill=0, width=3)
+    d.line([(16, y), (w - 16, y)], fill=0, width=3)
     y += 18
 
     if name:
-        y = draw_center(d, y, name, font(76, bold=True))
+        y = draw_center(d, y, name, font(fs(76), bold=True), w)
     if member_no:
-        y = draw_center(d, y, f"會員編號 {member_no}", font(32))
+        y = draw_center(d, y, f"會員編號 {member_no}", font(fs(32)), w)
     if table_no:
         y += 14
-        y = draw_center(d, y, f"桌號 {table_no}", font(96, bold=True))
+        y = draw_center(d, y, f"桌號 {table_no}", font(fs(96), bold=True), w)
+    checklist = [str(c).strip() for c in (data.get("checklist") or []) if str(c).strip()]
+    if checklist:
+        y += 16
+        d.line([(16, y), (w - 16, y)], fill=0, width=2)
+        y += 14
+        box = fs(40)
+        fnt_c = font(fs(38), bold=True)
+        col_w = w // 2
+        row_h = box + 22
+        for i, label in enumerate(checklist):
+            cx = (i % 2) * col_w + fs(28)
+            cy = y + (i // 2) * row_h
+            d.rectangle([cx, cy, cx + box, cy + box], outline=0, width=4)
+            d.text((cx + box + 12, cy - fs(4)), label, font=fnt_c, fill=0)
+        y += ((len(checklist) + 1) // 2) * row_h + 6
+        d.line([(16, y), (w - 16, y)], fill=0, width=2)
+        y += 10
     if qr_text:
         y += 16
         qr = qrcode.QRCode(border=1, box_size=8,
@@ -138,22 +174,29 @@ def render_slip(data):
         qr.add_data(qr_text)
         qr.make(fit=True)
         qimg = qr.make_image(fill_color="black", back_color="white").convert("L")
-        if qimg.width > 320:
-            qimg = qimg.resize((320, 320), Image.NEAREST)
-        img.paste(qimg, ((PAPER_DOTS - qimg.width) // 2, y))
+        qmax = min(320, w - 40)
+        if qimg.width > qmax:
+            qimg = qimg.resize((qmax, qmax), Image.NEAREST)
+        img.paste(qimg, ((w - qimg.width) // 2, y))
         y += qimg.height + 6
     if footer:
         y += 6
-        y = draw_center(d, y, footer, font(26))
-    y = draw_center(d, y + 4, time.strftime("%Y-%m-%d %H:%M:%S"), font(24))
+        y = draw_center(d, y, footer, font(fs(26)), w)
+    y = draw_center(d, y + 4, time.strftime("%Y-%m-%d %H:%M:%S"), font(fs(24)), w)
     y += 24
-    return img.crop((0, 0, PAPER_DOTS, y)).convert("1")
+    img = img.crop((0, 0, w, y))
+    if w < HEAD_DOTS:
+        # 窄紙靠出紙口右側 → 內容貼齊印字頭右緣
+        full = Image.new("L", (HEAD_DOTS, y), 255)
+        full.paste(img, (HEAD_DOTS - w, 0))
+        img = full
+    return img.convert("1")
 
 
 def star_raster(img):
     """1-bit 影像 → Star raster 位元流（含進紙與裁刀）。"""
-    if img.width != PAPER_DOTS:
-        img = img.resize((PAPER_DOTS, img.height * PAPER_DOTS // img.width))
+    if img.width != HEAD_DOTS:
+        img = img.resize((HEAD_DOTS, img.height * HEAD_DOTS // img.width))
     raw = img.tobytes()  # mode "1"：每列 72 bytes，1=白 0=黑（PIL: 1 bit/px，bit set=white）
     out = bytearray()
     out += b"\x1b*rA"          # 進入 raster 模式
@@ -162,7 +205,7 @@ def star_raster(img):
     for row in range(img.height):
         line = raw[row * ROW_BYTES:(row + 1) * ROW_BYTES]
         out += b"b" + bytes([n1, n2]) + bytes(b ^ 0xFF for b in line)  # 反相：1=印
-    out += b"\x1b*rC"          # 頁結束 → 進紙＋裁切
+    out += b"\x1b\x0c\x00"     # raster form feed：印出整頁＋進紙裁切（實機驗證）
     out += b"\x1b*rB"          # 離開 raster 模式
     return bytes(out)
 
