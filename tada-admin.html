@@ -4377,7 +4377,8 @@ async function exportRsvpCSV() {
       r.updated_at ? new Date(r.updated_at).toLocaleString('zh-TW') : '',
     ]);
     if(r.attending) parseCompanionNames(r).forEach((nm,ci)=>rows.push([
-      ++seq, `${gno}-${ci+1}`, nm, '同行友人', r.display_name||'', label, effOrg, '', '', '', '出席', '', '', '', r.table_no||'', '',
+      // 同行友人一律視為貴賓（即使主報名人是會員）
+      ++seq, `${gno}-${ci+1}`, nm, '同行友人', r.display_name||'', '貴賓', effOrg, '', '', '', '出席', '', '', '', r.table_no||'', '',
     ]));
   });
   const csv = '﻿' + rows.map(row => row.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
