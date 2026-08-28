@@ -504,15 +504,27 @@ async function agentPrint(res){
       const rows=q.ok?await q.json():[];
       table=(rows[0]&&rows[0].table_no)||'';
     }catch(_){}
-    // 領取清單：名片/禮物人人有；選票=本人票未委託出去；委託票=受託投票者
+    // 領取清單：名片/禮物人人有；選票=本人票未委託出去且有投票權；委託票=受託投票者
     const checklist=['名片','禮物'];
-    if(res.self_ballot!==0) checklist.push('選票');
+    if(res.self_ballot!==0 && res.can_vote!==false) checklist.push('選票');
     if((res.proxy_vote_count||0)>0) checklist.push('委託票');
     const hasBallot = checklist.includes('選票')||checklist.includes('委託票');
+    // 備註：選票委託出去 → 註明受託人；新會員無投票權 → 註明
+    let remark='';
+    if(res.can_vote===false){ remark='※ 新會員本屆無投票權，歡迎領取禮物'; }
+    else if(res.self_ballot===0){
+      try{
+        const pm=await rpc('proxy_mine',{p_election:election.id,p_user_id:'',p_name:res.name,p_no:res.member_no||''});
+        if(pm&&pm.delegated&&pm.proxy_vote) remark='※ 選票已委託（'+(pm.delegate_name||'受託人')+'會員）';
+      }catch(_){}
+      if(!remark) remark='※ 選票已委託他人';
+    }
     await fetch(PRINT_AGENT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       name:res.name, member_no:res.member_no, table_no:table,
-      checklist, notice:hasBallot?'⚠ 選票需在下午 3:30 前完成領取及投票':'',
-      barcode:res.member_no, title:'第六屆會員大會・報到',
+      checklist, remark,
+      notice:hasBallot?'⚠ 選票需在下午 3:30 前完成領取及投票':'',
+      barcode:hasBallot?res.member_no:'',   // 不能領票的人不印條碼（條碼＝服務台發票憑證）
+      title:'第六屆會員大會・報到',
       footer:'請持本單至服務台領取，並依桌號入座',
     })});
   }catch(_){ /* 無代理或印表機離線：不影響報到 */ }

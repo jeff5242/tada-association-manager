@@ -197,6 +197,10 @@ def render_slip(data):
         y += ((len(checklist) + 1) // 2) * row_h + 6
         d.line([(16, y), (w - 16, y)], fill=0, width=2)
         y += 10
+    remark = str(data.get("remark") or "").strip()
+    if remark:
+        y += 6
+        y = draw_center(d, y, remark, font(fs(32), bold=True), w)
     notice = str(data.get("notice") or "").strip()
     if notice:
         y += 8

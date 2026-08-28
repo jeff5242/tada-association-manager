@@ -706,8 +706,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <button class="btn btn-outline btn-sm" onclick="clearCheckinsByDate()">清除此日（含）以前</button>
         <span style="font-size:11px;color:var(--gray);">或於下方清單逐筆「撤銷報到」</span>
       </div>
-      <div class="tbl-wrap"><table><thead><tr><th>編號</th><th>姓名</th><th>類型</th><th>報到</th><th>操作</th></tr></thead>
-        <tbody id="roster-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr></tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th>編號</th><th>姓名</th><th>類型</th><th title="取消勾選＝報到只能領名片/禮物，不發選票、不印條碼">可投票</th><th>報到</th><th>操作</th></tr></thead>
+        <tbody id="roster-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr></tbody></table></div>
     </div>
 
     <div id="el-cat-consent" style="display:none;">
@@ -4827,16 +4827,27 @@ async function copyFifthCandidates(){
 }
 
 async function renderRoster(){
-  const r=await sbEl(`tada_v_members?election_id=eq.${election.id}&order=member_no&select=id,member_no,name,member_type,rep,is_checked_in,check_in_time`); const arr=r.ok?await r.json():[];
-  document.getElementById('roster-count').textContent=`名冊共 ${arr.length} 人（已報到 ${arr.filter(m=>m.is_checked_in).length}）`;
+  // can_vote 欄位需先跑 supabase/tada_can_vote.sql；未建欄時自動退回舊查詢
+  let hasCanVote=true;
+  let r=await sbEl(`tada_v_members?election_id=eq.${election.id}&order=member_no&select=id,member_no,name,member_type,rep,is_checked_in,check_in_time,can_vote`);
+  if(!r.ok){ hasCanVote=false; r=await sbEl(`tada_v_members?election_id=eq.${election.id}&order=member_no&select=id,member_no,name,member_type,rep,is_checked_in,check_in_time`); }
+  const arr=r.ok?await r.json():[];
+  const votable=arr.filter(m=>m.can_vote!==false).length;
+  document.getElementById('roster-count').textContent=`名冊共 ${arr.length} 人（已報到 ${arr.filter(m=>m.is_checked_in).length}${hasCanVote?`・可投票 ${votable}`:''}）`;
   const tb=document.getElementById('roster-tbody');
-  if(!arr.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr>'; return; }
+  if(!arr.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr>'; return; }
   const fmtT=t=>t?new Date(t).toLocaleString('zh-TW',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-  tb.innerHTML=arr.map(v=>`<tr><td style="font-family:monospace;font-size:12px;">${escapeHtml(v.member_no)}</td>
+  tb.innerHTML=arr.map(v=>`<tr${v.can_vote===false?' style="opacity:.65;"':''}><td style="font-family:monospace;font-size:12px;">${escapeHtml(v.member_no)}</td>
     <td class="name-cell">${escapeHtml(v.name)}${v.rep?'<span style="color:var(--gray);font-size:11px;"> / '+escapeHtml(v.rep)+'</span>':''}</td>
     <td style="font-size:11px;color:var(--gray);">${v.member_type==='group'?'團體':'個人'}</td>
+    <td style="text-align:center;">${hasCanVote?`<input type="checkbox" ${v.can_vote===false?'':'checked'} onchange="setCanVote('${v.id}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer;" title="勾＝可領選票投票；不勾＝僅出席領禮物">`:'<span style="color:var(--gray);font-size:10px;" title="請先執行 tada_can_vote.sql">—</span>'}</td>
     <td>${v.is_checked_in?`<span style="color:#66bb6a;">✓ 已領</span><span style="color:var(--gray);font-size:10px;display:block;">${fmtT(v.check_in_time)}</span>`:'<span style="color:var(--gray);">—</span>'}</td>
     <td style="white-space:nowrap;">${v.is_checked_in?`<button class="btn btn-sm btn-outline" style="color:var(--warn);border-color:rgba(224,119,106,.4);" onclick="undoCheckin('${escapeHtml(v.member_no)}','${escapeHtml(v.name)}')">撤銷報到</button> `:''}<button class="btn btn-sm btn-outline" onclick="delMember('${v.id}')">移除</button></td></tr>`).join('');
+}
+async function setCanVote(id,val){
+  const r=await sbEl(`tada_v_members?id=eq.${id}`,{method:'PATCH',headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({can_vote:val})});
+  if(!r.ok){ alert('更新失敗：請確認已執行 supabase/tada_can_vote.sql'); }
+  renderRoster();
 }
 async function undoCheckin(memberNo,name){
   if(!confirm(`撤銷「${name}」（${memberNo}）的報到？\n將同時刪除其對應的未使用選票（已投出的票不受影響）。`)) return;
