@@ -134,6 +134,16 @@ function deTitle(n){
   TITLES.forEach(x=>{ t=t.split(x).join(''); });
   return t;
 }
+/* 一個人可能有多種寫法：「Don Chen 陳文堂」↔「陳文堂」、「黃佳敏總幹事」↔「黃佳敏」。
+   取出所有可能的比對鍵：去職稱全名 + 其中最長的中文字連續段。 */
+function nameKeys(n){
+  const keys=new Set();
+  const base=deTitle(n);
+  if(base) keys.add(base);
+  const runs=String(n||'').match(/[\u4e00-\u9fff]{2,}/g)||[];
+  runs.map(deTitle).filter(Boolean).forEach(k=>keys.add(k));
+  return [...keys];
+}
 const MEAL_LABELS={yes:'會用餐',no:'不用餐',null:'未確認'};
 
 let allItems=[];
@@ -182,9 +192,14 @@ async function loadAll(){
     }));
     // 貴賓名冊與出席回報可能是同一人（貴賓名冊帶職稱），去職稱比對後去重，
     // 否則同一人會被算兩次人頭。
-    const seen=new Set(rsvp.map(r=>deTitle(r.display_name)));
+    // 已在出席回報的人（含同行欄裡的同行者），貴賓名冊有同名者即為重複，不再列出
+    const seen=new Set();
+    rsvp.forEach(r=>{
+      nameKeys(r.display_name).forEach(k=>seen.add(k));
+      splitCompanions(r.companions).forEach(c=>nameKeys(c).forEach(k=>seen.add(k)));
+    });
     guests.forEach(g=>{
-      if(seen.has(deTitle(g.name))) return;          // 已在出席回報，跳過
+      if(nameKeys(g.name).some(k=>seen.has(k))) return;   // 已在出席回報，跳過
       const replied = !!g.seat || g.status==='onsite';
       allItems.push({
         src:'guest',id:g.id,name:g.name,org:g.org||g.category||'',
