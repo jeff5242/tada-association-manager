@@ -167,7 +167,7 @@ def render_slip(data):
     img = Image.new("L", (w, 2400), 255)
     d = ImageDraw.Draw(img)
     y = 16
-    y = draw_center(d, y, "台灣科技農企業發展協會", font(fs(30)), w)
+    y = draw_center(d, y, "台灣科技農企業發展協會(TADA)", font(fs(30)), w)
     y = draw_center(d, y, title, font(fs(40), bold=True), w)
     y += 8
     d.line([(16, y), (w - 16, y)], fill=0, width=3)
