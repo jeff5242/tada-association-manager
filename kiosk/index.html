@@ -418,8 +418,7 @@ async function confirmCheckinPaper(){
     if(res.attend_rep>0) tip += '（另代表 '+res.attend_rep+' 人出席）';
     document.getElementById('pr-tip').textContent = tip;
     state='print'; show('v-print');
-    // 開啟紙本選票列印（有印表機的報到台可直接印；無則忽略）
-    try{ window.open(VOTE_BASE.replace('/vote/','/print/')+'?doc=ballot&member='+encodeURIComponent(current.member_no), '_blank'); }catch(_){}
+    agentPrint(res);   // 小白單（含條碼）；實體選票由服務台刷條碼核發，不再彈 A4 列印視窗
     setTimeout(()=>{ toIdle(); }, IDLE_DELAY_MS);
     refreshProg();
   }catch(e){ toast('報到失敗，請重試'); }
@@ -484,7 +483,7 @@ function printReceipt(res){
     new QRCode(document.getElementById('pr-qr'),{text:VOTE_BASE+'?t='+uuids[0],width:230,height:230,correctLevel:QRCode.CorrectLevel.M});
   }
   state='print'; show('v-print');
-  agentPrint(res, uuids);   // 本機列印代理（TSP650II 直連）；失敗靜默、螢幕 QR 照常
+  agentPrint(res);   // 本機列印代理（TSP650II 直連）；失敗靜默、螢幕 QR 照常
   if(!NO_PRINT && uuids.length) setTimeout(()=>{ window.print(); }, 300);   // --kiosk-printing 會靜默送印
   setTimeout(()=>{ toIdle(); }, IDLE_DELAY_MS);
 }
@@ -495,7 +494,9 @@ function printReceipt(res){
   代理不存在（開發機）或印表機離線時 fetch 會失敗 → 靜默略過，不影響報到流程。
 */
 const PRINT_AGENT = 'http://127.0.0.1:8043/print';
-async function agentPrint(res, uuids){
+/* 一人一張小白單：姓名/大字會員編號/桌號/領取勾選清單/會員編號條碼。
+   當天為「現場領實體票投票」→ 不印投票 QR，服務台刷條碼核發實體選票。 */
+async function agentPrint(res){
   try{
     let table='';
     try{
@@ -503,26 +504,17 @@ async function agentPrint(res, uuids){
       const rows=q.ok?await q.json():[];
       table=(rows[0]&&rows[0].table_no)||'';
     }catch(_){}
-    const hasProxy=(res.proxy_vote_count||0)>0;
-    // 領取清單：名片/禮物人人有；選票=領得到本人電子票的有效會員；委託票=受託投票者
+    // 領取清單：名片/禮物人人有；選票=本人票未委託出去；委託票=受託投票者
     const checklist=['名片','禮物'];
-    if(uuids.length && res.self_ballot!==0) checklist.push('選票');
-    if(hasProxy) checklist.push('委託票');
+    if(res.self_ballot!==0) checklist.push('選票');
+    if((res.proxy_vote_count||0)>0) checklist.push('委託票');
     const hasBallot = checklist.includes('選票')||checklist.includes('委託票');
-    const NOTICE = hasBallot ? '⚠ 選票需在下午 3:30 前完成領取及投票' : '';
-    const jobs = uuids.length ? uuids.map((u,i)=>({
+    await fetch(PRINT_AGENT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       name:res.name, member_no:res.member_no, table_no:table,
-      checklist:(i===0?checklist:[]),   // 清單只印在第一張
-      notice:(i===0?NOTICE:''),
-      qr:VOTE_BASE+'?t='+u, title:'第六屆會員大會・報到',
-      footer:(hasProxy?((res.self_ballot!==0&&i===0)?'【本人選票】':'【代理選票】')+' ':'')+'請持本單入座，以 LINE 掃描 QR 投票',
-    })) : [{
-      name:res.name, member_no:res.member_no, table_no:table, checklist, notice:NOTICE,
-      qr:'', title:'第六屆會員大會・報到', footer:'已完成出席報到，請持本單入座',
-    }];
-    for(const j of jobs){
-      await fetch(PRINT_AGENT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(j)});
-    }
+      checklist, notice:hasBallot?'⚠ 選票需在下午 3:30 前完成領取及投票':'',
+      barcode:res.member_no, title:'第六屆會員大會・報到',
+      footer:'請持本單至服務台領取，並依桌號入座',
+    })});
   }catch(_){ /* 無代理或印表機離線：不影響報到 */ }
 }
 

@@ -122,6 +122,36 @@ def draw_center(draw, y, text, fnt, width=PAPER_DOTS):
     return y1 + 8
 
 
+# Code 39 編碼表（9 元素 窄n/寬w，條/空交錯、以條開始）；僅收錄會員編號會用到的字元
+CODE39 = {
+    "0": "nnnwwnwnn", "1": "wnnwnnnnw", "2": "nnwwnnnnw", "3": "wnwwnnnnn",
+    "4": "nnnwwnnnw", "5": "wnnwwnnnn", "6": "nnwwwnnnn", "7": "nnnwnnwnw",
+    "8": "wnnwnnwnn", "9": "nnwwnnwnn", "-": "nwnnnnwnw", "*": "nwnnwnwnn",
+}
+
+
+def code39_img(text, height=96, narrow=2, wide=5):
+    """會員編號 → Code 39 條碼影像；含起止符，字元不支援時回 None。"""
+    seq = "*" + str(text).upper() + "*"
+    bars = []
+    for ch in seq:
+        pat = CODE39.get(ch)
+        if pat is None:
+            return None
+        for i, c in enumerate(pat):
+            bars.append((i % 2 == 0, wide if c == "w" else narrow))
+        bars.append((False, narrow))          # 字元間窄空白
+    total = sum(bw for _, bw in bars)
+    img = Image.new("L", (total, height), 255)
+    d = ImageDraw.Draw(img)
+    x = 0
+    for is_bar, bw in bars:
+        if is_bar:
+            d.rectangle([x, 0, x + bw - 1, height], fill=0)
+        x += bw
+    return img
+
+
 def render_slip(data):
     """把報到資料畫成 1-bit 點陣圖（寬 576）。"""
     name = str(data.get("name") or "").strip()
@@ -146,7 +176,7 @@ def render_slip(data):
     if name:
         y = draw_center(d, y, name, font(fs(76), bold=True), w)
     if member_no:
-        y = draw_center(d, y, f"會員編號 {member_no}", font(fs(32)), w)
+        y = draw_center(d, y, f"會員編號 {member_no}", font(fs(52), bold=True), w)
     if table_no:
         y += 14
         y = draw_center(d, y, f"桌號 {table_no}", font(fs(96), bold=True), w)
@@ -181,6 +211,15 @@ def render_slip(data):
         d.rectangle([bx, y, bx + bw, y1 + pad], outline=0, width=4)
         d.text((bx + pad - x0, y + pad // 2), notice, font=fnt_n, fill=0)
         y = y1 + pad + 12
+    barcode = str(data.get("barcode") or "").strip()
+    if barcode:
+        y += 14
+        bimg = code39_img(barcode)
+        if bimg is not None and bimg.width > w - 12:
+            bimg = code39_img(barcode, narrow=1, wide=3)   # 過長時縮窄（編號含-時）
+        if bimg is not None and bimg.width <= w - 4:
+            img.paste(bimg, ((w - bimg.width) // 2, y))
+            y += bimg.height + 8
     if qr_text:
         y += 16
         qr = qrcode.QRCode(border=1, box_size=8,
