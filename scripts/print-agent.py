@@ -167,6 +167,20 @@ def render_slip(data):
         y += ((len(checklist) + 1) // 2) * row_h + 6
         d.line([(16, y), (w - 16, y)], fill=0, width=2)
         y += 10
+    notice = str(data.get("notice") or "").strip()
+    if notice:
+        y += 8
+        for size in (34, 30, 26, 22, 18):   # 窄紙自動縮字避免爆框
+            fnt_n = font(fs(size), bold=True)
+            x0, y0, x1, y1 = d.textbbox((0, y), notice, font=fnt_n)
+            if (x1 - x0) + fs(12) * 2 <= w - 8:
+                break
+        pad = fs(12)
+        bw = (x1 - x0) + pad * 2
+        bx = (w - bw) // 2
+        d.rectangle([bx, y, bx + bw, y1 + pad], outline=0, width=4)
+        d.text((bx + pad - x0, y + pad // 2), notice, font=fnt_n, fill=0)
+        y = y1 + pad + 12
     if qr_text:
         y += 16
         qr = qrcode.QRCode(border=1, box_size=8,
