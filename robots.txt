@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# 後台與內部工具不索引
+Disallow: /tada-admin.html
+Disallow: /attendance/
+Disallow: /ballot/
+Disallow: /scan/
+Disallow: /checkin/
+Disallow: /vote/
+Disallow: /print/
+Disallow: /portal.html
+Disallow: /docs/
+
+Sitemap: https://tada-ai.org.tw/sitemap.xml
