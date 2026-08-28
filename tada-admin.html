@@ -4176,6 +4176,7 @@ function renderSeating(){
         ${mainGrp?`<span style="font-size:11px;color:var(--gold-lt);font-weight:700;">· ${escapeHtml(mainGrp)}</span>`:''}
         ${vegTotal>0?`<span style="font-size:10px;color:#4fc3f7;background:rgba(41,182,246,0.15);border-radius:99px;padding:1px 7px;">🥗 素食 ${vegTotal} 份</span>`:''}
         <span style="margin-left:auto;font-size:12px;color:${over?'#ef5350':'var(--gray)'};font-weight:700;">${head}/${capT}${vegTotal>0?`<span style="font-weight:400;color:var(--gray);font-size:10px;"> (10+${vegTotal}素)</span>`:''}</span>
+        <select onchange="swapTables('${escapeHtml(t)}',this.value);this.value='';" class="filter-select" style="padding:1px 2px;font-size:10px;width:92px;" title="與另一桌整桌對調成員"><option value="">⇄ 對調…</option>${orderTables.filter(x=>x!==t).map(x=>`<option value="${escapeHtml(x)}">${tableLabel(x)}</option>`).join('')}</select>
       </div>
       ${rows}
     </div>`;
@@ -4193,6 +4194,31 @@ function renderSeating(){
       ${sel}${hideBtn}
     </span>`;
   }).join('') : '<span style="color:var(--gray);font-size:12px;">全部已排桌 🎉</span>';
+}
+
+// 桌號對調：兩桌成員整批互換（會員 tada_rsvp.table_no ＋ 貴賓 tada_guests.seat）
+// 三段式（A→TMP、B→A、TMP→B）避免第一批改完被第二批再改回去
+async function swapTables(a, b){
+  if(!b || a===b) return;
+  if(!confirm(`將「${tableLabel(a)}」與「${tableLabel(b)}」兩桌的座位成員整桌對調？`)) return;
+  const TMP='__SWAP__';
+  const pat=async(url,body)=>{
+    const r=await fetch(`${SB_URL}/rest/v1/${url}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify(body)});
+    if(!r.ok) throw new Error(await r.text());
+  };
+  const st=document.getElementById('seating-status');
+  try{
+    st.style.color='var(--gray)'; st.textContent='對調中…';
+    const ea=encodeURIComponent(a), eb=encodeURIComponent(b), et=encodeURIComponent(TMP);
+    await pat(`tada_guests?seat=eq.${ea}`,{seat:TMP});
+    await pat(`tada_guests?seat=eq.${eb}`,{seat:a});
+    await pat(`tada_guests?seat=eq.${et}`,{seat:b});
+    await pat(`tada_rsvp?table_no=eq.${ea}&hidden=eq.false`,{table_no:TMP});
+    await pat(`tada_rsvp?table_no=eq.${eb}&hidden=eq.false`,{table_no:a});
+    await pat(`tada_rsvp?table_no=eq.${et}&hidden=eq.false`,{table_no:b});
+    await loadSeating();
+    st.style.color='#66bb6a'; st.textContent=`✓ 已對調 ${tableLabel(a)} ⇄ ${tableLabel(b)}`;
+  }catch(e){ alert('對調失敗：'+e.message); await loadSeating(); }
 }
 
 // 用下拉改桌／移除（會員→table_no、貴賓→seat）
