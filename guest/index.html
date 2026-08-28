@@ -166,6 +166,7 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 <div class="top">
   <div class="filter-row"><span class="fr-label">類別</span><div class="units cats" id="cats"></div></div>
   <div class="filter-row"><span class="fr-label">單位</span><div class="units" id="units"></div></div>
+  <div class="filter-row"><span class="fr-label">姓氏</span><div class="units" id="surnames"></div></div>
   <div class="filter-row"><span class="fr-label">姓名</span><input id="q" class="q-in" placeholder="輸入姓名搜尋（跨全部類別）" autocomplete="off" oninput="onSearch(this.value)"><button class="q-clear" id="q-clear" onclick="clearSearch()">✕</button></div>
 </div>
 
@@ -224,8 +225,8 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 
 <script>
 const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
-const CATS=['公協會','學校單位','政府單位','農業合作單位'];
-let guests=[], curCat='__all__', curOrg='__all__', searchQ='', wTimer=null;
+const CATS=['公協會','學校單位','政府單位','農業合作單位','貴賓'];
+let guests=[], curCat='__all__', curOrg='__all__', searchQ='', curSurname='', wTimer=null;
 function catFor(g){ return clean(g.category)||'農業合作單位'; }
 
 async function rpc(fn,body){ const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:'POST',headers:H(),body:JSON.stringify(body)}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
@@ -237,8 +238,19 @@ async function load(){
     const r=await fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in&order=sort.asc,name.asc`,{headers:H()});
     guests=r.ok?await r.json():[];
   }catch(e){ document.getElementById('list').innerHTML='<div class="empty">載入失敗，請確認網路後重新整理。</div>'; return; }
-  renderCats(); renderUnits(); renderList(); renderProg();
+  renderCats(); renderUnits(); renderSurnames(); renderList(); renderProg();
 }
+// ── 姓氏分類：跨全部類別，點姓氏直接列出該姓所有人（含「某某的友人」歸在該會員姓氏下）──
+function renderSurnames(){
+  const map=new Map();
+  guests.forEach(g=>{ const s=(g.name||'').trim().charAt(0); if(!s) return;
+    if(!map.has(s)) map.set(s,{t:0,c:0}); const m=map.get(s); m.t++; if(g.checked_in) m.c++; });
+  const arr=[...map.entries()].sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0],'zh-Hant'));
+  let html=`<div class="unit ${curSurname===''?'on':''}" onclick="pickSurname('')"><div class="u-name">全部</div></div>`;
+  html+=arr.map(([s,m])=>`<div class="unit ${curSurname===s?'on':''}" onclick="pickSurname('${s}')"><div class="u-name">${esc(s)}</div><div class="u-cnt"><b>${m.c}</b>/${m.t}</div></div>`).join('');
+  document.getElementById('surnames').innerHTML=html;
+}
+function pickSurname(s){ curSurname=s; clearSearch(false); renderSurnames(); renderList(); }
 function renderCats(){
   const cnt={}; CATS.forEach(c=>cnt[c]={t:0,c:0});
   guests.forEach(g=>{ const c=catFor(g); if(!cnt[c])cnt[c]={t:0,c:0}; cnt[c].t++; if(g.checked_in)cnt[c].c++; });
@@ -247,7 +259,7 @@ function renderCats(){
   html+=CATS.map(c=>`<div class="unit cat ${curCat===c?'on':''}" onclick="pickCat('${c}')"><div class="u-name">${esc(c)}</div><div class="u-cnt"><b>${cnt[c].c}</b> / ${cnt[c].t}</div></div>`).join('');
   document.getElementById('cats').innerHTML=html;
 }
-function pickCat(c){ curCat=c; curOrg='__all__'; clearSearch(false); renderCats(); renderUnits(); renderList(); }
+function pickCat(c){ curCat=c; curOrg='__all__'; curSurname=''; clearSearch(false); renderCats(); renderUnits(); renderSurnames(); renderList(); }
 function onSearch(v){ searchQ=v.trim(); document.getElementById('q-clear').classList.toggle('show',!!searchQ); renderList(); }
 function clearSearch(rerender=true){ searchQ=''; const q=document.getElementById('q'); if(q) q.value=''; document.getElementById('q-clear').classList.remove('show'); if(rerender) renderList(); }
 function renderProg(){
@@ -265,10 +277,11 @@ function renderUnits(){
   html+=orgs.map(([k,m])=>`<div class="unit ${curOrg===k?'on':''}" onclick="pickOrg('${esc(k).replace(/'/g,"\\'")}')"><div class="u-name">${esc(k)}</div><div class="u-cnt"><b>${m.c}</b> / ${m.t}</div></div>`).join('');
   document.getElementById('units').innerHTML=html;
 }
-function pickOrg(k){ curOrg=k; clearSearch(false); renderUnits(); renderList(); }
+function pickOrg(k){ curOrg=k; curSurname=''; clearSearch(false); renderUnits(); renderSurnames(); renderList(); }
 function renderList(){
   let arr=guests.slice();
   if(searchQ){ arr=arr.filter(g=>(g.name||'').includes(searchQ)); }
+  else if(curSurname){ arr=arr.filter(g=>(g.name||'').trim().startsWith(curSurname)).sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-Hant')); }
   else { if(curCat!=='__all__') arr=arr.filter(g=>catFor(g)===curCat); if(curOrg!=='__all__') arr=arr.filter(g=>orgKey(g)===curOrg); }
   if(GS.hideDone) arr=arr.filter(g=>!g.checked_in);
   const el=document.getElementById('list');
