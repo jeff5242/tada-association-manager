@@ -122,6 +122,12 @@ const INVITE_SOURCES=['協會貴賓','陳總貴賓','長官貴賓','理監事貴
 const TITLES=['理事長','董事長','總經理','執行長','副校長','校長','副司長','司長','副署長','署長',
   '副院長','前院長','院長','教授','研究員','總監','副總','經理','主任','技正','技監','組長',
   '分所長','副所長','所長','處長','鄉長','社長','顧問','博士','董事','前所長','老師'];
+/* 身分判定：只比對會員名冊。會員帶來的友人、貴賓名冊上的人，一律算貴賓。 */
+function idOf(name){
+  const hit=memberPool.get(deTitle(name));
+  return hit ? {isMember:true, memberNo:hit.no, memberStatus:hit.st}
+             : {isMember:false, memberNo:'', memberStatus:''};
+}
 function deTitle(n){
   let t=String(n||'').replace(/\s+/g,'');
   TITLES.forEach(x=>{ t=t.split(x).join(''); });
@@ -130,6 +136,7 @@ function deTitle(n){
 const MEAL_LABELS={yes:'會用餐',no:'不用餐',null:'未確認'};
 
 let allItems=[];
+let memberPool=new Map();   // 去職稱姓名 -> {member_no,status}，判定「會員 vs 貴賓」用
 let filterState={source:null,meal:null,table:null,pending:null};
 let editingKey=null;   // 'src:id' 正在編輯的那張卡
 
@@ -150,16 +157,27 @@ document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')
 
 async function loadAll(){
   try{
-    const [rRes,gRes]=await Promise.all([
+    const [rRes,gRes,mRes]=await Promise.all([
       fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,table_no,headcount,vegetarian,meal,invite_source,companions&order=table_no.asc.nullslast,display_name.asc`,{headers:SB_H}),
-      fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,note,seat,party_size,invite_source,meal,status,category&order=name.asc`,{headers:SB_H})
+      fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,note,seat,party_size,invite_source,meal,status,category&order=name.asc`,{headers:SB_H}),
+      fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps,member_type`,{headers:SB_H})
     ]);
     const rsvp=await rRes.json(); const guests=await gRes.json();
+
+    // 身分判定以會員名冊為準：名字在名冊（含團體代表）才是會員，其餘一律貴賓
+    memberPool=new Map();
+    const mem=mRes.ok?await mRes.json():[];
+    mem.forEach(x=>{
+      const put=(nm)=>{ const k=deTitle(nm); if(k) memberPool.set(k,{no:x.member_no||'',st:x.status||''}); };
+      put(x.name);
+      (x.reps||[]).forEach(rp=>put(rp&&rp.name));
+    });
     allItems=[];
     rsvp.forEach(r=>allItems.push({
       src:'rsvp',id:r.user_id,name:r.display_name,org:r.org||'',
       table:r.table_no||'',hc:r.headcount||1,veg:r.vegetarian||0,
-      note:r.note||'',meal:r.meal||null,inv:r.invite_source||null,comp:r.companions||''
+      note:r.note||'',meal:r.meal||null,inv:r.invite_source||null,comp:r.companions||'',
+      ...idOf(r.display_name)
     }));
     // 貴賓名冊與出席回報可能是同一人（貴賓名冊帶職稱），去職稱比對後去重，
     // 否則同一人會被算兩次人頭。
@@ -171,7 +189,8 @@ async function loadAll(){
         src:'guest',id:g.id,name:g.name,org:g.org||g.category||'',
         table:g.seat||'',hc:g.party_size||1,veg:0,
         note:g.note||'',meal:g.meal||null,inv:g.invite_source||null,comp:'',
-        pending:!replied                              // 尚未回覆：列出但不計入人數
+        pending:!replied,                             // 尚未回覆：列出但不計入人數
+        ...idOf(g.name)
       });
     });
     buildFilters();
@@ -274,7 +293,7 @@ function render(){
         ${it.veg?`<span class="veg">素${it.veg>1?'x'+it.veg:''}</span>`:''}
         ${it.hc>1?`<span class="card-hc">x${it.hc}</span>`:''}
         ${it.table?`<span class="card-table">${esc(it.table)}</span>`:''}
-        <span class="src-badge ${it.src}">${it.src==='guest'?'貴賓':'出席'}</span>
+        <span class="src-badge ${it.isMember?'rsvp':'guest'}">${it.isMember?'會員':'貴賓'}</span>
         ${it.pending?'<span class="src-badge" style="background:rgba(255,167,38,.15);color:#ffa726;">未回覆</span>':''}
         <button class="edit-btn" onclick="${editing?'cancelEdit()':`startEdit('${key}')`}">${editing?'✕':'✎'}</button>
       </div>
@@ -337,15 +356,15 @@ function exportXls(){
   const rows=filtered();
   if(!rows.length){ alert('目前沒有可匯出的資料'); return; }
   const MEAL={yes:'會用餐',no:'不用餐'};
-  const head=['姓名','單位','桌次','人數','素食','用餐','邀請來源','備註','來源','狀態'];
+  const head=['姓名','身分','會員編號','會員狀態','單位','桌次','人數','素食','用餐','邀請來源','備註','回覆狀態'];
   const esc=v=>{
     const t=(v===null||v===undefined)?'':String(v);
     return /[",\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t;
   };
   const lines=rows.map(i=>[
-    i.name, i.org, i.table, i.pending?'':i.hc, i.veg||'',
+    i.name, i.isMember?'會員':'貴賓', i.memberNo||'', i.memberStatus||'',
+    i.org, i.table, i.pending?'':i.hc, i.veg||'',
     i.pending?'':(MEAL[i.meal]||'未確認'), i.inv||'', i.note,
-    i.src==='guest'?'貴賓名冊':'出席回報',
     i.pending?'未回覆':'已確認出席'
   ].map(esc).join(','));
 
@@ -356,7 +375,8 @@ function exportXls(){
   const no =conf.filter(i=>i.meal==='no').reduce((s,i)=>s+i.hc,0);
   const veg=conf.reduce((s,i)=>s+i.veg,0);
   lines.push('');
-  lines.push(esc(`已確認出席 ${conf.length} 筆／${tot} 人　用餐 ${yes}　不用餐 ${no}　素食 ${veg}`));
+  const mCnt=conf.filter(i=>i.isMember).length;
+  lines.push(esc(`已確認出席 ${conf.length} 筆／${tot} 人　（會員 ${mCnt} 筆、貴賓 ${conf.length-mCnt} 筆）　用餐 ${yes}　不用餐 ${no}　素食 ${veg}`));
   if(pend.length) lines.push(esc(`受邀貴賓尚未回覆 ${pend.length} 位（未計入人數）`));
 
   const csv='\ufeff'+[head.join(','),...lines].join('\r\n');
@@ -382,7 +402,7 @@ function exportPerPerson(){
   const rows=filtered();
   if(!rows.length){ alert('目前沒有可匯出的資料'); return; }
   const MEAL={yes:'會用餐',no:'不用餐'};
-  const head=['序','同行群組','群組人數','桌次','姓名','身分','單位','用餐','素食','邀請來源','主報名人','備註','狀態'];
+  const head=['序','同行群組','群組人數','桌次','姓名','身分','會員編號','會員狀態','單位','用餐','素食','邀請來源','主報名人','備註','回覆狀態'];
   const esc=v=>{ const t=(v===null||v===undefined)?'':String(v);
     return /[",\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t; };
 
@@ -390,7 +410,7 @@ function exportPerPerson(){
   rows.forEach(it=>{
     if(it.pending){                                   // 未回覆貴賓：列一行，不展開人頭
       pendCount++;
-      out.push([0,'','',  '', it.name,'受邀貴賓',it.org,'','',it.inv||'','',it.note,'未回覆']);
+      out.push([0,'','','',it.name,'貴賓',it.memberNo||'',it.memberStatus||'',it.org,'','',it.inv||'','',it.note,'未回覆']);
       return;
     }
     const comps=splitCompanions(it.comp);
@@ -405,23 +425,29 @@ function exportPerPerson(){
     }
     // 同行群組：兩人以上共用一個關聯值，方便排座、發名牌時辨識是一起來的
     const gid = names.length>1 ? 'G'+String(++gseq).padStart(3,'0') : '';
-    names.forEach((nm,i)=>out.push([
-      0, gid, names.length>1?names.length:'', it.table, nm,
-      i===0 ? (it.src==='guest'?'貴賓':'本人') : '同行',
-      i===0 ? it.org : (it.org||''),
-      MEAL[it.meal]||'未確認',
-      i===0 ? (it.veg||'') : '',
-      i===0 ? (it.inv||'') : '',
-      i===0 ? '' : it.name,
-      i===0 ? [it.note,flag].filter(Boolean).join('／') : '',
-      '已確認出席'
-    ]));
+    names.forEach((nm,i)=>{
+      // 同行友人一律貴賓；本人依會員名冊判定（團體會員的代表也算會員）
+      const id = i===0 ? {isMember:it.isMember,memberNo:it.memberNo,memberStatus:it.memberStatus}
+                       : idOf(nm);
+      out.push([
+        0, gid, names.length>1?names.length:'', it.table, nm,
+        id.isMember?'會員':'貴賓', id.memberNo||'', id.memberStatus||'',
+        it.org,
+        MEAL[it.meal]||'未確認',
+        i===0 ? (it.veg||'') : '',
+        i===0 ? (it.inv||'') : '',
+        i===0 ? '' : it.name,
+        i===0 ? [it.note,flag].filter(Boolean).join('／') : '',
+        '已確認出席'
+      ]);
+    });
   });
   out.forEach((r,i)=>r[0]=i+1);
 
   const lines=out.map(r=>r.map(esc).join(','));
   lines.push('');
-  lines.push(esc(`已確認出席 ${out.length-pendCount} 人　（其中 ${gseq} 組為兩人以上同行，見「同行群組」欄）`));
+  const memRows=out.filter(r=>r[5]==='會員').length;
+  lines.push(esc(`已確認出席 ${out.length-pendCount} 人　（會員 ${memRows} 人、貴賓 ${out.length-pendCount-memRows} 人；${gseq} 組為兩人以上同行）`));
   if(pendCount) lines.push(esc(`受邀貴賓尚未回覆 ${pendCount} 位（未計入人數）`));
   if(mismatch) lines.push(esc(`⚠ 有 ${mismatch} 筆的人數欄與同行欄人數不符，已於備註標示`));
 
