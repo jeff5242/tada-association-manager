@@ -4344,11 +4344,13 @@ const RSVP_REL_WORDS=['太太','先生','夫人','眷屬','友人','家人','小
 function parseCompanionNames(r){
   const main=(r.display_name||'').trim();
   const raw=(r.companions||'').trim();
-  // 先以頓號/逗號等強分隔符切；含括號的片段整段保留（括號內常有空格的職稱註記）
-  const toks=raw?raw.split(/[、,，;；\/]+/).flatMap(p=>{
-    p=p.trim(); if(!p) return [];
-    return /[（(]/.test(p) ? [p] : p.split(/\s+/);
-  }).filter(t=>t.length>=2):[];
+  // 只以頓號/逗號/句號等強分隔符切。
+  // 不可用空白切：實際資料多為「姓名 職稱」（吳依芹 高專、范志禧 經理、郭松穎 執行長），
+  // 用空白切會把職稱當成另一個人，匯出就會多出「高專」「經理」這種假名字。
+  const toks=raw?raw.split(/[、,，;；。／\/\n]+/)
+    .map(p=>p.trim())
+    .filter(p=>p.length>=2)
+    :[];
   const out=toks.map(t=>RSVP_REL_WORDS.includes(t)?`${main}的${t}`:t);
   const extra=Math.max(((r.headcount??1)-1)-out.length,0);
   for(let i=0;i<extra;i++) out.push(`${main}的友人${extra>1?(i+1):''}`);
