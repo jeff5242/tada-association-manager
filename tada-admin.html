@@ -4325,20 +4325,21 @@ function parseCompanionNames(r){
 function exportRsvpCSV() {
   const list = allRsvp.filter(r => !r.hidden);
   if (!list.length) { alert('尚無資料可匯出'); return; }
-  // 一人一列：本人一列、每位同行者各一列（比照會員名冊逐人展開）
-  const rows = [['姓名','身分','主報名人','類別(AI判斷)','單位','職稱','手機','來源','出席','登記總人數','素食份數','備註','桌次','回覆時間']];
-  list.forEach(r => {
+  // 一人一列（比照會員名冊母號-N）：同組報名共用組編號，本人=12、同行=12-1、12-2
+  const rows = [['組編號','姓名','身分','主報名人','類別(AI判斷)','單位','職稱','手機','來源','出席','登記總人數','素食份數','備註','桌次','回覆時間']];
+  list.forEach((r, gi) => {
     const label=classifyRsvp(r).label;
+    const gno=String(gi+1);
     rows.push([
-      r.display_name || '', '本人', '', label, r.org || '', r.title || '', r.mobile || '',
+      gno, r.display_name || '', '本人', '', label, r.org || '', r.title || '', r.mobile || '',
       (r.user_id||'').startsWith('web-') ? '網頁自填' : 'LINE',
       r.attending ? '出席' : '不克出席',
       r.attending ? (r.headcount ?? 0) : 0, r.attending ? (r.vegetarian ?? 0) : 0,
       r.note || '', r.table_no || '',
       r.updated_at ? new Date(r.updated_at).toLocaleString('zh-TW') : '',
     ]);
-    if(r.attending) parseCompanionNames(r).forEach(nm=>rows.push([
-      nm, '同行友人', r.display_name||'', label, r.org||'', '', '', '', '出席', '', '', '', r.table_no||'', '',
+    if(r.attending) parseCompanionNames(r).forEach((nm,ci)=>rows.push([
+      `${gno}-${ci+1}`, nm, '同行友人', r.display_name||'', label, r.org||'', '', '', '', '出席', '', '', '', r.table_no||'', '',
     ]));
   });
   const csv = '﻿' + rows.map(row => row.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
