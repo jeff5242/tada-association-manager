@@ -87,6 +87,12 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 .cats .unit.cat.on{background:linear-gradient(160deg,#2c4a32,#1a3020);border-color:var(--gold-lt)}
 .cats .unit.cat.on .u-name{color:var(--gold-lt)}
 .cats .unit.cat.on .u-cnt,.cats .unit.cat.on .u-cnt b{color:var(--cream)}
+/* 姓名搜尋列 */
+.q-in{flex:1;min-width:0;background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.3);border-radius:12px;padding:11px 16px;color:var(--cream);font-size:18px;font-family:inherit;outline:none}
+.q-in:focus{border-color:var(--gold-lt)}
+.q-in::placeholder{color:rgba(245,236,212,.35)}
+.q-clear{flex:0 0 auto;background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.3);color:var(--cream);border-radius:12px;width:46px;height:46px;font-size:18px;cursor:pointer;display:none}
+.q-clear.show{display:block}
 
 /* Bottom: guest list（更多高度、字更大、無搜尋）*/
 .bottom{flex:1;min-height:0;overflow-y:auto;padding:10px 34px 40px;background:rgba(0,0,0,.16);border-top:1px solid rgba(196,146,42,.18);-webkit-overflow-scrolling:touch}
@@ -160,6 +166,7 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 <div class="top">
   <div class="filter-row"><span class="fr-label">類別</span><div class="units cats" id="cats"></div></div>
   <div class="filter-row"><span class="fr-label">單位</span><div class="units" id="units"></div></div>
+  <div class="filter-row"><span class="fr-label">姓名</span><input id="q" class="q-in" placeholder="輸入姓名搜尋（跨全部類別）" autocomplete="off" oninput="onSearch(this.value)"><button class="q-clear" id="q-clear" onclick="clearSearch()">✕</button></div>
 </div>
 
 <div class="bottom">
@@ -240,7 +247,9 @@ function renderCats(){
   html+=CATS.map(c=>`<div class="unit cat ${curCat===c?'on':''}" onclick="pickCat('${c}')"><div class="u-name">${esc(c)}</div><div class="u-cnt"><b>${cnt[c].c}</b> / ${cnt[c].t}</div></div>`).join('');
   document.getElementById('cats').innerHTML=html;
 }
-function pickCat(c){ curCat=c; curOrg='__all__'; searchQ=''; renderCats(); renderUnits(); renderList(); }
+function pickCat(c){ curCat=c; curOrg='__all__'; clearSearch(false); renderCats(); renderUnits(); renderList(); }
+function onSearch(v){ searchQ=v.trim(); document.getElementById('q-clear').classList.toggle('show',!!searchQ); renderList(); }
+function clearSearch(rerender=true){ searchQ=''; const q=document.getElementById('q'); if(q) q.value=''; document.getElementById('q-clear').classList.remove('show'); if(rerender) renderList(); }
 function renderProg(){
   document.getElementById('p-total').textContent=guests.length;
   document.getElementById('p-checked').textContent=guests.filter(g=>g.checked_in).length;
@@ -256,7 +265,7 @@ function renderUnits(){
   html+=orgs.map(([k,m])=>`<div class="unit ${curOrg===k?'on':''}" onclick="pickOrg('${esc(k).replace(/'/g,"\\'")}')"><div class="u-name">${esc(k)}</div><div class="u-cnt"><b>${m.c}</b> / ${m.t}</div></div>`).join('');
   document.getElementById('units').innerHTML=html;
 }
-function pickOrg(k){ curOrg=k; searchQ=''; renderUnits(); renderList(); }
+function pickOrg(k){ curOrg=k; clearSearch(false); renderUnits(); renderList(); }
 function renderList(){
   let arr=guests.slice();
   if(searchQ){ arr=arr.filter(g=>(g.name||'').includes(searchQ)); }
