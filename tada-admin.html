@@ -2130,7 +2130,7 @@ async function lookupCompany(){
 
 async function exportMemberCSV(){
   // 併入投票名冊，讓秘書長能一眼核對「會員狀態」與「實際投票權」是否一致
-  let vmap=new Map(), candMap=new Map();
+  let vmap=new Map(), candMap=new Map(), rosterRowMap=new Map();
   const POS_LABEL={director:'理事',supervisor:'監事',executive:'常務理事',exec_supervisor:'常務監事'};
   try{
     let vr=await fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&select=member_no,name,rep,can_vote`,{headers:SB_HEADERS});
@@ -2144,6 +2144,7 @@ async function exportMemberCSV(){
         cur.votes++; cur.names.push(v.rep||v.name||'');
         if(v.can_vote!==false) cur.can=(cur.can||0)+1;      // 秘書長勾選的可投票數
         vmap.set(base,cur);
+        rosterRowMap.set(String(v.member_no||''), v);       // 逐列（含 母號-N）供代表逐人匯出
       });
     }
     if(cr.ok){
@@ -2187,6 +2188,29 @@ async function exportMemberCSV(){
     if(shouldVote && !inRoster)      chk='⚠ 狀態可投票，但不在投票名冊';
     else if(!shouldVote && inRoster) chk='⚠ 在投票名冊，但狀態為「'+(m.status||'未填')+'」';
     if(!m.member_no) chk=(chk?chk+'／':'')+'⚠ 缺會員編號';
+    // 團體會員逐代表一列（母號-1/-2/-3），比照出席匯出的一人一列
+    if(m.member_type==='group' && (m.reps||[]).some(rp=>rp&&rp.name)){
+      (m.reps||[]).forEach((rp,ri)=>{
+        if(!rp||!rp.name) return;
+        const rno=`${m.member_no||''}-${ri+1}`;
+        const rv=rosterRowMap.get(rno);
+        const rIn=!!rv;
+        let rChk='';
+        if(shouldVote && !rIn)      rChk='⚠ 狀態可投票，但此代表不在投票名冊';
+        else if(!shouldVote && rIn) rChk='⚠ 在投票名冊，但狀態為「'+(m.status||'未填')+'」';
+        rows.push([
+          rno, '團體代表', rp.name, m.company||m.name||'', m.tax_id||m.cert_no||'', m.status||'',
+          rIn?'是':'否', rIn?((rv.can_vote!==false)?'可':'否'):'', rIn?1:0,
+          m.name||'', [...(candMap.get(seatDeTitle(rp.name))||[])].sort().join('、'), rChk,
+          rv?(rv.rep||rv.name||''):'',
+          m.company_status||'', '',
+          rp.tel||'', rp.email||'',
+          m.addr_mail||m.addr_domicile||'',
+          m.last_paid||'', m.join_date||'', termsStr, m.note||''
+        ]);
+      });
+      return;
+    }
     rows.push([
       m.member_no||'', type, m.name, m.company||'', m.tax_id||m.cert_no||'', m.status||'',
       inRoster?'是':'否', inRoster?((v.can||0)>0?'可':'否'):'', v?v.votes:0, repNames, [...posSet].sort().join('、'), chk,
