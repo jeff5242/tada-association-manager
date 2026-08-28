@@ -382,15 +382,15 @@ function exportPerPerson(){
   const rows=filtered();
   if(!rows.length){ alert('目前沒有可匯出的資料'); return; }
   const MEAL={yes:'會用餐',no:'不用餐'};
-  const head=['序','桌次','姓名','身分','單位','用餐','素食','邀請來源','主報名人','備註','狀態'];
+  const head=['序','同行群組','群組人數','桌次','姓名','身分','單位','用餐','素食','邀請來源','主報名人','備註','狀態'];
   const esc=v=>{ const t=(v===null||v===undefined)?'':String(v);
     return /[",\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t; };
 
-  const out=[]; let mismatch=0, pendCount=0;
+  const out=[]; let mismatch=0, pendCount=0, gseq=0;
   rows.forEach(it=>{
     if(it.pending){                                   // 未回覆貴賓：列一行，不展開人頭
       pendCount++;
-      out.push([0,'',it.name,'受邀貴賓',it.org,'','',it.inv||'','',it.note,'未回覆']);
+      out.push([0,'','',  '', it.name,'受邀貴賓',it.org,'','',it.inv||'','',it.note,'未回覆']);
       return;
     }
     const comps=splitCompanions(it.comp);
@@ -403,10 +403,12 @@ function exportPerPerson(){
       flag='⚠ 人數欄 '+it.hc+' 與同行欄 '+names.length+' 人不符';
       mismatch++;
     }
+    // 同行群組：兩人以上共用一個關聯值，方便排座、發名牌時辨識是一起來的
+    const gid = names.length>1 ? 'G'+String(++gseq).padStart(3,'0') : '';
     names.forEach((nm,i)=>out.push([
-      0, it.table, nm,
+      0, gid, names.length>1?names.length:'', it.table, nm,
       i===0 ? (it.src==='guest'?'貴賓':'本人') : '同行',
-      i===0 ? it.org : '',
+      i===0 ? it.org : (it.org||''),
       MEAL[it.meal]||'未確認',
       i===0 ? (it.veg||'') : '',
       i===0 ? (it.inv||'') : '',
@@ -419,7 +421,7 @@ function exportPerPerson(){
 
   const lines=out.map(r=>r.map(esc).join(','));
   lines.push('');
-  lines.push(esc(`已確認出席 ${out.length-pendCount} 人`));
+  lines.push(esc(`已確認出席 ${out.length-pendCount} 人　（其中 ${gseq} 組為兩人以上同行，見「同行群組」欄）`));
   if(pendCount) lines.push(esc(`受邀貴賓尚未回覆 ${pendCount} 位（未計入人數）`));
   if(mismatch) lines.push(esc(`⚠ 有 ${mismatch} 筆的人數欄與同行欄人數不符，已於備註標示`));
 
