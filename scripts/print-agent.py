@@ -252,6 +252,9 @@ def star_raster(img):
         img = img.resize((HEAD_DOTS, img.height * HEAD_DOTS // img.width))
     raw = img.tobytes()  # mode "1"：每列 72 bytes，1=白 0=黑（PIL: 1 bit/px，bit set=white）
     out = bytearray()
+    # 防卡死：若前一筆傳輸中斷、印表機殘留在 raster 模式吞資料，
+    # 先送「離開 raster」把它救回；正常狀態下此指令無害。
+    out += b"\x1b*rB"
     out += b"\x1b*rA"          # 進入 raster 模式
     out += b"\x1b*rP0\x00"     # 連續紙（頁長 0）
     n1, n2 = ROW_BYTES & 0xFF, ROW_BYTES >> 8
