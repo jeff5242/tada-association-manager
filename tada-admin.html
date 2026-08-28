@@ -3993,12 +3993,14 @@ async function loadSeating(){
   const st=document.getElementById('seating-status');
   st.textContent='載入中…'; st.style.color='var(--gray)';
   try{
-    const [gRes, mRes] = await Promise.all([
+    const [gRes, mRes, roRes] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,companions,headcount,vegetarian,table_no`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps`, { headers: SB_HEADERS }),
     ]);
     seatGuests  = gRes.ok ? await gRes.json() : [];
     seatMembers = mRes.ok ? await mRes.json() : [];
+    buildMemberPool(roRes.ok ? await roRes.json() : []);
     renderSeating();
     st.style.color='#66bb6a'; st.textContent='✓ 已載入';
   }catch(e){ st.style.color='#ef5350'; st.textContent='載入失敗：'+e.message; }
@@ -4014,11 +4016,42 @@ function readableGroup(m){
   if(m.org) return (m.org||'').length>10 ? m.org.slice(0,10) : m.org;
   return '';
 }
+/* 身分判定一律以會員名冊為準（含團體會員的代表）。
+   資料來自哪張表不影響判定 —— 出席回報裡也有很多是貴賓，
+   同行者預設貴賓，但名字若在名冊仍判為會員。 */
+let seatMemberPool = new Map();
+const SEAT_TITLES=['理事長','董事長','總經理','執行長','副校長','校長','副司長','司長','副署長','署長',
+  '副院長','前院長','院長','教授','研究員','總監','副總','經理','主任','技正','技監','組長',
+  '分所長','副所長','所長','處長','鄉長','社長','顧問','博士','董事','前所長','老師'];
+function seatDeTitle(n){
+  let t=String(n||'').replace(/\s+/g,'');
+  SEAT_TITLES.forEach(x=>{ t=t.split(x).join(''); });
+  return t;
+}
+function buildMemberPool(rows){
+  seatMemberPool=new Map();
+  (rows||[]).forEach(x=>{
+    const put=nm=>{ const k=seatDeTitle(nm); if(k) seatMemberPool.set(k,{no:x.member_no||'',st:x.status||''}); };
+    put(x.name);
+    (x.reps||[]).forEach(r=>r&&r.name&&put(r.name));
+  });
+}
+function seatIdentity(name){
+  const h=seatMemberPool.get(seatDeTitle(name));
+  return h ? {isMember:true, no:h.no, st:h.st} : {isMember:false, no:'', st:''};
+}
+// 同行欄拆成個別姓名（實際資料的分隔符很雜）
+function seatSplitComp(t){
+  return String(t||'').split(/[,，、;；。／/\n]+/)
+    .map(x=>x.replace(/^\s*(眷屬|同行)\s*[:：]\s*/,'').trim())
+    .filter(x=>x && !['無','無。','none','-','na','n/a','nil'].includes(x.toLowerCase()));
+}
+
 function seatOccupants(){
   const list=[];
   // 貴賓只顯示「已實際排位」者（依原則：桌次以出席回報為主，長官貴賓回報後由貴賓名冊指定桌號才進場）
-  seatGuests.filter(g=>g.seat).forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'' }));
-  seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:m.org||m.note||m.companions||'', table:m.table_no||'', size:(m.headcount||1), veg:(m.vegetarian||0), grp:readableGroup(m) }));
+  seatGuests.filter(g=>g.seat).forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
+  seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:m.org||m.note||m.companions||'', table:m.table_no||'', size:(m.headcount||1), veg:(m.vegetarian||0), grp:readableGroup(m), comp:m.companions||'' }));
   return list;
 }
 // 一桌的主要團體名（占最多人的團體，需至少 2 人）
@@ -4065,7 +4098,7 @@ function renderSeating(){
     const capT=tableCapWithVeg(vegTotal);
     const over=head>capT;
     const rows=arr.length? arr.map(o=>{
-      const icon=o.kind==='guest'?'🎩':'👤';
+      const icon=seatIdentity(o.name).isMember?'👤':'🎩';   // 依會員名冊，非資料來源
       const sizeTag=o.size>1?` <span style="color:var(--gold);">×${o.size}</span>`:'';
       const vegTag=o.veg>0?` <span style="background:rgba(41,182,246,0.18);color:#4fc3f7;font-size:10px;border-radius:99px;padding:0 6px;">🥗 素${o.veg>1?'×'+o.veg:''}</span>`:'';
       const noteBtn = o.kind==='member'
@@ -4217,9 +4250,31 @@ function exportSeatingCSV(){
   const occ=seatOccupants().filter(o=>o.table);
   occ.sort((a,b)=>eventTableRank(a.table)-eventTableRank(b.table));
   const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
-  const rows=[['桌號','分類','姓名','身分','單位/備註','人數','報到']];
-  const grpOf=t=>{ const g=EVENT_TABLE_GROUPS.find(g=>g.tables.includes(t)); return g?g.label:'其他'; };
-  occ.forEach(o=>rows.push([o.table,grpOf(o.table),o.name,o.kind==='guest'?'貴賓':'會員',o.sub,o.size,o.kind==='guest'?(o.checked?'已報到':''):''].map(esc)));
+  const rows=[['桌號','主要團體','同行群組','姓名','身分','會員編號','會員狀態','單位/備註','素食','報到']];
+  const byTable=new Map(); occ.forEach(o=>{ if(!byTable.has(o.table)) byTable.set(o.table,[]); byTable.get(o.table).push(o); });
+  const mainOf=t=>tableMainGroup(byTable.get(t)||[]);
+  let gseq=0;
+  occ.forEach(o=>{
+    // 一人一列：把同行者展開，同組共用群組編號
+    const names=[o.name, ...seatSplitComp(o.comp)];
+    while(names.length<o.size) names.push('友人');
+    const gid = names.length>1 ? 'G'+String(++gseq).padStart(3,'0') : '';
+    names.forEach((nm,i)=>{
+      const id=seatIdentity(nm);
+      rows.push([
+        o.table, mainOf(o.table), gid, nm,
+        id.isMember?'會員':'貴賓', id.no, id.st,
+        i===0 ? o.sub : ('同行 ← '+o.name),
+        i===0 ? (o.veg||'') : '',
+        o.kind==='guest' ? (o.checked?'已報到':'') : ''
+      ].map(esc));
+    });
+  });
+  const people=rows.length-1;
+  const mem=rows.slice(1).filter(r=>r[4]==='"會員"').length;
+  rows.push([]);
+  rows.push([`"合計 ${people} 人（會員 ${mem}、貴賓 ${people-mem}）"`,`"${gseq} 組同行"`]);
+  rows.push(['"※ 身分以會員名冊為準（含團體會員代表）；不在名冊者一律為貴賓"']);
   const csv='﻿'+rows.map(r=>r.join(',')).join('\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download=`TADA_桌次表_${todayTag()}.csv`; a.click();
