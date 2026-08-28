@@ -484,8 +484,38 @@ function printReceipt(res){
     new QRCode(document.getElementById('pr-qr'),{text:VOTE_BASE+'?t='+uuids[0],width:230,height:230,correctLevel:QRCode.CorrectLevel.M});
   }
   state='print'; show('v-print');
+  agentPrint(res, uuids);   // 本機列印代理（TSP650II 直連）；失敗靜默、螢幕 QR 照常
   if(!NO_PRINT && uuids.length) setTimeout(()=>{ window.print(); }, 300);   // --kiosk-printing 會靜默送印
   setTimeout(()=>{ toIdle(); }, IDLE_DELAY_MS);
+}
+
+/*
+  本機列印代理：樹莓派上的 print-agent.py（127.0.0.1:8043）直連 Star TSP650II，
+  不經 CUPS。桌號依使用者決策「用姓名比對出席名單」：tada_rsvp.display_name。
+  代理不存在（開發機）或印表機離線時 fetch 會失敗 → 靜默略過，不影響報到流程。
+*/
+const PRINT_AGENT = 'http://127.0.0.1:8043/print';
+async function agentPrint(res, uuids){
+  try{
+    let table='';
+    try{
+      const q=await fetch(`${window.TADA_SB_URL}/rest/v1/tada_rsvp?select=table_no&display_name=eq.${encodeURIComponent(res.name)}&hidden=is.false&limit=1`,{headers:window.tadaSbHeaders()});
+      const rows=q.ok?await q.json():[];
+      table=(rows[0]&&rows[0].table_no)||'';
+    }catch(_){}
+    const hasProxy=(res.proxy_vote_count||0)>0;
+    const jobs = uuids.length ? uuids.map((u,i)=>({
+      name:res.name, member_no:res.member_no, table_no:table,
+      qr:VOTE_BASE+'?t='+u, title:'第六屆會員大會・報到',
+      footer:(hasProxy?((res.self_ballot!==0&&i===0)?'【本人選票】':'【代理選票】')+' ':'')+'請持本單入座，以 LINE 掃描 QR 投票',
+    })) : [{
+      name:res.name, member_no:res.member_no, table_no:table,
+      qr:'', title:'第六屆會員大會・報到', footer:'已完成出席報到，請持本單入座',
+    }];
+    for(const j of jobs){
+      await fetch(PRINT_AGENT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(j)});
+    }
+  }catch(_){ /* 無代理或印表機離線：不影響報到 */ }
 }
 
 function toIdle(){ current=null; state='idle'; show('v-idle'); }
