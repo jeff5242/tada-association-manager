@@ -2130,11 +2130,15 @@ async function lookupCompany(){
 
 async function exportMemberCSV(){
   // 併入投票名冊，讓秘書長能一眼核對「會員狀態」與「實際投票權」是否一致
-  let vmap=new Map();
+  let vmap=new Map(), candMap=new Map();
+  const POS_LABEL={director:'理事',supervisor:'監事',executive:'常務理事',exec_supervisor:'常務監事'};
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&select=member_no,name,rep`,{headers:SB_HEADERS});
-    if(r.ok){
-      (await r.json()).forEach(v=>{
+    const [vr,cr]=await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&select=member_no,name,rep`,{headers:SB_HEADERS}),
+      fetch(`${SB_URL}/rest/v1/tada_v_candidates?election_id=eq.${BALLOT_ELECTION_ID}&select=position,no,name`,{headers:SB_HEADERS}),
+    ]);
+    if(vr.ok){
+      (await vr.json()).forEach(v=>{
         const base=String(v.member_no||'').split('-')[0];   // 團體代表為 編號-1、-2
         if(!base) return;
         const cur=vmap.get(base)||{votes:0,names:[]};
@@ -2142,28 +2146,44 @@ async function exportMemberCSV(){
         vmap.set(base,cur);
       });
     }
+    if(cr.ok){
+      (await cr.json()).forEach(c=>{
+        const k=seatDeTitle(c.name);
+        if(!k) return;
+        if(!candMap.has(k)) candMap.set(k,[]);
+        candMap.get(k).push(`${POS_LABEL[c.position]||c.position}${c.no}號`);
+      });
+    }
   }catch(e){ /* 取不到就只出會員資料 */ }
 
   const VOTABLE=['有效會員','榮譽會員','永久會員'];
   const rows = [['會員編號','類型','姓名/團體','公司/服務機關','統一編號','會員狀態',
-                 '有投票權','票數','投票名冊代表','一致性檢查',
-                 '公司登記狀態','身分證字號','電話','Email','最後繳費','入會日','代表(團體)','屆次職務','備註']];
+                 '有投票權','票數','團體代表','候選職位','一致性檢查',
+                 '投票名冊代表','公司登記狀態','身分證字號','電話','Email','通訊地址','最後繳費','入會日','屆次職務','備註']];
   memberRows.forEach(m=>{
     const termsStr=(m.terms||[]).map(t=>`${SESSION_NAMES[t.session]||('第'+t.session+'屆')}${t.role}`).join('；');
     const type=m.member_type==='personal'?'個人':(m.member_type==='group'?'團體':'理監事');
     const repsStr=(m.reps||[]).map((r,i)=>`${(m.member_no||'')+'-'+(i+1)} ${r.name||''}`).join('；');
     const v=vmap.get(m.member_no||'');
     const inRoster=!!v;
+    // 團體會員的代表姓名（會員名冊上登記的），與投票名冊上的代表分開列
+    const repNames=(m.reps||[]).map(r=>(r&&r.name)||'').filter(Boolean).join('、');
+    // 候選職位：本人或其代表任一人是候選人都列出
+    const posSet=new Set([...(candMap.get(seatDeTitle(m.name))||[])]);
+    (m.reps||[]).forEach(r=>{ (candMap.get(seatDeTitle(r&&r.name))||[]).forEach(x=>posSet.add(x)); });
     const shouldVote=VOTABLE.includes(m.status||'');
     let chk='';
     if(shouldVote && !inRoster)      chk='⚠ 狀態可投票，但不在投票名冊';
     else if(!shouldVote && inRoster) chk='⚠ 在投票名冊，但狀態為「'+(m.status||'未填')+'」';
+    if(!m.member_no) chk=(chk?chk+'／':'')+'⚠ 缺會員編號';
     rows.push([
       m.member_no||'', type, m.name, m.company||'', m.tax_id||m.cert_no||'', m.status||'',
-      inRoster?'是':'否', v?v.votes:0, v?v.names.filter(Boolean).join('、'):'', chk,
+      inRoster?'是':'否', v?v.votes:0, repNames, [...posSet].sort().join('、'), chk,
+      v?v.names.filter(Boolean).join('、'):'',
       m.company_status||'', m.id_number||'',
       m.mobile||m.phone_office||m.contact_phone||'', m.email||m.contact_email||'',
-      m.last_paid||'', m.join_date||'', repsStr, termsStr, m.note||''
+      m.addr_mail||m.addr_domicile||'',
+      m.last_paid||'', m.join_date||'', termsStr, m.note||''
     ]);
   });
 
