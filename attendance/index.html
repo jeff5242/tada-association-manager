@@ -118,10 +118,19 @@ const SB_H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'app
 const LOGIN_PW_HASH='ed6f1a565c864f401b0aba93e9623ea1f4616fe7ebd3f8774fa37dedef301aca'; // TADA1688
 
 const INVITE_SOURCES=['協會貴賓','陳總貴賓','長官貴賓','理監事貴賓'];
+/* 貴賓名冊的姓名常內嵌職稱（例「徐前院長源泰」），與出席回報比對前先剝除 */
+const TITLES=['理事長','董事長','總經理','執行長','副校長','校長','副司長','司長','副署長','署長',
+  '副院長','前院長','院長','教授','研究員','總監','副總','經理','主任','技正','技監','組長',
+  '分所長','副所長','所長','處長','鄉長','社長','顧問','博士','董事','前所長','老師'];
+function deTitle(n){
+  let t=String(n||'').replace(/\s+/g,'');
+  TITLES.forEach(x=>{ t=t.split(x).join(''); });
+  return t;
+}
 const MEAL_LABELS={yes:'會用餐',no:'不用餐',null:'未確認'};
 
 let allItems=[];
-let filterState={source:null,meal:null,table:null};
+let filterState={source:null,meal:null,table:null,pending:null};
 let editingKey=null;   // 'src:id' 正在編輯的那張卡
 
 async function sha256(s){const d=new TextEncoder().encode(s);const h=await crypto.subtle.digest('SHA-256',d);return[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
@@ -143,7 +152,7 @@ async function loadAll(){
   try{
     const [rRes,gRes]=await Promise.all([
       fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,table_no,headcount,vegetarian,meal,invite_source,companions&order=table_no.asc.nullslast,display_name.asc`,{headers:SB_H}),
-      fetch(`${SB_URL}/rest/v1/tada_guests?seat=neq.null&select=id,name,org,note,seat,party_size,invite_source,meal&order=seat.asc,name.asc`,{headers:SB_H})
+      fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,note,seat,party_size,invite_source,meal,status,category&order=name.asc`,{headers:SB_H})
     ]);
     const rsvp=await rRes.json(); const guests=await gRes.json();
     allItems=[];
@@ -152,11 +161,19 @@ async function loadAll(){
       table:r.table_no||'',hc:r.headcount||1,veg:r.vegetarian||0,
       note:r.note||'',meal:r.meal||null,inv:r.invite_source||null,comp:r.companions||''
     }));
-    guests.forEach(g=>allItems.push({
-      src:'guest',id:g.id,name:g.name,org:g.org||'',
-      table:g.seat||'',hc:g.party_size||1,veg:0,
-      note:g.note||'',meal:g.meal||null,inv:g.invite_source||null,comp:''
-    }));
+    // 貴賓名冊與出席回報可能是同一人（貴賓名冊帶職稱），去職稱比對後去重，
+    // 否則同一人會被算兩次人頭。
+    const seen=new Set(rsvp.map(r=>deTitle(r.display_name)));
+    guests.forEach(g=>{
+      if(seen.has(deTitle(g.name))) return;          // 已在出席回報，跳過
+      const replied = !!g.seat || g.status==='onsite';
+      allItems.push({
+        src:'guest',id:g.id,name:g.name,org:g.org||g.category||'',
+        table:g.seat||'',hc:g.party_size||1,veg:0,
+        note:g.note||'',meal:g.meal||null,inv:g.invite_source||null,comp:'',
+        pending:!replied                              // 尚未回覆：列出但不計入人數
+      });
+    });
     buildFilters();
     render();
   }catch(e){console.error(e);alert('載入失敗: '+e.message)}
@@ -167,7 +184,7 @@ function buildFilters(){
   const tables=[...new Set(allItems.map(i=>i.table).filter(Boolean))].sort((a,b)=>{
     const na=parseInt(a.replace(/\D/g,''))||999,nb=parseInt(b.replace(/\D/g,''))||999;return na-nb;
   });
-  let html='<button class="chip'+(filterState.source===null&&filterState.meal===null&&filterState.table===null?' on':'')+'" onclick="clearFilters()">全部</button>';
+  let html='<button class="chip'+(filterState.source===null&&filterState.meal===null&&filterState.table===null&&filterState.pending===null?' on':'')+'" onclick="clearFilters()">全部</button>';
   INVITE_SOURCES.forEach(s=>{
     html+=`<button class="chip${filterState.source===s?' on':''}" onclick="toggleFilter('source','${s}')">${s}</button>`;
   });
@@ -175,10 +192,12 @@ function buildFilters(){
   html+='<button class="chip'+(filterState.meal==='yes'?' on':'')+'" onclick="toggleFilter(\'meal\',\'yes\')">會用餐</button>';
   html+='<button class="chip'+(filterState.meal==='no'?' on':'')+'" onclick="toggleFilter(\'meal\',\'no\')">不用餐</button>';
   html+='<button class="chip'+(filterState.meal==='null'?' on':'')+'" onclick="toggleFilter(\'meal\',\'null\')">餐未確認</button>';
+  html+='<button class="chip'+(filterState.pending==='yes'?' on':'')+'" onclick="toggleFilter(\'pending\',\'yes\')">貴賓未回覆</button>';
+  html+='<button class="chip'+(filterState.pending==='no'?' on':'')+'" onclick="toggleFilter(\'pending\',\'no\')">只看已確認</button>';
   f.innerHTML=html;
 }
 
-function clearFilters(){filterState={source:null,meal:null,table:null};buildFilters();render()}
+function clearFilters(){filterState={source:null,meal:null,table:null,pending:null};buildFilters();render()}
 function toggleFilter(key,val){
   filterState[key]=filterState[key]===val?null:val;
   buildFilters();render();
@@ -198,17 +217,21 @@ function filtered(){
       else if(filterState.meal==='no'){if(i.meal!=='no') return false}
     }
     if(filterState.table && i.table!==filterState.table) return false;
+    if(filterState.pending==='yes' && !i.pending) return false;
+    if(filterState.pending==='no'  &&  i.pending) return false;
     return true;
   });
 }
 
 function render(){
   const items=filtered();
-  const totalHc=items.reduce((s,i)=>s+i.hc,0);
-  const mealYes=items.filter(i=>i.meal==='yes').reduce((s,i)=>s+i.hc,0);
-  const mealNo=items.filter(i=>i.meal==='no').reduce((s,i)=>s+i.hc,0);
-  const mealUnk=items.filter(i=>!i.meal).reduce((s,i)=>s+i.hc,0);
-  const vegTotal=items.reduce((s,i)=>s+i.veg,0);
+  const conf=items.filter(i=>!i.pending);              // 已確認出席者才計入人數
+  const pend=items.filter(i=>i.pending);
+  const totalHc=conf.reduce((s,i)=>s+i.hc,0);
+  const mealYes=conf.filter(i=>i.meal==='yes').reduce((s,i)=>s+i.hc,0);
+  const mealNo=conf.filter(i=>i.meal==='no').reduce((s,i)=>s+i.hc,0);
+  const mealUnk=conf.filter(i=>!i.meal).reduce((s,i)=>s+i.hc,0);
+  const vegTotal=conf.reduce((s,i)=>s+i.veg,0);
 
   document.getElementById('stats').innerHTML=
     `<span class="stat">人數 <b>${totalHc}</b></span>`+
@@ -216,6 +239,7 @@ function render(){
     `<span class="stat">不用餐 <b>${mealNo}</b></span>`+
     `<span class="stat">未確認 <b>${mealUnk}</b></span>`+
     (vegTotal?`<span class="stat">素食 <b>${vegTotal}</b></span>`:'')+
+    (pend.length?`<span class="stat" style="color:var(--warn,#ffa726);">貴賓未回覆 <b style="color:#ffa726;">${pend.length}</b></span>`:'')+
     `<span class="stat">筆數 <b>${items.length}</b></span>`;
 
   if(!items.length){document.getElementById('list').innerHTML='<div class="empty">沒有符合條件的資料</div>';return}
@@ -251,6 +275,7 @@ function render(){
         ${it.hc>1?`<span class="card-hc">x${it.hc}</span>`:''}
         ${it.table?`<span class="card-table">${esc(it.table)}</span>`:''}
         <span class="src-badge ${it.src}">${it.src==='guest'?'貴賓':'出席'}</span>
+        ${it.pending?'<span class="src-badge" style="background:rgba(255,167,38,.15);color:#ffa726;">未回覆</span>':''}
         <button class="edit-btn" onclick="${editing?'cancelEdit()':`startEdit('${key}')`}">${editing?'✕':'✎'}</button>
       </div>
       ${it.org?`<div class="card-org">${esc(it.org)}</div>`:''}
@@ -312,24 +337,27 @@ function exportXls(){
   const rows=filtered();
   if(!rows.length){ alert('目前沒有可匯出的資料'); return; }
   const MEAL={yes:'會用餐',no:'不用餐'};
-  const head=['姓名','單位','桌次','人數','素食','用餐','邀請來源','備註','來源'];
+  const head=['姓名','單位','桌次','人數','素食','用餐','邀請來源','備註','來源','狀態'];
   const esc=v=>{
     const t=(v===null||v===undefined)?'':String(v);
     return /[",\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t;
   };
   const lines=rows.map(i=>[
-    i.name, i.org, i.table, i.hc, i.veg||'',
-    MEAL[i.meal]||'未確認', i.inv||'', i.note,
-    i.src==='guest'?'貴賓名冊':'出席回報'
+    i.name, i.org, i.table, i.pending?'':i.hc, i.veg||'',
+    i.pending?'':(MEAL[i.meal]||'未確認'), i.inv||'', i.note,
+    i.src==='guest'?'貴賓名冊':'出席回報',
+    i.pending?'未回覆':'已確認出席'
   ].map(esc).join(','));
 
   // 合計列，方便直接對帳
-  const tot=rows.reduce((s,i)=>s+i.hc,0);
-  const yes=rows.filter(i=>i.meal==='yes').reduce((s,i)=>s+i.hc,0);
-  const no =rows.filter(i=>i.meal==='no').reduce((s,i)=>s+i.hc,0);
-  const veg=rows.reduce((s,i)=>s+i.veg,0);
+  const conf=rows.filter(i=>!i.pending), pend=rows.filter(i=>i.pending);
+  const tot=conf.reduce((s,i)=>s+i.hc,0);
+  const yes=conf.filter(i=>i.meal==='yes').reduce((s,i)=>s+i.hc,0);
+  const no =conf.filter(i=>i.meal==='no').reduce((s,i)=>s+i.hc,0);
+  const veg=conf.reduce((s,i)=>s+i.veg,0);
   lines.push('');
-  lines.push(esc(`合計 ${rows.length} 筆／${tot} 人　用餐 ${yes}　不用餐 ${no}　素食 ${veg}`));
+  lines.push(esc(`已確認出席 ${conf.length} 筆／${tot} 人　用餐 ${yes}　不用餐 ${no}　素食 ${veg}`));
+  if(pend.length) lines.push(esc(`受邀貴賓尚未回覆 ${pend.length} 位（未計入人數）`));
 
   const csv='\ufeff'+[head.join(','),...lines].join('\r\n');
   const d=new Date();
@@ -354,12 +382,17 @@ function exportPerPerson(){
   const rows=filtered();
   if(!rows.length){ alert('目前沒有可匯出的資料'); return; }
   const MEAL={yes:'會用餐',no:'不用餐'};
-  const head=['序','桌次','姓名','身分','單位','用餐','素食','邀請來源','主報名人','備註'];
+  const head=['序','桌次','姓名','身分','單位','用餐','素食','邀請來源','主報名人','備註','狀態'];
   const esc=v=>{ const t=(v===null||v===undefined)?'':String(v);
     return /[",\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t; };
 
-  const out=[]; let mismatch=0;
+  const out=[]; let mismatch=0, pendCount=0;
   rows.forEach(it=>{
+    if(it.pending){                                   // 未回覆貴賓：列一行，不展開人頭
+      pendCount++;
+      out.push([0,'',it.name,'受邀貴賓',it.org,'','',it.inv||'','',it.note,'未回覆']);
+      return;
+    }
     const comps=splitCompanions(it.comp);
     const names=[it.name, ...comps];
     // 補足或標記：以 headcount 為準
@@ -378,14 +411,16 @@ function exportPerPerson(){
       i===0 ? (it.veg||'') : '',
       i===0 ? (it.inv||'') : '',
       i===0 ? '' : it.name,
-      i===0 ? [it.note,flag].filter(Boolean).join('／') : ''
+      i===0 ? [it.note,flag].filter(Boolean).join('／') : '',
+      '已確認出席'
     ]));
   });
   out.forEach((r,i)=>r[0]=i+1);
 
   const lines=out.map(r=>r.map(esc).join(','));
   lines.push('');
-  lines.push(esc(`合計 ${out.length} 人（報名 ${rows.length} 筆）`));
+  lines.push(esc(`已確認出席 ${out.length-pendCount} 人`));
+  if(pendCount) lines.push(esc(`受邀貴賓尚未回覆 ${pendCount} 位（未計入人數）`));
   if(mismatch) lines.push(esc(`⚠ 有 ${mismatch} 筆的人數欄與同行欄人數不符，已於備註標示`));
 
   const csv='\ufeff'+[head.join(','),...lines].join('\r\n');
