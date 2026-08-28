@@ -41,7 +41,7 @@ def content_dots():
             for line in f:
                 if line.startswith("PAPER_MM="):
                     if line.split("=", 1)[1].strip() == "58":
-                        return 400
+                        return 384   # 尺規實測：紙可印範圍＝印字頭左側 0~384 點
     except OSError:
         pass
     return HEAD_DOTS
@@ -200,9 +200,9 @@ def render_slip(data):
     y += 24
     img = img.crop((0, 0, w, y))
     if w < HEAD_DOTS:
-        # 窄紙靠出紙口右側 → 內容貼齊印字頭右緣
+        # 窄紙走印字頭左側（實測：右對齊會被切右半）→ 內容貼齊左緣
         full = Image.new("L", (HEAD_DOTS, y), 255)
-        full.paste(img, (HEAD_DOTS - w, 0))
+        full.paste(img, (0, 0))
         img = full
     return img.convert("1")
 
@@ -231,8 +231,21 @@ def send_to_printer(payload, retries=4):
     last_err = None
     for attempt in range(retries):
         try:
-            with socket.create_connection((ip, PRINTER_PORT), timeout=5) as s:
+            with socket.create_connection((ip, PRINTER_PORT), timeout=10) as s:
                 s.sendall(payload)
+                # 大張單據：立刻斷線會被印表機丟包。送完先半關寫入端，
+                # 等對方消化完（讀到 EOF 或逾時）再關，確保整份資料進機器。
+                try:
+                    s.shutdown(socket.SHUT_WR)
+                except OSError:
+                    pass
+                s.settimeout(6)
+                try:
+                    while s.recv(4096):
+                        pass
+                except OSError:
+                    pass
+                time.sleep(0.5 + min(2.5, len(payload) / 60000))
             return True, ip
         except OSError as e:
             last_err = e

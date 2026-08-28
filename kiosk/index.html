@@ -509,7 +509,7 @@ async function agentPrint(res, uuids){
     if(uuids.length && res.self_ballot!==0) checklist.push('選票');
     if(hasProxy) checklist.push('委託票');
     const hasBallot = checklist.includes('選票')||checklist.includes('委託票');
-    const NOTICE = hasBallot ? '⚠ 選票領取需在下午 3:30 前完成' : '';
+    const NOTICE = hasBallot ? '⚠ 選票需在下午 3:30 前完成領取及投票' : '';
     const jobs = uuids.length ? uuids.map((u,i)=>({
       name:res.name, member_no:res.member_no, table_no:table,
       checklist:(i===0?checklist:[]),   // 清單只印在第一張
