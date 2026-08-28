@@ -4327,8 +4327,12 @@ function exportSeatingCSV(){
   });
   const people=rows.length-1;
   const mem=rows.slice(1).filter(r=>r[4]==='"會員"').length;
+  const vegTot=occ.reduce((s,o)=>s+(o.veg||0),0);
   rows.push([]);
-  rows.push([`"合計 ${people} 人（會員 ${mem}、貴賓 ${people-mem}）"`,`"${gseq} 組同行"`]);
+  rows.push([`"登記總人數：${people} 人"`]);
+  rows.push([`"素食總份數：${vegTot} 份"`]);
+  rows.push([`"　├ 會員 ${mem} 人／貴賓 ${people-mem} 人"`]);
+  rows.push([`"　└ ${gseq} 組為兩人以上同行"`]);
   rows.push(['"※ 身分以會員名冊為準（含團體會員代表）；不在名冊者一律為貴賓"']);
   const csv='﻿'+rows.map(r=>r.join(',')).join('\n');
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));

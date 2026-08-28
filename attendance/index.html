@@ -377,7 +377,10 @@ function exportXls(){
   const veg=conf.reduce((s,i)=>s+i.veg,0);
   lines.push('');
   const mCnt=conf.filter(i=>i.isMember).length;
-  lines.push(esc(`已確認出席 ${conf.length} 筆／${tot} 人　（會員 ${mCnt} 筆、貴賓 ${conf.length-mCnt} 筆）　用餐 ${yes}　不用餐 ${no}　素食 ${veg}`));
+  lines.push(esc(`登記總人數：${tot} 人`));
+  lines.push(esc(`素食總份數：${veg} 份`));
+  lines.push(esc(`　├ 會員 ${mCnt} 筆／貴賓 ${conf.length-mCnt} 筆（共 ${conf.length} 筆報名）`));
+  lines.push(esc(`　└ 用餐 ${yes} 人／不用餐 ${no} 人／未確認 ${conf.filter(i=>!i.meal).reduce((s,i)=>s+i.hc,0)} 人`));
   if(pend.length) lines.push(esc(`受邀貴賓尚未回覆 ${pend.length} 位（未計入人數）`));
 
   const csv='\ufeff'+[head.join(','),...lines].join('\r\n');
@@ -448,7 +451,11 @@ function exportPerPerson(){
   const lines=out.map(r=>r.map(esc).join(','));
   lines.push('');
   const memRows=out.filter(r=>r[5]==='會員').length;
-  lines.push(esc(`已確認出席 ${out.length-pendCount} 人　（會員 ${memRows} 人、貴賓 ${out.length-pendCount-memRows} 人；${gseq} 組為兩人以上同行）`));
+  const vegTot=rows.filter(i=>!i.pending).reduce((s,i)=>s+i.veg,0);
+  lines.push(esc(`登記總人數：${out.length-pendCount} 人`));
+  lines.push(esc(`素食總份數：${vegTot} 份`));
+  lines.push(esc(`　├ 會員 ${memRows} 人／貴賓 ${out.length-pendCount-memRows} 人`));
+  lines.push(esc(`　└ ${gseq} 組為兩人以上同行（見「同行群組」欄）`));
   if(pendCount) lines.push(esc(`受邀貴賓尚未回覆 ${pendCount} 位（未計入人數）`));
   if(mismatch) lines.push(esc(`⚠ 有 ${mismatch} 筆的人數欄與同行欄人數不符，已於備註標示`));
 
