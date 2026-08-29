@@ -726,6 +726,29 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       </div>
       <div class="tbl-wrap"><table><thead><tr><th>勾選</th><th>編號</th><th>姓名</th><th>工作人員</th><th>出席狀態</th><th>委託狀況</th><th>操作</th></tr></thead>
         <tbody id="voters-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;">載入中…</td></tr></tbody></table></div>
+
+      <!-- 設定委託 Modal：受託人限本會可投票會員、輸入自動完成 -->
+      <div id="vp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;">
+        <div style="background:var(--surface,#1c2a20);border:1px solid var(--gold);border-radius:14px;padding:26px 28px;width:440px;max-width:92vw;">
+          <h3 style="color:var(--gold-lt);font-size:17px;margin-bottom:4px;">設定委託</h3>
+          <p id="vp-principal" style="font-size:13px;color:var(--gray);margin-bottom:16px;"></p>
+          <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">受託人（限本會可投票會員，輸入姓名自動完成）</label>
+          <input id="vp-name" list="vp-datalist" placeholder="輸入姓名選擇會員…" autocomplete="off"
+                 style="width:100%;background:var(--surface2,rgba(255,255,255,.06));border:1px solid var(--border,rgba(196,146,42,.35));border-radius:8px;padding:11px 12px;color:var(--ink,#eee);font-size:15px;outline:none;font-family:inherit;">
+          <datalist id="vp-datalist"></datalist>
+          <div style="display:flex;gap:18px;margin:16px 0 6px;">
+            <label style="font-size:14px;color:var(--ink,#eee);display:flex;align-items:center;gap:7px;"><input type="checkbox" id="vp-attend" checked style="width:17px;height:17px;accent-color:var(--gold);">委託出席</label>
+            <label style="font-size:14px;color:var(--ink,#eee);display:flex;align-items:center;gap:7px;"><input type="checkbox" id="vp-vote" checked style="width:17px;height:17px;accent-color:var(--gold);">委託投票</label>
+          </div>
+          <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin:12px 0 6px;">紙本委託書照片（選填）</label>
+          <input type="file" id="vp-proof" accept="image/*" style="font-size:12px;color:var(--gray);width:100%;">
+          <div id="vp-err" style="color:#ef5350;font-size:12px;min-height:16px;margin-top:10px;"></div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+            <button class="btn btn-outline btn-sm" onclick="closeVoterProxy()">取消</button>
+            <button class="btn btn-gold btn-sm" onclick="submitVoterProxyModal()">✓ 建立委託</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="el-cat-consent" style="display:none;">
@@ -4816,50 +4839,68 @@ async function votersBatchPrint(){
   renderVoters();
 }
 
-// 後台代設委託（紙本委託書）：受託人資訊＋可上傳委託書照片為證明
+// 後台代設委託（紙本委託書）：受託人限可投票會員、datalist 自動完成、可附證明照片
 let voterProxyNo=null;
 function openVoterProxy(no){
   voterProxyNo=no;
   const v=votersRows.find(x=>x.member_no===no);
-  const name=prompt(`為「${v?v.name:''}」設定委託\n\n請輸入受託人姓名（須為本會會員）：`);
-  if(!name) return;
-  const dno=prompt('受託人會員編號（選填，同名時必填）：')||'';
-  const scope=prompt('委託範圍：1=出席+投票（預設）、2=僅出席、3=僅投票','1')||'1';
-  submitVoterProxy(v, name.trim(), dno.trim(), scope.trim());
+  document.getElementById('vp-principal').textContent=`委託人：${v?v.name:''}（${no}）`;
+  // 自動完成名單：可投票會員（排除委託人本人）；「姓名｜編號」格式保證同名可辨
+  document.getElementById('vp-datalist').innerHTML=votersRows
+    .filter(x=>x.member_no!==no)
+    .map(x=>`<option value="${escapeHtml(x.name)}｜${escapeHtml(x.member_no)}">`).join('');
+  document.getElementById('vp-name').value='';
+  document.getElementById('vp-attend').checked=true;
+  document.getElementById('vp-vote').checked=true;
+  document.getElementById('vp-proof').value='';
+  document.getElementById('vp-err').textContent='';
+  const md=document.getElementById('vp-modal'); md.style.display='flex';
+  setTimeout(()=>document.getElementById('vp-name').focus(),50);
 }
-async function submitVoterProxy(v, dname, dno, scope){
-  const p_attend=scope!=='3', p_vote=scope!=='2';
+function closeVoterProxy(){ document.getElementById('vp-modal').style.display='none'; }
+async function submitVoterProxyModal(){
+  const err=document.getElementById('vp-err');
+  const v=votersRows.find(x=>x.member_no===voterProxyNo);
+  const raw=document.getElementById('vp-name').value.trim();
+  // 解析「姓名｜編號」；也接受純姓名但必須在名單中唯一
+  let dname='', dno='';
+  if(raw.includes('｜')){ [dname,dno]=raw.split('｜').map(s=>s.trim()); }
+  else{
+    const hits=votersRows.filter(x=>x.member_no!==voterProxyNo && x.name===raw);
+    if(hits.length===1){ dname=raw; dno=hits[0].member_no; }
+  }
+  const valid=dno && votersRows.some(x=>x.member_no===dno && x.name===dname);
+  if(!valid){ err.textContent='受託人限本會可投票會員——請從自動完成名單中選擇'; return; }
+  const p_attend=document.getElementById('vp-attend').checked;
+  const p_vote=document.getElementById('vp-vote').checked;
+  if(!p_attend&&!p_vote){ err.textContent='請至少勾選「委託出席」或「委託投票」'; return; }
+  err.textContent=''; err.style.color='var(--gray)'; err.textContent='送出中…';
   try{
     const r=await sbEl('rpc/proxy_submit',{method:'POST',headers:{...SB_HEADERS,'Content-Type':'application/json'},
       body:JSON.stringify({p_election:election.id,p_principal_name:v.name,p_principal_no:v.member_no,
         p_delegate_name:dname,p_delegate_no:dno,p_attend,p_vote,p_user_id:''})});
     const d=r.ok?await r.json():null;
     if(!d||!d.ok){
-      const M={delegate_not_member:'查無受託人（須為本會會員，請確認姓名/編號）',already_delegated:'此會員已有委託，請先至委託書分頁處理',
+      const M={delegate_not_member:'查無受託人（須為本會會員）',already_delegated:'此會員已有委託，請先至委託書分頁處理',
         delegate_taken:'受託人已受他人委託（一人限受一託）',is_delegate:'此會員已受他人委託，不得再委託出去',
         checked_in:'雙方已有人完成報到，無法設定',self:'不能委託給自己'};
-      alert('設定失敗：'+((d&&M[d.error])||(d&&d.error)||'未知錯誤')); return;
+      err.style.color='#ef5350'; err.textContent='設定失敗：'+((d&&M[d.error])||(d&&d.error)||'未知錯誤'); return;
     }
-    // 選填：上傳紙本委託書照片作為證明
-    if(confirm('委託已建立 ✓\n\n要上傳紙本委託書照片作為證明嗎？')){
-      const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
-      inp.onchange=async()=>{
-        const f=inp.files[0]; if(!f) return;
-        try{
-          const path=`proxy-proofs/${v.member_no}-${Date.now()}.${(f.name.split('.').pop()||'jpg')}`;
-          const up=await fetch(`${SB_URL}/storage/v1/object/member-logos/${path}`,{method:'POST',
-            headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':f.type||'image/jpeg'},body:f});
-          if(!up.ok) throw new Error(await up.text());
-          const url=`${SB_URL}/storage/v1/object/public/member-logos/${path}`;
-          await sbEl(`tada_v_proxy?election_id=eq.${election.id}&principal_no=eq.${encodeURIComponent(v.member_no)}&status=eq.active`,
-            {method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({proof_url:url})});
-          alert('證明已上傳 ✓'); renderVoters();
-        }catch(e){ alert('上傳失敗：'+e.message+'\n（委託本身已建立，可稍後再補）'); }
-      };
-      inp.click();
+    // 附證明照片（選填）
+    const f=document.getElementById('vp-proof').files[0];
+    if(f){
+      try{
+        const path=`proxy-proofs/${v.member_no}-${Date.now()}.${(f.name.split('.').pop()||'jpg')}`;
+        const up=await fetch(`${SB_URL}/storage/v1/object/member-logos/${path}`,{method:'POST',
+          headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':f.type||'image/jpeg'},body:f});
+        if(!up.ok) throw new Error(await up.text());
+        const url=`${SB_URL}/storage/v1/object/public/member-logos/${path}`;
+        await sbEl(`tada_v_proxy?election_id=eq.${election.id}&principal_no=eq.${encodeURIComponent(v.member_no)}&status=eq.active`,
+          {method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({proof_url:url})});
+      }catch(e){ alert('委託已建立，但證明上傳失敗：'+e.message+'\n可稍後在此列重新設定補傳。'); }
     }
-    renderVoters();
-  }catch(e){ alert('設定失敗：'+e.message); }
+    closeVoterProxy(); renderVoters();
+  }catch(e){ err.style.color='#ef5350'; err.textContent='設定失敗：'+e.message; }
 }
 
 // 紙本開票：輸入各候選人紙本得票數，併入結果
