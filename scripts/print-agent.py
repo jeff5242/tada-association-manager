@@ -17,7 +17,9 @@
 import json
 import os
 import socket
+import threading
 import time
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from PIL import Image, ImageDraw, ImageFont
@@ -349,5 +351,43 @@ class Handler(BaseHTTPRequestHandler):
         pass  # 常駐服務不刷 journal；錯誤由回應碼表達
 
 
+# ── 遠端列印佇列：後台（tada-admin）塞 tada_print_queue，本代理輪詢出紙 ──
+SB_URL = "https://ldjugtfxtxnpvkqvjxew.supabase.co"
+SB_KEY = "sb_publishable_08XiE2fH7iY_nlr_K4NQ4w_kJZPkjnj"   # anon key（本就公開於前端）
+QUEUE_POLL_SEC = 4
+
+
+def poll_print_queue():
+    hdr = {"apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY,
+           "Content-Type": "application/json"}
+    while True:
+        try:
+            req = urllib.request.Request(
+                SB_URL + "/rest/v1/tada_print_queue?status=eq.pending"
+                         "&order=created_at.asc&limit=3&select=id,payload",
+                headers=hdr)
+            jobs = json.load(urllib.request.urlopen(req, timeout=10))
+            for j in jobs:
+                try:
+                    ok, info = send_to_printer(star_raster(render_slip(j.get("payload") or {})))
+                except Exception as e:          # 渲染失敗也要標記，避免卡住佇列
+                    ok, info = False, f"render: {e}"
+                body = json.dumps({
+                    "status": "done" if ok else "error",
+                    "error": None if ok else str(info)[:300],
+                    "printed_at": time.strftime("%Y-%m-%dT%H:%M:%S+08:00"),
+                }).encode()
+                upd = urllib.request.Request(
+                    SB_URL + f"/rest/v1/tada_print_queue?id=eq.{j['id']}",
+                    headers={**hdr, "Prefer": "return=minimal"},
+                    data=body, method="PATCH")
+                urllib.request.urlopen(upd, timeout=10)
+                time.sleep(1.2)                 # 印表機出紙節流
+        except Exception:
+            pass                                 # 網路暫斷等下一輪
+        time.sleep(QUEUE_POLL_SEC)
+
+
 if __name__ == "__main__":
+    threading.Thread(target=poll_print_queue, daemon=True).start()
     ThreadingHTTPServer(LISTEN_ADDR, Handler).serve_forever()

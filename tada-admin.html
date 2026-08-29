@@ -669,6 +669,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <button class="sub-tab" onclick="switchElCat('supervisor',this)">監事候選人</button>
       <button class="sub-tab" onclick="switchElCat('executive',this)">常務理事</button>
       <button class="sub-tab" onclick="switchElCat('roster',this)">會員名冊</button>
+      <button class="sub-tab" onclick="switchElCat('voters',this)">🗳️ 選舉人名冊</button>
       <button class="sub-tab" onclick="switchElCat('consent',this)">願任書</button>
       <button class="sub-tab" onclick="switchElCat('proxy',this)">委託書</button>
       <button class="sub-tab" onclick="switchElCat('tally',this)">🗳️ 紙本開票</button>
@@ -708,6 +709,23 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       </div>
       <div class="tbl-wrap"><table><thead><tr><th>編號</th><th>姓名</th><th>類型</th><th title="取消勾選＝報到只能領名片/禮物，不發選票、不印條碼">可投票</th><th>報到</th><th>操作</th></tr></thead>
         <tbody id="roster-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr></tbody></table></div>
+    </div>
+
+    <!-- 選舉人名冊：可投票會員總表（工作人員標記／批次預報到列印／委託狀態） -->
+    <div id="el-cat-voters" style="display:none;">
+      <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:10px;">
+        所有「可投票」會員（依會員名冊的可投票勾選）。勾選後可<b style="color:var(--gold-lt);">批次報到並列印報到單</b>（走紙本領票流程，與現場掃碼等效）；
+        列印經雲端佇列送往報到機印表機（樹莓派需開機）。「工作人員」標記存於名冊，供快速全選。
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <button class="btn btn-outline btn-sm" onclick="votersSelectStaff()">☑ 全選工作人員（未報到）</button>
+        <button class="btn btn-outline btn-sm" onclick="votersSelectNone()">✕ 清除勾選</button>
+        <button class="btn btn-gold btn-sm" onclick="votersBatchPrint()">🖨️ 批次報到並列印勾選者</button>
+        <button class="btn btn-outline btn-sm" onclick="renderVoters()">↻ 重新載入</button>
+        <span id="voters-status" style="font-size:12px;color:var(--gray);"></span>
+      </div>
+      <div class="tbl-wrap"><table><thead><tr><th>勾選</th><th>編號</th><th>姓名</th><th>工作人員</th><th>出席狀態</th><th>委託狀況</th><th>操作</th></tr></thead>
+        <tbody id="voters-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;">載入中…</td></tr></tbody></table></div>
     </div>
 
     <div id="el-cat-consent" style="display:none;">
@@ -4691,16 +4709,157 @@ async function setElectionStatus(s){
 
 function switchElCat(cat,btn){
   document.querySelectorAll('#page-election .sub-tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
-  const show = ['roster','consent','proxy','tally'].includes(cat) ? cat : 'cand';
+  const show = ['roster','voters','consent','proxy','tally'].includes(cat) ? cat : 'cand';
   document.getElementById('el-cat-cand').style.display    = show==='cand'    ? 'block':'none';
   document.getElementById('el-cat-roster').style.display  = show==='roster'  ? 'block':'none';
+  document.getElementById('el-cat-voters').style.display  = show==='voters'  ? 'block':'none';
   document.getElementById('el-cat-consent').style.display = show==='consent' ? 'block':'none';
   document.getElementById('el-cat-proxy').style.display   = show==='proxy'   ? 'block':'none';
   document.getElementById('el-cat-tally').style.display   = show==='tally'   ? 'block':'none';
   if(show==='cand'){ elCat=cat; renderCandidates(); }
+  if(show==='voters'){ renderVoters(); }
   if(show==='consent'){ renderConsent(); }
   if(show==='proxy'){ renderProxy(); }
   if(show==='tally'){ renderTally(); }
+}
+
+// ══════════ 選舉人名冊（可投票會員總表）══════════
+let votersRows=[], votersProxy=[];
+async function renderVoters(){
+  const st=document.getElementById('voters-status'); st.textContent='載入中…';
+  let r=await sbEl(`tada_v_members?election_id=eq.${election.id}&can_vote=is.true&order=member_no&select=id,member_no,name,rep,member_type,is_checked_in,check_in_time,vote_method,is_staff`);
+  let hasStaff=true;
+  if(!r.ok){ hasStaff=false; r=await sbEl(`tada_v_members?election_id=eq.${election.id}&can_vote=is.true&order=member_no&select=id,member_no,name,rep,member_type,is_checked_in,check_in_time,vote_method`); }
+  votersRows=r.ok?await r.json():[];
+  try{ const pr=await sbEl('rpc/proxy_list',{method:'POST',headers:{...SB_HEADERS,'Content-Type':'application/json'},body:JSON.stringify({p_election:election.id})});
+       votersProxy=pr.ok?(await pr.json()).proxies||[]:[]; }catch(e){ votersProxy=[]; }
+  const act=p=>(p.status||'active')==='active';
+  const tb=document.getElementById('voters-tbody');
+  if(!votersRows.length){ tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;">尚無可投票名冊（請先在會員名冊勾選可投票）</td></tr>'; st.textContent=''; return; }
+  const fmtT=t=>t?new Date(t).toLocaleString('zh-TW',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+  tb.innerHTML=votersRows.map(v=>{
+    const out=votersProxy.find(p=>act(p)&&(p.principal_no===v.member_no||p.principal_name===v.name));
+    const recv=votersProxy.filter(p=>act(p)&&(p.delegate_no===v.member_no||p.delegate_name===v.name));
+    let px='';
+    if(out) px+=`<div style="color:#e8b84b;">委出→${escapeHtml(out.delegate_name||'')}（${[out.proxy_attend?'出席':null,out.proxy_vote?'投票':null].filter(Boolean).join('、')}）${out.proof_url?` <a href="${escapeHtml(out.proof_url)}" target="_blank" style="color:#4fc3f7;">📎證明</a>`:''}</div>`;
+    recv.forEach(p=>{ px+=`<div style="color:#4fc3f7;">受託←${escapeHtml(p.principal_name||'')}（${[p.proxy_attend?'出席':null,p.proxy_vote?'投票':null].filter(Boolean).join('、')}）</div>`; });
+    if(!px) px='<span style="color:var(--gray);">—</span>';
+    const chk=v.is_checked_in
+      ? `<span style="color:#66bb6a;">✓ 已報到</span><span style="color:var(--gray);font-size:10px;display:block;">${fmtT(v.check_in_time)}${v.vote_method?'・'+(v.vote_method==='paper'?'紙本':'電子'):''}</span>`
+      : '<span style="color:var(--gray);">未報到</span>';
+    return `<tr>
+      <td style="text-align:center;"><input type="checkbox" class="voter-pick" data-no="${escapeHtml(v.member_no)}" style="width:17px;height:17px;accent-color:var(--gold);"></td>
+      <td style="font-family:monospace;font-size:12px;">${escapeHtml(v.member_no)}</td>
+      <td class="name-cell">${escapeHtml(v.name)}${v.rep&&v.rep!==v.name?`<span style="color:var(--gray);font-size:11px;"> / ${escapeHtml(v.rep)}</span>`:''}</td>
+      <td style="text-align:center;">${hasStaff?`<input type="checkbox" ${v.is_staff?'checked':''} onchange="setVoterStaff('${v.id}',this.checked)" style="width:17px;height:17px;accent-color:#4fc3f7;" title="標記為現場工作人員">`:'<span style="color:var(--gray);font-size:10px;" title="請先執行 tada_voter_ops.sql">—</span>'}</td>
+      <td>${chk}</td>
+      <td style="font-size:11px;line-height:1.6;">${px}</td>
+      <td style="white-space:nowrap;"><button class="btn btn-sm btn-outline" onclick="openVoterProxy('${escapeHtml(v.member_no)}')">設定委託</button></td>
+    </tr>`;
+  }).join('');
+  const staffN=votersRows.filter(v=>v.is_staff).length;
+  st.textContent=`可投票 ${votersRows.length} 位・已報到 ${votersRows.filter(v=>v.is_checked_in).length}・工作人員 ${staffN}`;
+}
+async function setVoterStaff(id,val){
+  const r=await sbEl(`tada_v_members?id=eq.${id}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({is_staff:val})});
+  if(!r.ok) alert('更新失敗：請確認已執行 supabase/tada_voter_ops.sql');
+  renderVoters();
+}
+function votersSelectStaff(){
+  document.querySelectorAll('.voter-pick').forEach(cb=>{
+    const v=votersRows.find(x=>x.member_no===cb.dataset.no);
+    cb.checked=!!(v&&v.is_staff&&!v.is_checked_in);
+  });
+}
+function votersSelectNone(){ document.querySelectorAll('.voter-pick').forEach(cb=>cb.checked=false); }
+
+// 批次：逐人 vote_checkin_paper（已報到者只補印）→ 組報到單 payload → 塞入雲端列印佇列
+const VOTER_NOTICE='⚠ 選票需在下午 3:30 前完成領取及投票';
+async function votersBatchPrint(){
+  const picked=[...document.querySelectorAll('.voter-pick:checked')].map(cb=>cb.dataset.no);
+  if(!picked.length){ alert('請先勾選要處理的人'); return; }
+  if(!confirm(`將對 ${picked.length} 位執行「報到（紙本領票）＋列印報到單」？\n已報到者不重複報到、只補印單。\n請確認報到機（樹莓派＋印表機）已開機。`)) return;
+  const st=document.getElementById('voters-status');
+  let ok=0, fail=0;
+  for(const no of picked){
+    st.textContent=`處理中 ${ok+fail+1}/${picked.length}…`;
+    try{
+      const v=votersRows.find(x=>x.member_no===no);
+      let res=null;
+      if(!v.is_checked_in){
+        const r=await sbEl('rpc/vote_checkin_paper',{method:'POST',headers:{...SB_HEADERS,'Content-Type':'application/json'},body:JSON.stringify({p_election:election.id,p_member_no:no})});
+        res=r.ok?await r.json():null;
+        if(!res||(!res.ok&&res.error!=='already_checked_in')){ fail++; console.warn('checkin fail',no,res); continue; }
+      }
+      // 組單：桌號依姓名比對出席名單；勾選清單依委託/票數規則（與報到機一致）
+      let table='';
+      try{ const q=await fetch(`${SB_URL}/rest/v1/tada_rsvp?select=table_no&display_name=eq.${encodeURIComponent(v.name)}&hidden=is.false&limit=1`,{headers:SB_HEADERS});
+           const rows=q.ok?await q.json():[]; table=(rows[0]&&rows[0].table_no)||''; }catch(e){}
+      const act=p=>(p.status||'active')==='active';
+      const delegatedVote=votersProxy.some(p=>act(p)&&p.proxy_vote&&(p.principal_no===no||p.principal_name===v.name));
+      const recvVote=votersProxy.filter(p=>act(p)&&p.proxy_vote&&(p.delegate_no===no||p.delegate_name===v.name)).length;
+      const checklist=['名片','禮物'];
+      if(!delegatedVote) checklist.push('選票');
+      if(recvVote>0) checklist.push('委託票');
+      const hasBallot=checklist.includes('選票')||checklist.includes('委託票');
+      let remark='';
+      if(delegatedVote){ const p=votersProxy.find(p=>act(p)&&p.proxy_vote&&(p.principal_no===no||p.principal_name===v.name));
+                         remark=`※ 選票已委託（${(p&&p.delegate_name)||'受託人'}會員）`; }
+      const payload={ name:v.name, member_no:no, table_no:table, checklist, remark,
+        notice:hasBallot?VOTER_NOTICE:'', barcode:hasBallot?no:'',
+        title:'第六屆會員大會・報到', footer:'請持本單至服務台領取，並依桌號入座' };
+      const qr=await sbEl('tada_print_queue',{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({payload})});
+      if(qr.ok) ok++; else { fail++; console.warn('queue fail',no,await qr.text()); }
+    }catch(e){ fail++; console.warn(no,e); }
+  }
+  st.textContent=`✓ 完成：成功 ${ok}、失敗 ${fail}（列印由報到機依序出紙，每張約 2 秒）`;
+  renderVoters();
+}
+
+// 後台代設委託（紙本委託書）：受託人資訊＋可上傳委託書照片為證明
+let voterProxyNo=null;
+function openVoterProxy(no){
+  voterProxyNo=no;
+  const v=votersRows.find(x=>x.member_no===no);
+  const name=prompt(`為「${v?v.name:''}」設定委託\n\n請輸入受託人姓名（須為本會會員）：`);
+  if(!name) return;
+  const dno=prompt('受託人會員編號（選填，同名時必填）：')||'';
+  const scope=prompt('委託範圍：1=出席+投票（預設）、2=僅出席、3=僅投票','1')||'1';
+  submitVoterProxy(v, name.trim(), dno.trim(), scope.trim());
+}
+async function submitVoterProxy(v, dname, dno, scope){
+  const p_attend=scope!=='3', p_vote=scope!=='2';
+  try{
+    const r=await sbEl('rpc/proxy_submit',{method:'POST',headers:{...SB_HEADERS,'Content-Type':'application/json'},
+      body:JSON.stringify({p_election:election.id,p_principal_name:v.name,p_principal_no:v.member_no,
+        p_delegate_name:dname,p_delegate_no:dno,p_attend,p_vote,p_user_id:''})});
+    const d=r.ok?await r.json():null;
+    if(!d||!d.ok){
+      const M={delegate_not_member:'查無受託人（須為本會會員，請確認姓名/編號）',already_delegated:'此會員已有委託，請先至委託書分頁處理',
+        delegate_taken:'受託人已受他人委託（一人限受一託）',is_delegate:'此會員已受他人委託，不得再委託出去',
+        checked_in:'雙方已有人完成報到，無法設定',self:'不能委託給自己'};
+      alert('設定失敗：'+((d&&M[d.error])||(d&&d.error)||'未知錯誤')); return;
+    }
+    // 選填：上傳紙本委託書照片作為證明
+    if(confirm('委託已建立 ✓\n\n要上傳紙本委託書照片作為證明嗎？')){
+      const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+      inp.onchange=async()=>{
+        const f=inp.files[0]; if(!f) return;
+        try{
+          const path=`proxy-proofs/${v.member_no}-${Date.now()}.${(f.name.split('.').pop()||'jpg')}`;
+          const up=await fetch(`${SB_URL}/storage/v1/object/member-logos/${path}`,{method:'POST',
+            headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':f.type||'image/jpeg'},body:f});
+          if(!up.ok) throw new Error(await up.text());
+          const url=`${SB_URL}/storage/v1/object/public/member-logos/${path}`;
+          await sbEl(`tada_v_proxy?election_id=eq.${election.id}&principal_no=eq.${encodeURIComponent(v.member_no)}&status=eq.active`,
+            {method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({proof_url:url})});
+          alert('證明已上傳 ✓'); renderVoters();
+        }catch(e){ alert('上傳失敗：'+e.message+'\n（委託本身已建立，可稍後再補）'); }
+      };
+      inp.click();
+    }
+    renderVoters();
+  }catch(e){ alert('設定失敗：'+e.message); }
 }
 
 // 紙本開票：輸入各候選人紙本得票數，併入結果
