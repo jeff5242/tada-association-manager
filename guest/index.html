@@ -35,6 +35,12 @@ header .prog{margin-left:auto;text-align:right}
 header .prog .n{font-family:var(--serif);font-size:30px;font-weight:900;color:var(--cream);line-height:1}
 header .prog .n b{color:var(--gold-lt)}
 header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top:3px}
+.reset-all{background:rgba(190,60,50,.18);border:1px solid rgba(220,90,80,.55);color:#ffb3aa;border-radius:10px;padding:9px 16px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
+.reset-all:active{transform:scale(.96)}
+header .prog{cursor:pointer;border-radius:12px;padding:6px 12px;border:1px solid transparent;transition:all .12s}
+header .prog:active{transform:scale(.96)}
+header .prog.on{background:rgba(196,146,42,.16);border-color:var(--gold-lt)}
+header .prog.on .l{color:var(--gold-lt)}
 .add-btn{margin-left:22px;background:var(--gold);border:none;color:#1a1a12;border-radius:12px;height:52px;padding:0 22px;font-size:17px;font-weight:900;font-family:inherit;cursor:pointer;flex:none}
 .add-btn:active{transform:scale(.96)}
 .fs-btn{margin-left:12px;background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.35);color:var(--gold-lt);border-radius:12px;width:56px;height:52px;font-size:24px;cursor:pointer;flex:none}
@@ -156,7 +162,7 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
     <div class="h-title">貴　賓　報　到</div>
     <div class="h-sub">2026 第六屆會員大會暨理監事選舉 · 9/4 臻愛婚宴會館</div>
   </div>
-  <div class="prog"><div class="n"><b id="p-checked">0</b> / <span id="p-total">0</span></div><div class="l">已報到</div></div>
+  <div class="prog" id="prog" onclick="toggleOnlyDone()" title="點一下只看已報到名單"><div class="n"><b id="p-checked">0</b> / <span id="p-total">0</span></div><div class="l" id="p-label">已報到</div></div>
   <button class="add-btn" id="add-btn" onclick="openAddGuest()">＋ 貴賓</button>
   <button class="fs-btn" id="qr-btn" onclick="showWalkinQR()" title="掃碼自助報到">📱</button>
   <button class="fs-btn" onclick="openSettings()" title="設定">⚙</button>
@@ -207,6 +213,7 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
   <label class="set-row"><span>顯示「貴賓報到」按鈕<small>關閉＝純展示，貴賓無法自己點報到</small></span><input type="checkbox" id="set-checkin"></label>
   <label class="set-row"><span>顯示「＋ 貴賓」按鈕<small>工作人員現場新增用</small></span><input type="checkbox" id="set-add"></label>
   <label class="set-row"><span>顯示「📱 掃碼報到 QR」按鈕<small>貴賓手機掃碼自助報到</small></span><input type="checkbox" id="set-qr"></label>
+  <label class="set-row"><span>賽前重置報到紀錄<small>把所有人改回「未報到」。活動當天開場前清掉測試資料用。</small></span><button class="reset-all" onclick="resetAllCheckins()">清除全部</button></label>
   <div class="add-btns"><button class="add-ok" onclick="saveSettings()">✓ 套用</button></div>
 </div></div>
 
@@ -226,7 +233,7 @@ header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top
 <script>
 const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
 const CATS=['公協會','學校單位','政府單位','農業合作單位','貴賓'];
-let guests=[], curCat='__all__', curOrg='__all__', searchQ='', curSurname='', wTimer=null;
+let guests=[], curCat='__all__', curOrg='__all__', searchQ='', curSurname='', wTimer=null, onlyDone=false;
 function catFor(g){ return clean(g.category)||'農業合作單位'; }
 
 async function rpc(fn,body){ const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:'POST',headers:H(),body:JSON.stringify(body)}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
@@ -290,7 +297,11 @@ function clearSearch(rerender=true){ searchQ=''; const q=document.getElementById
 function renderProg(){
   document.getElementById('p-total').textContent=guests.length;
   document.getElementById('p-checked').textContent=guests.filter(g=>g.checked_in).length;
+  document.getElementById('prog').classList.toggle('on',onlyDone);
+  document.getElementById('p-label').textContent=onlyDone?'已報到 · 檢視中':'已報到';
 }
+/* 點標頭的「已報到 N/M」＝列出目前已報到的人，方便核對或按 ↺ 取消 */
+function toggleOnlyDone(){ onlyDone=!onlyDone; clearSearch(false); renderProg(); renderList(); }
 function orgKey(g){ return clean(g.unit)||clean(g.org)||'其他'; }
 /* 單位膠囊只列「2 人以上」的團體，單獨一人的併成「其他」，
    否則貴賓分頁會出現近百個 1 人膠囊，現場翻不完。 */
@@ -316,6 +327,13 @@ function renderUnits(){
 function pickOrg(k){ curOrg=k; curSurname=''; clearSearch(false); renderUnits(); renderSurnames(); renderList(); }
 function renderList(){
   let arr=guests.slice();
+  if(onlyDone){
+    arr=arr.filter(g=>g.checked_in).sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-Hant'));
+    const el0=document.getElementById('list');
+    if(!arr.length){ el0.innerHTML='<div class="empty">目前沒有人完成報到。</div>'; return; }
+    el0.innerHTML=arr.map(g=>`<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`).join('');
+    return;
+  }
   if(searchQ){ arr=arr.filter(g=>(g.name||'').includes(searchQ)); }
   else if(curSurname){ arr=arr.filter(g=>(g.name||'').trim().startsWith(curSurname)).sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-Hant')); }
   else { if(curCat!=='__all__') arr=arr.filter(g=>catFor(g)===curCat);
@@ -364,6 +382,20 @@ async function submitAddGuest(){
       closeAddGuest(); renderCats(); renderUnits(); renderList(); renderProg(); showWelcome(res, res.id);
     } else err.textContent='新增失敗：'+(res.error||'未知');
   }catch(e){ err.textContent='新增失敗：'+e.message; }
+}
+/* 賽前清資料：逐筆呼叫 undo RPC（沒有批次 RPC，資料量小可接受） */
+async function resetAllCheckins(){
+  const done=guests.filter(g=>g.checked_in);
+  if(!done.length){ alert('目前沒有任何報到紀錄。'); return; }
+  if(!confirm(`將 ${done.length} 筆報到紀錄全部改回「未報到」？\n\n`+done.map(g=>'· '+g.name).join('\n'))) return;
+  let ok=0, bad=[];
+  for(const g of done){
+    try{ const r=await rpc('guest_checkin_undo',{p_guest_id:g.id});
+         if(r.ok){ g.checked_in=false; ok++; } else bad.push(g.name); }
+    catch(e){ bad.push(g.name); }
+  }
+  renderCats(); renderUnits(); renderList(); renderProg();
+  alert(`已重置 ${ok} 筆`+(bad.length?`\n失敗 ${bad.length} 筆：`+bad.join('、'):''));
 }
 async function doUncheck(id,name){
   if(!confirm(`將「${name}」恢復為「未報到」？`)) return;
