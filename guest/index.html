@@ -233,10 +233,35 @@ async function rpc(fn,body){ const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{meth
 function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function clean(v){ v=(v==null?'':String(v)).trim(); return (v===''||v==='?'||v==='？')?'':v; }
 
+/* 會員一律走會員證報到（/checkin），不出現在貴賓報到清單。
+   團體會員的代表也算會員，故連 reps 一起收進比對池。 */
+const TITLES=['理事長','董事長','總經理','執行長','副校長','校長','副司長','司長','副署長','署長',
+  '副院長','前院長','院長','教授','研究員','總監','副總','經理','主任','技正','技監','組長',
+  '分所長','副所長','所長','處長','鄉長','社長','顧問','博士','董事','前所長','老師'];
+const NAME_STOP=new Set(['友人','夫人','眷屬','同行','貴賓']);
+function deTitle(n){ let t=String(n||'').replace(/\s+/g,''); TITLES.forEach(x=>{t=t.split(x).join('')}); return t; }
+/* 同一人可能寫成「Don Chen 陳文堂」或「黃佳敏總幹事」，取中文段落各自去職稱後比對 */
+function nameKeys(n){
+  const ks=new Set(), base=deTitle(n);
+  if(base && !NAME_STOP.has(base)) ks.add(base);
+  (String(n||'').match(/[\u4e00-\u9fff]{2,}/g)||[]).forEach(r=>{
+    const d=deTitle(r); if(d && !NAME_STOP.has(d)) ks.add(d);
+  });
+  return [...ks];
+}
 async function load(){
   try{
-    const r=await fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in&order=sort.asc,name.asc`,{headers:H()});
-    guests=r.ok?await r.json():[];
+    const [r,m]=await Promise.all([
+      fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in&order=sort.asc,name.asc`,{headers:H()}),
+      fetch(`${SB}/rest/v1/tada_members?select=name,reps`,{headers:H()})
+    ]);
+    const all=r.ok?await r.json():[];
+    const memberKeys=new Set();
+    if(m.ok){ (await m.json()).forEach(x=>{
+      nameKeys(x.name).forEach(k=>memberKeys.add(k));
+      (x.reps||[]).forEach(rp=>nameKeys(rp&&rp.name).forEach(k=>memberKeys.add(k)));
+    }); }
+    guests=all.filter(g=>!nameKeys(g.name).some(k=>memberKeys.has(k)));
   }catch(e){ document.getElementById('list').innerHTML='<div class="empty">載入失敗，請確認網路後重新整理。</div>'; return; }
   renderCats(); renderUnits(); renderSurnames(); renderList(); renderProg();
 }
@@ -267,14 +292,25 @@ function renderProg(){
   document.getElementById('p-checked').textContent=guests.filter(g=>g.checked_in).length;
 }
 function orgKey(g){ return clean(g.unit)||clean(g.org)||'其他'; }
-function renderUnits(){
-  const pool=curCat==='__all__'?guests:guests.filter(g=>catFor(g)===curCat);
+/* 單位膠囊只列「2 人以上」的團體，單獨一人的併成「其他」，
+   否則貴賓分頁會出現近百個 1 人膠囊，現場翻不完。 */
+const OTHER_KEY='__other__';
+function unitPool(){ return curCat==='__all__'?guests:guests.filter(g=>catFor(g)===curCat); }
+function unitMap(){
   const map=new Map();
-  pool.forEach(g=>{ const k=orgKey(g); if(!map.has(k)) map.set(k,{t:0,c:0}); const m=map.get(k); m.t++; if(g.checked_in) m.c++; });
-  const orgs=[...map.entries()].sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0],'zh-Hant'));
+  unitPool().forEach(g=>{ const k=orgKey(g); if(!map.has(k)) map.set(k,{t:0,c:0}); const m=map.get(k); m.t++; if(g.checked_in) m.c++; });
+  return map;
+}
+function isOther(g,map){ const m=map.get(orgKey(g)); return !m||m.t<2; }
+function renderUnits(){
+  const pool=unitPool(), map=unitMap();
+  const groups=[...map.entries()].filter(([,m])=>m.t>=2)
+    .sort((a,b)=>b[1].t-a[1].t||a[0].localeCompare(b[0],'zh-Hant'));
+  const singles=pool.filter(g=>isOther(g,map));
   const allC=pool.filter(g=>g.checked_in).length;
   let html=`<div class="unit ${curOrg==='__all__'?'on':''}" onclick="pickOrg('__all__')"><div class="u-name">全部</div><div class="u-cnt"><b>${allC}</b> / ${pool.length}</div></div>`;
-  html+=orgs.map(([k,m])=>`<div class="unit ${curOrg===k?'on':''}" onclick="pickOrg('${esc(k).replace(/'/g,"\\'")}')"><div class="u-name">${esc(k)}</div><div class="u-cnt"><b>${m.c}</b> / ${m.t}</div></div>`).join('');
+  html+=groups.map(([k,m])=>`<div class="unit ${curOrg===k?'on':''}" onclick="pickOrg('${esc(k).replace(/'/g,"\\'")}')"><div class="u-name">${esc(k)}</div><div class="u-cnt"><b>${m.c}</b> / ${m.t}</div></div>`).join('');
+  if(singles.length) html+=`<div class="unit ${curOrg===OTHER_KEY?'on':''}" onclick="pickOrg('${OTHER_KEY}')"><div class="u-name">其他</div><div class="u-cnt"><b>${singles.filter(g=>g.checked_in).length}</b> / ${singles.length}</div></div>`;
   document.getElementById('units').innerHTML=html;
 }
 function pickOrg(k){ curOrg=k; curSurname=''; clearSearch(false); renderUnits(); renderSurnames(); renderList(); }
@@ -282,7 +318,9 @@ function renderList(){
   let arr=guests.slice();
   if(searchQ){ arr=arr.filter(g=>(g.name||'').includes(searchQ)); }
   else if(curSurname){ arr=arr.filter(g=>(g.name||'').trim().startsWith(curSurname)).sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-Hant')); }
-  else { if(curCat!=='__all__') arr=arr.filter(g=>catFor(g)===curCat); if(curOrg!=='__all__') arr=arr.filter(g=>orgKey(g)===curOrg); }
+  else { if(curCat!=='__all__') arr=arr.filter(g=>catFor(g)===curCat);
+    if(curOrg===OTHER_KEY){ const map=unitMap(); arr=arr.filter(g=>isOther(g,map)); }
+    else if(curOrg!=='__all__') arr=arr.filter(g=>orgKey(g)===curOrg); }
   if(GS.hideDone) arr=arr.filter(g=>!g.checked_in);
   const el=document.getElementById('list');
   if(!arr.length){ el.innerHTML='<div class="empty">'+(GS.hideDone?'此分類已全部完成報到 ✓':'此分類目前沒有貴賓，請改選其他單位或搜尋姓名。')+'</div>'; return; }
