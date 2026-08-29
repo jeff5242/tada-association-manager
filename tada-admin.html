@@ -4267,7 +4267,7 @@ async function loadSeating(){
   st.textContent='載入中…'; st.style.color='var(--gray)';
   try{
     const [gRes, mRes, roRes] = await Promise.all([
-      fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category,sort,status`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,companions,headcount,vegetarian,table_no`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps`, { headers: SB_HEADERS }),
     ]);
@@ -4324,6 +4324,9 @@ function seatOccupants(){
   const list=[];
   // 貴賓只顯示「已實際排位」者（依原則：桌次以出席回報為主，長官貴賓回報後由貴賓名冊指定桌號才進場）
   seatGuests.filter(g=>g.seat).forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
+  // 未排桌的「邀請/手動新增」貴賓也進待排區（sort<900 排除出席登記同步來的親友列；婉謝不列）
+  seatGuests.filter(g=>!g.seat && (g.sort==null||g.sort<900) && g.status!=='declined')
+    .forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:'', size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
   seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:m.org||m.note||m.companions||'', table:m.table_no||'', size:(m.headcount||1), veg:(m.vegetarian||0), grp:readableGroup(m), comp:m.companions||'' }));
   return list;
 }
