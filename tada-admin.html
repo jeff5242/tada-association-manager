@@ -426,9 +426,25 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
       <button class="btn btn-outline btn-sm" onclick="loadMembers()">↻ 重新載入</button>
       <span id="sb-status" style="font-size:11px;align-self:center;"></span>
+      <button class="btn btn-outline btn-sm" onclick="toggleRecon()">⇄ 勾稽出席資料</button>
       <button class="btn btn-outline btn-sm" onclick="exportMemberCSV()">匯出 CSV</button>
       <button class="btn btn-gold btn-sm" onclick="openAddModal()">＋ 新增會員</button>
     </div>
+  </div>
+
+  <!-- 會員清冊 × 出席資料 勾稽 -->
+  <div id="recon-panel" style="display:none;margin-bottom:18px;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--surface);">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+      <b style="font-size:13px;">會員清冊 × 出席資料 勾稽</b>
+      <span id="recon-sum" style="font-size:11px;color:var(--gray);"></span>
+      <label style="font-size:11px;color:var(--gray);display:flex;align-items:center;gap:5px;cursor:pointer;">
+        <input type="checkbox" id="recon-all" onchange="renderRecon()"> 顯示全部（含無落差者）</label>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="runRecon()">↻ 重新勾稽</button>
+        <button class="btn btn-outline btn-sm" onclick="exportReconCSV()">匯出勾稽 CSV</button>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table id="recon-tbl"></table></div>
   </div>
 
   <div class="toolbar">
@@ -2167,6 +2183,125 @@ async function lookupCompany(){
   }
   btn.disabled = false;
   btn.textContent = '🔍 查詢公司';
+}
+
+/* ══════════ 會員清冊 × 出席資料 勾稽 ══════════
+   兩份名單各自被維護：會員清冊是官方紀錄，出席回報是本人當下填的，
+   職稱／單位常常對不起來。這裡把落差列出來，不自動選邊。 */
+let reconRows=[];
+function toggleRecon(){
+  const el=document.getElementById('recon-panel');
+  const show=el.style.display==='none';
+  el.style.display=show?'':'none';
+  if(show && !reconRows.length) runRecon();
+}
+function rcNorm(v){ return String(v==null?'':v).replace(/\s+/g,'').trim(); }
+async function runRecon(){
+  const sum=document.getElementById('recon-sum');
+  sum.textContent='勾稽中…';
+  try{
+    const [mR,rR,gR]=await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,member_type,company,title,reps,hidden`,{headers:SB_HEADERS}),
+      fetch(`${SB_URL}/rest/v1/tada_rsvp?select=display_name,org,title,table_no,attending,hidden,note`,{headers:SB_HEADERS}),
+      fetch(`${SB_URL}/rest/v1/tada_guests?select=name,category`,{headers:SB_HEADERS}),
+    ]);
+    const mem=mR.ok?await mR.json():[], rsv=rR.ok?await rR.json():[], gst=gR.ok?await gR.json():[];
+    const rmap=new Map(), gmap=new Map();
+    rsv.forEach(r=>{ const k=seatDeTitle(r.display_name); if(k && !rmap.has(k)) rmap.set(k,r); });
+    gst.forEach(g=>{ const k=seatDeTitle(g.name); if(k && !gmap.has(k)) gmap.set(k,g); });
+
+    const out=[], seen=new Set();
+    mem.forEach(x=>{
+      if(x.status==='退會會員') return;
+      // 團體會員以「代表」為人，個人會員以本人為人
+      const people=[{nm:x.name,rep:null}].concat((x.reps||[]).filter(rp=>rp&&rp.name).map(rp=>({nm:rp.name,rep:rp})));
+      people.forEach(pp=>{
+        const k=seatDeTitle(pp.nm); if(!k||seen.has(k)) return; seen.add(k);
+        // 團體會員的「本體」是機構名，不是人，沒有出席回報就不列
+        const r=rmap.get(k);
+        if(x.member_type==='group' && !pp.rep && !r) return;
+        const g=gmap.get(k);
+        const att = r ? ((r.attending && !r.hidden) ? '出席' : '回覆不出席') : '未回覆';
+        const mTitle = rcNorm(pp.rep ? pp.rep.title : x.title);
+        const rTitle = r ? rcNorm(r.title) : '';
+        const mOrg   = rcNorm(x.company) || (x.member_type==='group' ? rcNorm(x.name) : '');
+        const rOrg   = r ? rcNorm(r.org) : '';
+        const issues=[];
+        if(att==='出席'){
+          if(mTitle && rTitle && mTitle!==rTitle) issues.push('職稱不一致');
+          else if(!mTitle && rTitle)              issues.push('清冊缺職稱');
+          if(mOrg && rOrg && mOrg!==rOrg)         issues.push('單位不一致');
+          if(g)                                   issues.push('列入貴賓名冊');
+        }
+        out.push({key:k, name:pp.nm, no:x.member_no||'', status:x.status||'',
+                  type:x.member_type==='group'?'團體':'個人', isRep:!!pp.rep,
+                  att, table:(r&&r.table_no)||'', mTitle, rTitle, mOrg, rOrg,
+                  gcat:(g&&g.category)||'', issues});
+      });
+    });
+    out.sort((a,b)=> (b.issues.length-a.issues.length) || a.name.localeCompare(b.name,'zh-Hant'));
+    reconRows=out;
+    renderRecon();
+  }catch(e){ sum.textContent='勾稽失敗：'+e.message; }
+}
+function renderRecon(){
+  const all=document.getElementById('recon-all').checked;
+  const rows=all?reconRows:reconRows.filter(x=>x.issues.length);
+  const att=reconRows.filter(x=>x.att==='出席').length;
+  const bad=reconRows.filter(x=>x.issues.length).length;
+  const cnt=t=>reconRows.filter(x=>x.issues.includes(t)).length;
+  document.getElementById('recon-sum').textContent =
+    `會員 ${reconRows.length} 人｜出席 ${att}｜有落差 ${bad}`
+    + `　·　職稱不一致 ${cnt('職稱不一致')}／清冊缺職稱 ${cnt('清冊缺職稱')}`
+    + `／單位不一致 ${cnt('單位不一致')}／列入貴賓名冊 ${cnt('列入貴賓名冊')}`;
+  const td=v=>`<td>${v==null||v===''?'<span style="color:var(--gray)">－</span>':escapeHtml(String(v))}</td>`;
+  const head='<thead><tr><th>姓名</th><th>會員編號</th><th>出席</th><th>桌次</th>'
+           + '<th>職稱（清冊）</th><th>職稱（出席表）</th><th>單位（清冊）</th><th>單位（出席表）</th>'
+           + '<th>落差</th><th>操作</th></tr></thead>';
+  if(!rows.length){
+    document.getElementById('recon-tbl').innerHTML=head+
+      '<tbody><tr><td colspan="10" style="text-align:center;color:var(--gray);padding:18px;">沒有落差 ✓</td></tr></tbody>';
+    return;
+  }
+  const body=rows.map(x=>{
+    const fix=[];
+    // 團體代表的職稱存在 reps 陣列裡，逐欄回填會動到整包 JSON，改由會員編輯頁處理
+    if(!x.isRep && x.issues.some(i=>i==='清冊缺職稱'||i==='職稱不一致') && x.rTitle)
+      fix.push(`<button class="btn btn-outline btn-sm" onclick="reconFill('${x.no}','title','${escapeHtml(x.rTitle).replace(/'/g,"\\'")}')">回填職稱</button>`);
+    if(!x.isRep && x.issues.includes('單位不一致') && x.rOrg)
+      fix.push(`<button class="btn btn-outline btn-sm" onclick="reconFill('${x.no}','company','${escapeHtml(x.rOrg).replace(/'/g,"\\'")}')">回填單位</button>`);
+    if(x.isRep && x.issues.length) fix.push('<span style="font-size:10px;color:var(--gray)">團體代表，請至會員編輯頁調整</span>');
+    const tag=x.issues.length
+      ? x.issues.map(i=>`<span style="display:inline-block;background:rgba(224,150,60,.16);color:#e0963c;border-radius:4px;padding:1px 6px;font-size:10px;margin:1px 2px 1px 0;">${i}</span>`).join('')
+      : '<span style="color:var(--gray)">－</span>';
+    return `<tr>${td(x.name)}${td(x.no)}${td(x.att)}${td(x.table)}`
+         + `${td(x.mTitle)}${td(x.rTitle)}${td(x.mOrg)}${td(x.rOrg)}`
+         + `<td>${tag}</td><td>${fix.join(' ')||'<span style="color:var(--gray)">－</span>'}</td></tr>`;
+  }).join('');
+  document.getElementById('recon-tbl').innerHTML=head+'<tbody>'+body+'</tbody>';
+}
+async function reconFill(no,field,value){
+  if(!no){ alert('此列沒有會員編號，無法回填'); return; }
+  const lbl=field==='title'?'職稱':'單位';
+  if(!confirm(`將會員清冊的「${lbl}」更新為「${value}」？`)) return;
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_members?member_no=eq.${encodeURIComponent(no)}`,
+      {method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({[field]:value})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    await runRecon(); if(typeof loadMembers==='function') loadMembers();
+  }catch(e){ alert('回填失敗：'+e.message); }
+}
+function exportReconCSV(){
+  if(!reconRows.length){ alert('請先執行勾稽'); return; }
+  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  const lines=[['姓名','會員編號','會員狀態','類型','身分','出席狀況','桌次',
+                '職稱(清冊)','職稱(出席表)','單位(清冊)','單位(出席表)','貴賓名冊類別','落差'].map(q).join(',')];
+  reconRows.forEach(x=>lines.push([x.name,x.no,x.status,x.type,x.isRep?'團體代表':'本人',
+    x.att,x.table,x.mTitle,x.rTitle,x.mOrg,x.rOrg,x.gcat,x.issues.join('／')].map(q).join(',')));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}));
+  a.download=`會員出席勾稽_${todayTag()}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
 
 async function exportMemberCSV(){
