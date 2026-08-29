@@ -117,6 +117,7 @@ header .prog.on .l{color:var(--gold-lt)}
 .gcard:active{transform:scale(.98)}
 .gcard .g-name{font-family:var(--serif);font-size:32px;font-weight:900;color:var(--cream);line-height:1.15}
 .gcard .g-org{font-size:15px;color:var(--muted);margin-top:4px}
+.gcard .g-title{color:var(--gold-lt);font-weight:700}
 .gcard .g-btn{margin-top:auto;background:var(--gold);color:#1a1a12;border:none;border-radius:12px;padding:18px;font-size:22px;font-weight:900;font-family:inherit;letter-spacing:.06em;cursor:pointer}
 .gcard.done{opacity:.6;border-color:rgba(102,187,106,.4)}
 .gcard.done .g-done{margin-top:auto;text-align:center;background:rgba(102,187,106,.14);border:1px solid rgba(102,187,106,.4);border-radius:12px;padding:17px;font-size:19px;font-weight:700;color:#9be0a3}
@@ -133,6 +134,7 @@ header .prog.on .l{color:var(--gold-lt)}
 .wcard .w-hi{font-size:16px;letter-spacing:.4em;color:var(--gold-lt);font-weight:700;margin-bottom:18px}
 .wcard .w-name{font-family:var(--serif);font-size:56px;font-weight:900;color:var(--cream);line-height:1.1}
 .wcard .w-org{font-size:19px;color:var(--gold-lt);margin-top:10px}
+.wcard .w-ttl{font-size:.5em;color:var(--gold-lt);font-weight:700;letter-spacing:.08em;vertical-align:.32em;margin-left:.15em}
 .wcard .w-seat{margin:30px auto 0;background:rgba(196,146,42,.14);border:1px solid rgba(196,146,42,.5);border-radius:18px;padding:22px 28px;display:inline-block;min-width:280px}
 .wcard .w-seat .s-l{font-size:14px;letter-spacing:.2em;color:var(--gold-lt);margin-bottom:8px}
 .wcard .w-seat .s-v{font-family:var(--serif);font-size:46px;font-weight:900;color:var(--cream);line-height:1}
@@ -296,7 +298,7 @@ function nameKeys(n){
 async function load(){
   try{
     const [r,m]=await Promise.all([
-      fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in,party_size&order=sort.asc,name.asc`,{headers:H()}),
+      fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in,party_size,title&order=sort.asc,name.asc`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_members?select=name,reps`,{headers:H()})
     ]);
     const all=r.ok?await r.json():[];
@@ -368,7 +370,7 @@ function renderList(){
     arr=arr.filter(g=>g.checked_in).sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-Hant'));
     const el0=document.getElementById('list');
     if(!arr.length){ el0.innerHTML='<div class="empty">目前沒有人完成報到。</div>'; return; }
-    el0.innerHTML=arr.map(g=>`<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`).join('');
+    el0.innerHTML=arr.map(g=>`<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>　`:""}${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`).join('');
     return;
   }
   if(searchQ){ arr=arr.filter(g=>(g.name||'').includes(searchQ)); }
@@ -380,10 +382,10 @@ function renderList(){
   const el=document.getElementById('list');
   if(!arr.length){ el.innerHTML='<div class="empty">'+(GS.hideDone?'此分類已全部完成報到 ✓':'此分類目前沒有貴賓，請改選其他單位或搜尋姓名。')+'</div>'; return; }
   el.innerHTML=arr.map(g=>g.checked_in
-    ? `<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="按錯了？恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`
+    ? `<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="按錯了？恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>　`:""}${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`
     : (GS.checkin
-        ? `<div class="gcard" onclick="doCheckin('${g.id}')"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><button class="g-btn" onclick="event.stopPropagation();doCheckin('${g.id}')">貴賓報到</button></div>`
-        : `<div class="gcard viewonly"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-wait">未報到</div></div>`)
+        ? `<div class="gcard" onclick="doCheckin('${g.id}')"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>　`:""}${esc(clean(g.org))}</div></div><button class="g-btn" onclick="event.stopPropagation();doCheckin('${g.id}')">貴賓報到</button></div>`
+        : `<div class="gcard viewonly"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>　`:""}${esc(clean(g.org))}</div></div><div class="g-wait">未報到</div></div>`)
   ).join('');
 }
 // 報到前先確認入座人數（＋/－），確認後才真正報到
@@ -492,10 +494,12 @@ function showWelcome(d, gid){
   if(clean(d.meal)) chips.push('🍽️ '+esc(clean(d.meal)));
   if(clean(d.train)) chips.push('🚄 '+esc(clean(d.train)));
   const seat=clean(d.seat);
+  const gLocal=guests.find(x=>x.id===wGuestId)||{};
+  const wTitle=clean(d.title)||clean(gLocal.title);
   document.getElementById('wcard').innerHTML=
     `<button class="w-x" onclick="closeWelcome()">✕</button>
      <div class="w-hi">歡　迎　蒞　臨</div>
-     <div class="w-name">${esc(d.name)}</div>
+     <div class="w-name">${esc(d.name)}${wTitle?` <span class="w-ttl">${esc(wTitle)}</span>`:''}</div>
      ${clean(d.org)?`<div class="w-org">${esc(clean(d.org))}</div>`:''}
      ${seat?`<div class="w-seat"><div class="s-l">您的桌號</div><div class="s-v">${esc(seat)}</div></div>`
            :`<div class="w-seat"><div class="s-l">桌號</div><div class="s-v" style="font-size:24px;">請洽接待人員</div></div>`}

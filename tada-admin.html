@@ -3811,6 +3811,8 @@ function updateSortArrows(){
 // 統一編號：不分主桌/貴賓桌，一律以桌號編（第1–25 桌）＋ 工作桌
 const EVENT_TABLE_GROUPS = [
   { label:'桌次', tables:Array.from({length:21},(_,i)=>`第${i+1}桌`) },
+  // 22–25 桌：現場機動與排桌暫存用（人數可超、不列入正式桌數估算）
+  { label:'暫存／機動桌', tables:Array.from({length:4},(_,i)=>`第${i+22}桌`) },
   { label:'工作桌／備桌', tables:['工作桌'] },
 ];
 const TABLE_CAP = 10;   // 每桌基本座位數（以人數/headcount 計）
@@ -4267,8 +4269,8 @@ async function loadSeating(){
   st.textContent='載入中…'; st.style.color='var(--gray)';
   try{
     const [gRes, mRes, roRes] = await Promise.all([
-      fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category,sort,status`, { headers: SB_HEADERS }),
-      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,note,companions,headcount,vegetarian,table_no`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category,sort,status,title`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,title,note,companions,headcount,vegetarian,table_no`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps`, { headers: SB_HEADERS }),
     ]);
     seatGuests  = gRes.ok ? await gRes.json() : [];
@@ -4323,11 +4325,11 @@ function seatSplitComp(t){
 function seatOccupants(){
   const list=[];
   // 貴賓只顯示「已實際排位」者（依原則：桌次以出席回報為主，長官貴賓回報後由貴賓名冊指定桌號才進場）
-  seatGuests.filter(g=>g.seat).forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
+  seatGuests.filter(g=>g.seat).forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:(g.title?g.title+'・':'')+(g.org||g.category||''), table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
   // 未排桌的「邀請/手動新增」貴賓也進待排區（sort<900 排除出席登記同步來的親友列；婉謝不列）
   seatGuests.filter(g=>!g.seat && (g.sort==null||g.sort<900) && g.status!=='declined')
-    .forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:g.org||g.category||'', table:'', size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
-  seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:m.org||m.note||m.companions||'', table:m.table_no||'', size:(m.headcount||1), veg:(m.vegetarian||0), grp:readableGroup(m), comp:m.companions||'' }));
+    .forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:(g.title?g.title+'・':'')+(g.org||g.category||''), table:'', size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
+  seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:(m.title?m.title+'・':'')+(m.org||m.note||m.companions||''), table:m.table_no||'', size:(m.headcount||1), veg:(m.vegetarian||0), grp:readableGroup(m), comp:m.companions||'' }));
   return list;
 }
 // 一桌的主要團體名（占最多人的團體，需至少 2 人）
@@ -4384,7 +4386,7 @@ function renderSeating(){
       const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:104px;" title="改桌／移除">${tableOptionsHtml(o.table)}</select>`;
       return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
         <span style="font-size:12px;">${icon}</span>
-        <span style="flex:1;font-size:12.5px;color:var(--white);min-width:0;">${escapeHtml(o.name)}${sizeTag}${vegTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,14))}</span>`:''}</span>
+        <span style="flex:1;font-size:12.5px;color:var(--white);min-width:0;">${escapeHtml(o.name)}${sizeTag}${vegTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,22))}</span>`:''}</span>
         ${noteBtn}
         ${hideBtn}
         ${sel}
