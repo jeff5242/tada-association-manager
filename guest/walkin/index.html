@@ -20,25 +20,75 @@ body{font-family:var(--sans);color:var(--cream);min-height:100vh;padding:26px 20
 .brand .t{font-family:var(--serif);font-size:24px;font-weight:900;color:var(--gold-lt);letter-spacing:.1em;margin-top:12px}
 .brand .s{font-size:13px;color:var(--muted);margin-top:6px}
 .card{background:linear-gradient(158deg,#28472f,#16291d);border:1px solid rgba(196,146,42,.3);border-radius:20px;padding:26px 24px}
+.step{display:none}
+.step.on{display:block;animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .lb{display:block;font-size:14px;color:var(--gold-lt);font-weight:700;margin:16px 0 7px}
 .lb:first-child{margin-top:0}
+.lb .req{color:#e8836f;font-weight:900}
+.lb .fill{color:#e8b84b;font-size:12px;font-weight:700;margin-left:6px}
 .in{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(196,146,42,.3);border-radius:13px;padding:16px;color:var(--cream);font-size:18px;font-family:inherit;outline:none}
+.in:focus{border-color:var(--gold-lt)}
+.in.miss{border-color:#e8836f;background:rgba(232,131,111,.09)}
 .in::placeholder{color:rgba(245,236,212,.35)}
+.in[readonly]{opacity:.75}
+.row{display:flex;gap:9px;align-items:stretch}
+.row .in{flex:1;min-width:0}
+.mini{flex:0 0 auto;background:rgba(196,146,42,.18);border:1px solid var(--gold);color:var(--gold-lt);
+  border-radius:13px;padding:0 16px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap}
+.mini:active{transform:scale(.96)}
+.hint{font-size:13px;color:var(--muted);margin-top:9px;line-height:1.7}
 .cats{display:flex;flex-wrap:wrap;gap:8px}
 .cat{background:rgba(255,255,255,.05);border:1px solid rgba(196,146,42,.3);color:var(--cream);border-radius:99px;padding:11px 16px;font-size:15px;font-family:inherit;cursor:pointer}
 .cat.on{background:var(--gold);color:#1a1a12;border-color:var(--gold);font-weight:700}
 .btn{width:100%;margin-top:24px;background:var(--gold);border:none;color:#1a1a12;border-radius:14px;padding:18px;font-size:20px;font-weight:900;font-family:inherit;cursor:pointer}
 .btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.55}
+.btn-out{background:transparent;border:1px solid rgba(196,146,42,.5);color:var(--gold-lt);margin-top:12px;font-size:16px;padding:14px}
 .err{color:#f0a;font-size:14px;text-align:center;margin-top:14px;min-height:18px}
-/* 完成畫面 */
-.done{display:none;text-align:center;padding:40px 10px}
-.done.show{display:block;animation:fade .4s ease}
-@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.done .chk{font-size:74px;line-height:1}
-.done .h{font-family:var(--serif);font-size:34px;font-weight:900;color:var(--gold-lt);margin-top:14px}
-.done .nm{font-family:var(--serif);font-size:26px;color:var(--cream);margin-top:16px}
-.done .og{font-size:15px;color:var(--muted);margin-top:6px}
-.done .p{margin-top:22px;font-size:16px;color:#d9e6d0;line-height:1.8}
+/* 多筆候選 */
+.pick{width:100%;text-align:left;background:rgba(255,255,255,.05);border:1px solid rgba(196,146,42,.3);
+  color:var(--cream);border-radius:14px;padding:15px 17px;font-family:inherit;cursor:pointer;margin-bottom:10px}
+.pick:active{transform:scale(.99)}
+.pick .pn{font-family:var(--serif);font-size:21px;font-weight:900}
+.pick .po{font-size:14px;color:var(--muted);margin-top:4px}
+.pick .ps{font-size:14px;color:var(--gold-lt);margin-top:5px;font-weight:700}
+.pick.done{opacity:.6}
+/* 桌次 */
+.seat{background:rgba(196,146,42,.14);border:1px solid var(--gold);border-radius:16px;padding:20px;text-align:center;margin:18px 0}
+.seat .sl{font-size:14px;color:var(--gold-lt);letter-spacing:.16em}
+.seat .sv{font-family:var(--serif);font-size:46px;font-weight:900;color:var(--cream);line-height:1.15;margin-top:6px}
+.seat .sv.small{font-size:22px;line-height:1.5}
+.who{text-align:center;margin-bottom:6px}
+.who .wn{font-family:var(--serif);font-size:28px;font-weight:900;color:var(--cream)}
+.who .wo{font-size:15px;color:var(--muted);margin-top:5px}
+.note{background:rgba(255,255,255,.06);border-radius:12px;padding:13px 15px;font-size:15px;color:#d9e6d0;line-height:1.7;margin-top:12px}
+/* 祝福 */
+.bl-label{font-size:15px;color:var(--gold-lt);font-weight:700;margin:22px 0 10px;text-align:center}
+.bl-chips{display:flex;flex-direction:column;gap:9px}
+.bl-chip{background:rgba(255,255,255,.05);border:1px solid rgba(196,146,42,.3);color:var(--cream);
+  border-radius:12px;padding:14px;font-size:16px;font-family:inherit;cursor:pointer}
+.bl-chip.on{background:var(--gold);color:#1a1a12;border-color:var(--gold);font-weight:800}
+.sign-btn{width:100%;margin-top:12px;background:rgba(255,255,255,.06);border:1px dashed rgba(196,146,42,.55);
+  color:var(--gold-lt);border-radius:12px;padding:15px;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+.sign-btn.signed{border-style:solid;background:rgba(155,224,163,.14);color:#9be0a3}
+/* 簽名板 */
+.ov{position:fixed;inset:0;background:rgba(8,16,10,.94);display:none;align-items:center;justify-content:center;z-index:60;padding:18px}
+.ov.show{display:flex}
+.sg{width:100%;max-width:560px;text-align:center}
+.sg h4{font-family:var(--serif);font-size:20px;color:var(--gold-lt);margin-bottom:12px}
+#sign-canvas{background:#fff;border-radius:14px;touch-action:none;display:block;width:100%}
+.sg-btns{display:flex;gap:10px;margin-top:14px}
+.sg-btns button{flex:1;border-radius:12px;padding:14px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;border:none}
+.sg-clear{background:rgba(255,255,255,.1);color:var(--cream)}
+.sg-cancel{background:rgba(255,255,255,.1);color:var(--muted)}
+.sg-ok{background:var(--gold);color:#1a1a12}
+/* 完成 */
+.chk{font-size:64px;line-height:1;text-align:center}
+.h2{font-family:var(--serif);font-size:30px;font-weight:900;color:var(--gold-lt);text-align:center;margin-top:10px}
+.staff{background:rgba(196,146,42,.14);border:1px solid var(--gold);border-radius:16px;padding:20px;text-align:center;margin:18px 0}
+.staff .t1{font-size:15px;color:var(--gold-lt);letter-spacing:.1em}
+.staff .t2{font-family:var(--serif);font-size:26px;font-weight:900;color:var(--cream);margin-top:8px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -49,57 +99,297 @@ body{font-family:var(--sans);color:var(--cream);min-height:100vh;padding:26px 20
     <div class="s">2026 第六屆會員大會暨理監事選舉 · 9/4</div>
   </div>
 
-  <div class="card" id="form">
-    <label class="lb">姓名（必填）</label>
-    <input id="w-name" class="in" placeholder="例：王大明" autocomplete="name">
-    <label class="lb">職稱</label>
+  <!-- ① 查詢姓名 -->
+  <div class="card step on" id="s-search">
+    <label class="lb">請輸入您的姓名 <span class="req">*</span></label>
+    <div class="row">
+      <input id="q-name" class="in" placeholder="例：王大明" autocomplete="name"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();doLookup()}">
+      <button class="mini" onclick="doLookup()">帶入資料</button>
+    </div>
+    <div class="hint">輸入姓名後按 <b>Enter</b> 或「帶入資料」，系統會自動帶出您的職稱、單位與聯絡方式。<br>查無資料也沒關係，可以直接現場登記。</div>
+    <button class="btn" onclick="doLookup()">下一步</button>
+    <div class="err" id="q-err"></div>
+  </div>
+
+  <!-- ② 多筆同名，請選擇 -->
+  <div class="card step" id="s-pick">
+    <label class="lb">找到多位同名貴賓，請選擇您本人</label>
+    <div id="pick-list"></div>
+    <button class="btn btn-out" onclick="asNewGuest()">都不是我，現場登記</button>
+    <button class="btn btn-out" onclick="go('s-search')">← 重新輸入姓名</button>
+  </div>
+
+  <!-- ③ 補齊資料 -->
+  <div class="card step" id="s-form">
+    <div id="f-found-hd" style="display:none">
+      <div class="who"><div class="wn" id="f-hd-name"></div><div class="wo">已在貴賓名冊中，請確認並補齊資料</div></div>
+    </div>
+    <div id="f-new-hd" style="display:none">
+      <div class="who"><div class="wn">現場登記</div><div class="wo">名冊中查無資料，請填寫以下欄位</div></div>
+    </div>
+
+    <label class="lb">姓名 <span class="req">*</span></label>
+    <input id="w-name" class="in" autocomplete="name">
+    <label class="lb">職稱 <span class="req">*</span><span class="fill" id="fill-title"></span></label>
     <input id="w-title" class="in" placeholder="例：處長／總經理／教授">
-    <label class="lb">服務單位 / 公司</label>
+    <label class="lb">服務單位 / 公司 <span class="req">*</span><span class="fill" id="fill-org"></span></label>
     <input id="w-org" class="in" placeholder="機關或公司名稱">
+    <label class="lb">手機 <span class="req">*</span><span class="fill" id="fill-mobile"></span></label>
+    <input id="w-mobile" class="in" type="tel" placeholder="09xx-xxx-xxx" autocomplete="tel">
+    <label class="lb">Email <span class="req">*</span><span class="fill" id="fill-email"></span></label>
+    <input id="w-email" class="in" type="email" placeholder="name@example.com" autocomplete="email" autocapitalize="off">
     <label class="lb">車號（供停車服務，選填）</label>
     <input id="w-plate" class="in" placeholder="例：ABC-1234" autocapitalize="characters">
-    <label class="lb">類別</label>
-    <div class="cats" id="w-cats"></div>
-    <button class="btn" onclick="submitWalkin()">✓ 完成報到</button>
+
+    <div id="f-cats-box" style="display:none">
+      <label class="lb">類別</label>
+      <div class="cats" id="w-cats"></div>
+    </div>
+
+    <button class="btn" id="f-submit" onclick="submitForm()">✓ 完成報到</button>
+    <button class="btn btn-out" onclick="go('s-search')">← 重新查詢</button>
     <div class="err" id="w-err"></div>
   </div>
 
-  <div class="done" id="done">
+  <!-- ④ 已報到，獻上祝福 -->
+  <div class="card step" id="s-bless">
     <div class="chk">🎉</div>
-    <div class="h">報到完成</div>
-    <div class="nm" id="d-name"></div>
-    <div class="og" id="d-org"></div>
-    <div class="p">歡迎蒞臨，感謝您的出席！<br>請至報到處領取資料，入座參加大會。</div>
+    <div class="h2">報到完成</div>
+    <div class="who" style="margin-top:14px"><div class="wn" id="b-name"></div><div class="wo" id="b-org"></div></div>
+    <div class="seat"><div class="sl">您 的 桌 號</div><div class="sv" id="b-seat">—</div></div>
+    <div id="b-note"></div>
+    <div class="bl-label">🙏 感謝您的蒞臨，為大會獻上一句祝福</div>
+    <div class="bl-chips" id="b-chips"></div>
+    <button class="sign-btn" id="b-sign" onclick="openSign()">✍️ 留下您的簽名</button>
+    <button class="btn" onclick="submitGreeting()">送出祝福</button>
+    <button class="btn btn-out" onclick="showFinal()">略過，直接看桌號</button>
+    <div class="err" id="b-err"></div>
+  </div>
+
+  <!-- ⑤ 最終：桌號 -->
+  <div class="card step" id="s-final">
+    <div class="chk">🪑</div>
+    <div class="h2" id="fin-h">請入座</div>
+    <div class="who" style="margin-top:14px"><div class="wn" id="fin-name"></div><div class="wo" id="fin-org"></div></div>
+    <div class="seat"><div class="sl">您 的 桌 號</div><div class="sv" id="fin-seat">—</div></div>
+    <div id="fin-note"></div>
+    <div class="hint" style="text-align:center">請至報到處領取資料，由接待人員引導入座。<br>祝您有個愉快的夜晚！</div>
+  </div>
+
+  <!-- ⑥ 最終：現場登記，請工作人員帶位 -->
+  <div class="card step" id="s-staff">
+    <div class="chk">✅</div>
+    <div class="h2">已完成現場登記</div>
+    <div class="who" style="margin-top:14px"><div class="wn" id="st-name"></div><div class="wo" id="st-org"></div></div>
+    <div class="staff">
+      <div class="t1">尚 未 安 排 桌 位</div>
+      <div class="t2">請出示本畫面<br>由工作人員為您帶位</div>
+    </div>
+    <div class="hint" style="text-align:center">您的資料已送出，感謝蒞臨 TADA 第六屆會員大會。</div>
   </div>
 </div>
+
+<!-- 簽名板 -->
+<div class="ov" id="signModal"><div class="sg">
+  <h4>請在下方簽名</h4>
+  <canvas id="sign-canvas" width="720" height="300"></canvas>
+  <div class="sg-btns">
+    <button class="sg-clear" onclick="clearSign()">清除</button>
+    <button class="sg-cancel" onclick="cancelSign()">取消</button>
+    <button class="sg-ok" onclick="saveSign()">✓ 確定</button>
+  </div>
+</div></div>
 
 <script>
 const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
 const CATS=['公協會','學校單位','政府單位','農業合作單位'];
-let wCat='農業合作單位';
+const BLESS=['祝大會圓滿順利','祝會務蒸蒸日上','祝 TADA 智耕傳承 · 鵬程萬里'];
+
+let wCat='農業合作單位';   // 現場登記時的類別
+let found=null;            // 名冊中比對到的那筆 {guest_id,name,seat,...}
+let result=null;           // 報到後的回傳
+let wBless='', wSig='';
+let softWarned=false;      // 建議欄位已提醒過一次
+
+function $(id){ return document.getElementById(id); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
-function renderCats(){ document.getElementById('w-cats').innerHTML=CATS.map(c=>`<button class="cat ${c===wCat?'on':''}" onclick="pickCat('${c}')">${c}</button>`).join(''); }
+function val(id){ return $(id).value.trim(); }
+function go(id){ document.querySelectorAll('.step').forEach(e=>e.classList.remove('on')); $(id).classList.add('on'); window.scrollTo(0,0); }
+async function rpc(fn,body){
+  const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:'POST',headers:H(),body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+/* ── ① 查詢：把名冊資料帶進表單 ─────────────────────────── */
+async function doLookup(){
+  const q=val('q-name'), err=$('q-err');
+  if(q.length<2){ err.textContent='請輸入至少 2 個字的姓名'; return; }
+  err.style.color='var(--muted)'; err.textContent='查詢中…';
+  let res;
+  try{ res=await rpc('guest_lookup',{p_name:q}); }
+  catch(e){ err.style.color='#f0a'; err.textContent='查詢失敗，請重試或直接現場登記'; return; }
+  err.textContent='';
+
+  if(res && res.is_member){
+    err.style.color='#e0b458';
+    err.innerHTML='您是本會會員，請至<b>會員報到處</b>刷會員證報到。<br>若您不是會員本人，請繼續下一步。';
+  }
+  const list=(res && res.matches) || [];
+  if(list.length===1){ pickGuest(0,list); return; }
+  if(list.length>1){ renderPick(list); go('s-pick'); return; }
+  asNewGuest();      // 名冊查無 → 現場登記
+}
+
+let pickCache=[];
+function renderPick(list){
+  pickCache=list;
+  $('pick-list').innerHTML=list.map((g,i)=>
+    `<button class="pick ${g.checked_in?'done':''}" onclick="pickGuest(${i})">
+       <div class="pn">${esc(g.name)}</div>
+       ${g.org?`<div class="po">${esc(g.org)}</div>`:''}
+       <div class="ps">${g.seat?('桌號 '+esc(g.seat)):'桌號待安排'}${g.checked_in?'　·　已完成報到':''}</div>
+     </button>`).join('');
+}
+function pickGuest(i,list){
+  found=(list||pickCache)[i];
+  $('f-found-hd').style.display=''; $('f-new-hd').style.display='none';
+  $('f-cats-box').style.display='none';
+  $('f-hd-name').textContent=found.name;
+  $('w-name').value=found.name;
+  setPrefill('w-title','fill-title',found.title);
+  setPrefill('w-org','fill-org',found.org);
+  setPrefill('w-mobile','fill-mobile',found.mobile);
+  setPrefill('w-email','fill-email',found.email);
+  $('w-plate').value=found.plate||'';
+  markMissing();
+  go('s-form');
+}
+/* 名冊已有的欄位標「已帶入」，其餘留空等現場補 */
+function setPrefill(inputId,tagId,v){
+  $(inputId).value=v||'';
+  $(tagId).textContent=v?'✓ 已帶入':'';
+}
+function asNewGuest(){
+  found=null;
+  $('f-found-hd').style.display='none'; $('f-new-hd').style.display='';
+  $('f-cats-box').style.display='';
+  renderCats();
+  $('w-name').value=val('q-name');
+  ['w-title','w-org','w-mobile','w-email','w-plate'].forEach(id=>$(id).value='');
+  ['fill-title','fill-org','fill-mobile','fill-email'].forEach(id=>$(id).textContent='');
+  markMissing();
+  go('s-form');
+}
+function renderCats(){ $('w-cats').innerHTML=CATS.map(c=>`<button class="cat ${c===wCat?'on':''}" onclick="pickCat('${c}')">${c}</button>`).join(''); }
 function pickCat(c){ wCat=c; renderCats(); }
-renderCats();
-async function submitWalkin(){
-  const nm=document.getElementById('w-name').value.trim();
-  const title=document.getElementById('w-title').value.trim();
-  const name=[nm,title].filter(Boolean).join(' ');
-  const org=document.getElementById('w-org').value.trim();
-  const plate=document.getElementById('w-plate').value.trim();
-  const err=document.getElementById('w-err');
-  if(!nm){ err.textContent='請填寫姓名'; return; }
-  err.textContent='報到中…'; err.style.color='var(--muted)';
+
+/* ── ② 缺漏提示 ─────────────────────────────────────────── */
+const NEED=['w-name','w-org','w-mobile'];        // 少了就不能送出
+const SOFT=['w-title','w-email'];                // 缺了先提醒一次，仍可送出
+function markMissing(){
+  NEED.concat(SOFT).forEach(id=>$(id).classList.toggle('miss',!val(id)));
+}
+document.querySelectorAll('#s-form .in').forEach(el=>el.addEventListener('input',markMissing));
+
+/* ── ③ 送出 ─────────────────────────────────────────────── */
+async function submitForm(){
+  const err=$('w-err'); err.style.color='#f0a';
+  markMissing();
+  const miss=NEED.filter(id=>!val(id));
+  if(miss.length){
+    const nm={'w-name':'姓名','w-org':'服務單位','w-mobile':'手機'};
+    err.textContent='請補填：'+miss.map(i=>nm[i]).join('、');
+    $(miss[0]).focus(); return;
+  }
+  const soft=SOFT.filter(id=>!val(id));
+  if(soft.length && !softWarned){
+    softWarned=true; err.style.color='#e0b458';
+    const nm={'w-title':'職稱','w-email':'Email'};
+    err.textContent='建議補填 '+soft.map(i=>nm[i]).join('、')+'，若確定沒有請再按一次「完成報到」。';
+    return;
+  }
+  const btn=$('f-submit'); btn.disabled=true; btn.textContent='報到中…';
+  err.style.color='var(--muted)'; err.textContent='';
   try{
-    const r=await fetch(`${SB}/rest/v1/rpc/guest_add`,{method:'POST',headers:H(),body:JSON.stringify({p_name:name,p_org:org,p_category:wCat,p_plate:plate})});
-    const res=await r.json();
-    if(res && res.ok){
-      document.getElementById('d-name').textContent=res.name;
-      document.getElementById('d-org').textContent=[res.org,plate?('車號 '+plate):''].filter(Boolean).join('　·　');
-      document.getElementById('form').style.display='none';
-      document.getElementById('done').classList.add('show');
-    } else { err.textContent='報到失敗：'+((res&&res.error)||'請重試'); err.style.color='#f0a'; }
-  }catch(e){ err.textContent='報到失敗：'+e.message; err.style.color='#f0a'; }
+    if(found){
+      result=await rpc('guest_walkin_checkin',{
+        p_guest_id:found.guest_id, p_title:val('w-title'), p_org:val('w-org'),
+        p_mobile:val('w-mobile'), p_email:val('w-email'), p_plate:val('w-plate')});
+      if(!result || !result.ok) throw new Error((result&&result.error)||'報到失敗');
+      showBless();
+    } else {
+      // 職稱併入姓名，維持名冊既有寫法（例「陳處長大明」）
+      const dn=[val('w-name'),val('w-title')].filter(Boolean).join(' ');
+      result=await rpc('guest_add',{
+        p_name:dn, p_org:val('w-org'), p_category:wCat, p_plate:val('w-plate'),
+        p_title:val('w-title'), p_mobile:val('w-mobile'), p_email:val('w-email')});
+      if(!result || !result.ok) throw new Error((result&&result.error)||'報到失敗');
+      $('st-name').textContent=result.name;
+      $('st-org').textContent=[result.org,val('w-plate')?('車號 '+val('w-plate')):''].filter(Boolean).join('　·　');
+      go('s-staff');
+    }
+  }catch(e){
+    err.style.color='#f0a'; err.textContent='報到失敗：'+e.message;
+  }finally{ btn.disabled=false; btn.textContent='✓ 完成報到'; }
+}
+
+/* ── ④ 祝福與簽名 ───────────────────────────────────────── */
+function seatText(s){ return s ? s : '請洽接待人員'; }
+function showBless(){
+  $('b-name').textContent=result.name;
+  $('b-org').textContent=[result.org,result.plate?('車號 '+result.plate):''].filter(Boolean).join('　·　');
+  const sv=$('b-seat'); sv.textContent=seatText(result.seat); sv.classList.toggle('small',!result.seat);
+  $('b-note').innerHTML=result.note?`<div class="note">📌 ${esc(result.note)}</div>`:'';
+  renderBless();
+  go('s-bless');
+}
+function renderBless(){
+  $('b-chips').innerHTML=BLESS.map(b=>
+    `<button class="bl-chip ${b===wBless?'on':''}" onclick="pickBless('${b.replace(/'/g,"\\'")}')">${esc(b)}</button>`).join('');
+}
+function pickBless(b){ wBless=(wBless===b?'':b); renderBless(); }
+async function submitGreeting(){
+  const err=$('b-err');
+  if(!wBless && !wSig){ err.style.color='#e0b458'; err.textContent='請選一句祝福或留下簽名，或按「略過」'; return; }
+  err.style.color='var(--muted)'; err.textContent='送出中…';
+  try{ await rpc('guest_greeting',{p_guest_id:found.guest_id,p_greeting:wBless||null,p_signature:wSig||null}); }
+  catch(e){ /* 祝福送不出不該擋住報到，直接進最終畫面 */ }
+  showFinal();
+}
+function showFinal(){
+  $('fin-name').textContent=result.name;
+  $('fin-org').textContent=[result.org,result.plate?('車號 '+result.plate):''].filter(Boolean).join('　·　');
+  const sv=$('fin-seat'); sv.textContent=seatText(result.seat); sv.classList.toggle('small',!result.seat);
+  $('fin-note').innerHTML=result.note?`<div class="note">📌 ${esc(result.note)}</div>`:'';
+  if(!result.seat) $('fin-h').textContent='報到完成';
+  go('s-final');
+}
+
+/* ── 簽名板 ─────────────────────────────────────────────── */
+let sigCtx=null, sigDrawing=false, sigHas=false;
+function openSign(){
+  $('signModal').classList.add('show');
+  const cv=$('sign-canvas');
+  sigCtx=cv.getContext('2d'); sigHas=false;
+  sigCtx.fillStyle='#fff'; sigCtx.fillRect(0,0,cv.width,cv.height);
+  sigCtx.lineWidth=3.5; sigCtx.lineCap='round'; sigCtx.lineJoin='round'; sigCtx.strokeStyle='#20261f';
+  const pos=e=>{ const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e;
+    return [(t.clientX-r.left)*cv.width/r.width,(t.clientY-r.top)*cv.height/r.height]; };
+  const start=e=>{ e.preventDefault(); sigDrawing=true; sigHas=true; const [x,y]=pos(e); sigCtx.beginPath(); sigCtx.moveTo(x,y); };
+  const move =e=>{ if(!sigDrawing)return; e.preventDefault(); const [x,y]=pos(e); sigCtx.lineTo(x,y); sigCtx.stroke(); };
+  const end  =()=>{ sigDrawing=false; };
+  cv.onpointerdown=start; cv.onpointermove=move; cv.onpointerup=end; cv.onpointerleave=end;
+  cv.ontouchstart=start; cv.ontouchmove=move; cv.ontouchend=end;
+}
+function clearSign(){ const cv=$('sign-canvas'); sigCtx.fillStyle='#fff'; sigCtx.fillRect(0,0,cv.width,cv.height); sigHas=false; }
+function cancelSign(){ $('signModal').classList.remove('show'); }
+function saveSign(){
+  if(!sigHas){ cancelSign(); return; }
+  wSig=$('sign-canvas').toDataURL('image/png');
+  $('signModal').classList.remove('show');
+  const b=$('b-sign'); b.textContent='✓ 已簽名'; b.classList.add('signed');
 }
 </script>
 </body>
