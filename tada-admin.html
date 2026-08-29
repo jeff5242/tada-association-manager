@@ -1096,7 +1096,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-outline btn-sm" onclick="loadSeating()">↻ 重新載入</button>
       <button class="btn btn-gold btn-sm" onclick="autoSeatMembers()" title="只把『尚未排桌』的出席會員補進會員桌（不動已排好的）">🎲 補排未排會員</button>
-      <button class="btn btn-gold btn-sm" onclick="reseatAllMembers()" title="清掉所有會員桌，依目前『備註／單位』把全部出席會員重新排一次（貴賓桌不受影響）">♻️ 全部重排</button>
+      <!-- 2026-08-29 桌次已定稿：全部重排會覆蓋手動排位，先隱藏（要復原刪掉 display:none 即可） -->
+      <button class="btn btn-gold btn-sm" style="display:none;" onclick="reseatAllMembers()" title="清掉所有會員桌，依目前『備註／單位』把全部出席會員重新排一次（貴賓桌不受影響）">♻️ 全部重排</button>
       <button class="btn btn-outline btn-sm" onclick="clearMemberSeats()" title="清除所有『會員桌』排位（不動貴賓桌與主桌）">🧹 清空會員桌</button>
       <button class="btn btn-outline btn-sm" onclick="exportSeatingCSV()">⬇ 匯出桌次表</button>
       <span id="seating-status" style="font-size:11px;"></span>
