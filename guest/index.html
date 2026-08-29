@@ -61,6 +61,9 @@ header .prog.on .l{color:var(--gold-lt)}
 .add-cancel{flex:0 0 auto;background:transparent;border:1px solid rgba(245,236,212,.3);color:var(--cream);border-radius:12px;padding:15px 24px;font-size:17px;font-family:inherit;cursor:pointer}
 .add-ok{flex:1;background:var(--gold);border:none;color:#1a1a12;border-radius:12px;padding:15px;font-size:19px;font-weight:900;font-family:inherit;cursor:pointer}
 .add-err{color:#f0a;font-size:14px;text-align:center;margin-top:12px;min-height:18px}
+/* 報到人數 ＋/－ 大按鈕 */
+.pc-step{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid var(--gold);color:var(--gold-lt);font-size:38px;font-weight:900;cursor:pointer;line-height:1}
+.pc-step:active{transform:scale(.92);background:var(--gold);color:#1a1a12}
 /* 掃碼報到 QR */
 .qrcard{background:#15281c;border:1px solid var(--gold);border-radius:22px;padding:34px 40px;text-align:center;max-width:460px}
 .qr-h{font-family:var(--serif);font-size:26px;font-weight:900;color:var(--gold-lt)}
@@ -235,6 +238,22 @@ header .prog.on .l{color:var(--gold-lt)}
   <div class="add-err" id="reset-err"></div>
 </div></div>
 
+<!-- 報到人數確認：有同行者可用 ＋/－ 選實際入座人數 -->
+<div class="overlay" id="pcModal" onclick="closePC()"><div class="addcard" onclick="event.stopPropagation()" style="max-width:430px;text-align:center;">
+  <div class="add-h" id="pc-name">報到</div>
+  <div class="add-sub">請確認這次一起入座的人數</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:26px;margin:14px 0 4px;">
+    <button class="pc-step" onclick="pcAdj(-1)">−</button>
+    <div id="pc-num" style="font-family:var(--serif);font-size:66px;font-weight:900;color:var(--gold-lt);min-width:86px;">1</div>
+    <button class="pc-step" onclick="pcAdj(1)">＋</button>
+  </div>
+  <div style="font-size:14px;color:var(--muted);margin-bottom:14px;">人入座</div>
+  <div class="add-btns">
+    <button class="add-cancel" onclick="closePC()">取消</button>
+    <button class="add-ok" onclick="pcConfirm()">✓ 完成報到</button>
+  </div>
+</div></div>
+
 <div class="overlay" id="welcome"><div class="wcard" id="wcard"></div></div>
 
 <!-- 簽名板 -->
@@ -277,7 +296,7 @@ function nameKeys(n){
 async function load(){
   try{
     const [r,m]=await Promise.all([
-      fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in&order=sort.asc,name.asc`,{headers:H()}),
+      fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in,party_size&order=sort.asc,name.asc`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_members?select=name,reps`,{headers:H()})
     ]);
     const all=r.ok?await r.json():[];
@@ -367,9 +386,26 @@ function renderList(){
         : `<div class="gcard viewonly"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${esc(clean(g.org))}</div></div><div class="g-wait">未報到</div></div>`)
   ).join('');
 }
-async function doCheckin(id){
+// 報到前先確認入座人數（＋/－），確認後才真正報到
+let pcId=null, pcN=1;
+function doCheckin(id){
+  const g=guests.find(x=>x.id===id); if(!g||g.checked_in) return;
+  pcId=id; pcN=Math.min(9,Math.max(1,g.party_size||1));
+  document.getElementById('pc-name').textContent=g.name;
+  document.getElementById('pc-num').textContent=pcN;
+  document.getElementById('pcModal').classList.add('show');
+}
+function pcAdj(d){ pcN=Math.min(9,Math.max(1,pcN+d)); document.getElementById('pc-num').textContent=pcN; }
+function closePC(){ document.getElementById('pcModal').classList.remove('show'); }
+async function pcConfirm(){
+  const id=pcId; closePC();
   const g=guests.find(x=>x.id===id); if(!g||g.checked_in) return;
   try{
+    if((g.party_size||1)!==pcN){
+      // 實際入座人數寫回 party_size：桌次規劃/人數統計即時反映
+      await fetch(`${SB}/rest/v1/tada_guests?id=eq.${id}`,{method:'PATCH',headers:{...H(),Prefer:'return=minimal'},body:JSON.stringify({party_size:pcN})});
+      g.party_size=pcN;
+    }
     const res=await rpc('guest_checkin',{p_guest_id:id});
     if(res.ok || res.error==='already_checked_in'){ g.checked_in=true; renderCats(); renderUnits(); renderList(); renderProg(); showWelcome(res, id); }
     else alert('報到失敗：'+(res.error||'未知'));
