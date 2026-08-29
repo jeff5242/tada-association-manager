@@ -35,6 +35,9 @@ header .prog{margin-left:auto;text-align:right}
 header .prog .n{font-family:var(--serif);font-size:30px;font-weight:900;color:var(--cream);line-height:1}
 header .prog .n b{color:var(--gold-lt)}
 header .prog .l{font-size:12px;color:var(--muted);letter-spacing:.1em;margin-top:3px}
+.reset-list{max-height:190px;overflow-y:auto;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;margin:14px 0 4px;font-size:15px;line-height:1.9;color:var(--cream)}
+.reset-go{background:linear-gradient(160deg,#b8433a,#8d2c25);border:none;color:#fff;border-radius:10px;padding:12px 22px;font-size:16px;font-weight:800;cursor:pointer}
+.reset-go:disabled{opacity:.5;cursor:default}
 .reset-all{background:rgba(190,60,50,.18);border:1px solid rgba(220,90,80,.55);color:#ffb3aa;border-radius:10px;padding:9px 16px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
 .reset-all:active{transform:scale(.96)}
 header .prog{cursor:pointer;border-radius:12px;padding:6px 12px;border:1px solid transparent;transition:all .12s}
@@ -217,6 +220,21 @@ header .prog.on .l{color:var(--gold-lt)}
   <div class="add-btns"><button class="add-ok" onclick="saveSettings()">✓ 套用</button></div>
 </div></div>
 
+<!-- 清除全部報到：不可逆，需管理密碼 -->
+<div class="overlay" id="resetModal" onclick="closeReset()"><div class="addcard" onclick="event.stopPropagation()" style="max-width:460px">
+  <div class="add-h">清除全部報到紀錄</div>
+  <div class="add-sub">以下人員會被改回「未報到」。此操作無法復原，請輸入管理密碼確認。</div>
+  <div class="reset-list" id="reset-list"></div>
+  <label class="add-lb">管理密碼</label>
+  <input id="reset-pw" class="add-in" type="password" placeholder="請輸入管理密碼" autocomplete="off"
+         onkeydown="if(event.key==='Enter')confirmReset()">
+  <div class="add-btns">
+    <button class="add-cancel" onclick="closeReset()">取消</button>
+    <button class="reset-go" id="reset-go" onclick="confirmReset()">清除全部</button>
+  </div>
+  <div class="add-err" id="reset-err"></div>
+</div></div>
+
 <div class="overlay" id="welcome"><div class="wcard" id="wcard"></div></div>
 
 <!-- 簽名板 -->
@@ -383,18 +401,42 @@ async function submitAddGuest(){
     } else err.textContent='新增失敗：'+(res.error||'未知');
   }catch(e){ err.textContent='新增失敗：'+e.message; }
 }
-/* 賽前清資料：逐筆呼叫 undo RPC（沒有批次 RPC，資料量小可接受） */
-async function resetAllCheckins(){
+/* 賽前清資料：不可逆，先列名單再驗管理密碼（同後台密碼） */
+const RESET_PW_HASH='ed6f1a565c864f401b0aba93e9623ea1f4616fe7ebd3f8774fa37dedef301aca';
+async function sha256(t){
+  const d=new TextEncoder().encode(t);
+  const h=await crypto.subtle.digest('SHA-256',d);
+  return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function resetAllCheckins(){
   const done=guests.filter(g=>g.checked_in);
   if(!done.length){ alert('目前沒有任何報到紀錄。'); return; }
-  if(!confirm(`將 ${done.length} 筆報到紀錄全部改回「未報到」？\n\n`+done.map(g=>'· '+g.name).join('\n'))) return;
-  let ok=0, bad=[];
+  document.getElementById('reset-list').innerHTML=done.map(g=>
+    `· ${esc(g.name)}<span style="color:var(--muted)"> ${esc(clean(g.org))}</span>`).join('<br>');
+  document.getElementById('reset-pw').value='';
+  document.getElementById('reset-err').textContent='';
+  document.getElementById('reset-go').disabled=false;
+  document.getElementById('reset-go').textContent=`清除全部（${done.length} 筆）`;
+  closeSettings();
+  document.getElementById('resetModal').classList.add('show');
+  setTimeout(()=>document.getElementById('reset-pw').focus(),80);
+}
+function closeReset(){ document.getElementById('resetModal').classList.remove('show'); }
+async function confirmReset(){
+  const err=document.getElementById('reset-err'), btn=document.getElementById('reset-go');
+  const pw=document.getElementById('reset-pw').value.trim();
+  if(!pw){ err.textContent='請輸入管理密碼'; return; }
+  if(await sha256(pw.toLowerCase())!==RESET_PW_HASH){ err.textContent='密碼錯誤'; return; }
+  btn.disabled=true; btn.textContent='清除中…'; err.textContent='';
+  const done=guests.filter(g=>g.checked_in);
+  let ok=0; const bad=[];
   for(const g of done){
     try{ const r=await rpc('guest_checkin_undo',{p_guest_id:g.id});
          if(r.ok){ g.checked_in=false; ok++; } else bad.push(g.name); }
     catch(e){ bad.push(g.name); }
   }
   renderCats(); renderUnits(); renderList(); renderProg();
+  closeReset();
   alert(`已重置 ${ok} 筆`+(bad.length?`\n失敗 ${bad.length} 筆：`+bad.join('、'):''));
 }
 async function doUncheck(id,name){
