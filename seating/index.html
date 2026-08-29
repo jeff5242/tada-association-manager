@@ -63,6 +63,29 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 .notes p{font-size:13px;color:var(--muted);padding-left:15px;position:relative;max-width:74ch}
 .notes p::before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;border-radius:50%;background:var(--gold)}
 .tog{background:none;border:none;color:var(--gold);font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:0}
+
+/* 會場平面圖（依飯店桌位配置） */
+.plan{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:clamp(14px,3vw,24px);overflow-x:auto}
+.plan h2{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--green);margin-bottom:4px}
+.plan .ph{font-size:12.5px;color:var(--muted);margin-bottom:16px}
+.floor{display:grid;grid-template-columns:1fr 1fr .32fr 1fr 1fr;gap:9px;min-width:560px}
+.stage{grid-column:1/-1;background:linear-gradient(180deg,var(--green),#24422b);color:#F5ECD4;
+  border-radius:10px;padding:13px;text-align:center;font-family:var(--serif);font-size:16px;
+  font-weight:700;letter-spacing:.5em;margin-bottom:6px}
+.tbox{background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:9px 8px;
+  text-align:center;cursor:pointer;transition:transform .1s,border-color .12s;min-height:76px;
+  display:flex;flex-direction:column;justify-content:center;gap:2px}
+.tbox:hover{transform:translateY(-2px);border-color:var(--gold)}
+.tbox.theme{border-color:var(--gold);background:var(--gold-soft)}
+.tbox.spare{border-style:dashed;opacity:.72}
+.tbox.staff{background:var(--green-soft)}
+.tbox .bn{font-family:var(--serif);font-size:17px;font-weight:900;color:var(--green);line-height:1.1}
+.tbox .bl{font-size:10.5px;color:var(--gold);font-weight:700;line-height:1.35;overflow-wrap:anywhere}
+.tbox .bc{font-size:11px;color:var(--muted)}
+.tbox.hit{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.aisle{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);
+  writing-mode:vertical-rl;letter-spacing:.3em}
+@media print{ .plan{break-inside:avoid} .tbox{cursor:default} }
 /* 搜尋 */
 .finder{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .finder input{flex:1;min-width:200px;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;
@@ -154,6 +177,13 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
     </div>
   </section>
 
+
+  <section class="plan" id="plan">
+    <h2>會場平面圖</h2>
+    <p class="ph">依臻愛婚宴會館桌位配置。點任一桌可跳到該桌名單；金框為主題桌、虛線為預備桌。</p>
+    <div class="floor" id="floor"></div>
+  </section>
+
   <div class="finder">
     <input id="q" type="search" placeholder="輸入姓名或單位，立即找出所在桌次" autocomplete="off">
     <span class="hint" id="qhint">—</span>
@@ -185,13 +215,13 @@ function show(){
 const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
 const BALLOT='66666666-6666-4666-8666-666666666666';
 const THEME={"第1桌":"農業部本部・署級長官","第3桌":"改良場・試驗所","第4桌":"學校單位",
-  "第11桌":"異父異母兄弟","第12桌":"大叔鐵人","第13桌":"扶輪社①","第14桌":"中小企協・彰南二區",
-  "第15桌":"淡江校友","第16桌":"中衛發展","第17桌":"上市櫃公司協會","第18桌":"溝頭社區",
-  "第22桌":"扶輪社②・中興路跑團"};
+  "第11桌":"異父異母兄弟","第12桌":"大叔鐵人","第13桌":"扶輪社①","第14桌":"扶輪社②・中興路跑團",
+  "第15桌":"淡江校友","第16桌":"中衛發展","第17桌":"上市櫃公司協會","第18桌":"中小企協・彰南二區",
+  "第21桌":"米糧加工・農機","第23桌":"溝頭社區・幸福學堂"};
 const ZONE=[["長官席",["第1桌","第3桌"]],["理監事席",["第2桌"]],["學校單位區",["第4桌"]],
   ["貴賓・公司群",["第5桌","第6桌","第7桌","第8桌","第9桌","第10桌"]],
-  ["主題桌區",["第11桌","第12桌","第13桌","第14桌","第15桌","第16桌","第17桌","第18桌","第22桌"]],
-  ["會員區",["第19桌","第20桌","第21桌"]],["工作桌",["工作桌"]]];
+  ["主題桌區",["第11桌","第12桌","第13桌","第14桌","第15桌","第16桌","第17桌","第18桌","第21桌","第23桌"]],
+  ["會員區",["第19桌","第20桌"]],["工作人員",["第22桌"]]];
 const SCH=/大學|學院|學校|國小|國中|高中|科大/;
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const clean=v=>{v=(v==null?'':String(v)).trim();return (v===''||v==='?'||v==='？')?'':v;};
@@ -264,7 +294,45 @@ function render(rs,gs,ms,vm){
     if(cards) html+=`<section class="zone"><h2 class="zh">${esc(zn)}</h2><div class="grid">${cards}</div></section>`;
   });
   document.getElementById('body').innerHTML=html;
+  renderFloor(by,heads);
   if(document.getElementById('q').value.trim()) filter();
+}
+
+
+/* 飯店桌位配置：[桌號, 欄位(1..5，3=走道)]，依現場平面圖 */
+const FLOOR=[
+  [[1,2],[2,4]],
+  [[3,1],[4,2],[5,4],[6,5]],
+  [[7,1],[8,2],[9,4],[10,5]],
+  [[11,1],[12,2],[13,4],[14,5]],
+  [[15,1],[16,2],[17,4],[18,5]],
+  [[19,1],[20,2],[21,4],[22,5]],
+  [[23,1]],
+];
+const SPARE={21:'協會預備桌',22:'工作人員桌',23:'飯店預備桌'};
+function renderFloor(by,heads){
+  const f=document.getElementById('floor');
+  let html='<div class="stage">舞　台</div>';
+  FLOOR.forEach(row=>{
+    row.forEach(([no,col])=>{
+      const t='第'+no+'桌', ppl=by[t]||[], h=ppl.length?heads(t):0;
+      const lb=THEME[t]||'', role=SPARE[no]||'';
+      const cls=['tbox']; if(lb)cls.push('theme'); if(!h)cls.push('spare'); if(no===22)cls.push('staff');
+      html+=`<div class="${cls.join(' ')}" style="grid-column:${col}" onclick="jumpTo('${t}')" title="${esc(t)}">
+        <div class="bn">${no}</div>
+        ${lb?`<div class="bl">${esc(lb)}</div>`:(role?`<div class="bl" style="color:var(--muted);font-weight:500;">${role}</div>`:'')}
+        <div class="bc">${h?h+' 人':'（空桌）'}</div></div>`;
+    });
+  });
+  f.innerHTML=html;
+}
+function jumpTo(t){
+  const el=[...document.querySelectorAll('.tno')].find(x=>x.textContent===t);
+  if(!el){ return; }
+  const card=el.closest('.card');
+  card.scrollIntoView({behavior:'smooth',block:'center'});
+  card.style.transition='box-shadow .3s'; card.style.boxShadow='0 0 0 3px var(--gold)';
+  setTimeout(()=>card.style.boxShadow='',1800);
 }
 
 function filter(){
