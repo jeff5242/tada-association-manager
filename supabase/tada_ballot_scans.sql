@@ -94,6 +94,15 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', '尚未複核完成');
   END IF;
 
+  -- 票號未判讀 → 唯一索引 uq_ballot_no_live 的條件是 ballot_no IS NOT NULL，
+  -- 此時防重複計票失效，同一張票可被掃兩次各自計票，故強制人工複核補登票號。
+  -- （與 tada_vote_outcome.sql 內的同名函式保持一致；兩檔任一先後執行結果相同）
+  IF (v_scan.ballot_no IS NULL OR btrim(v_scan.ballot_no) = '')
+     AND v_scan.review_status <> 'confirmed' THEN
+    RETURN jsonb_build_object('ok', false,
+      'error', '票號未判讀，無法自動防止重複計票；請人工複核並補登票號後再計入');
+  END IF;
+
   FOREACH v_no IN ARRAY COALESCE(v_scan.marked_nos, ARRAY[]::INTEGER[])
   LOOP
     SELECT id INTO v_cid
