@@ -73,17 +73,17 @@ textarea{resize:vertical;min-height:60px;}
       </div>
 
       <div class="field">
-        <label class="label">單位（選填）</label>
+        <label class="label">單位（必填）</label>
         <input type="text" id="rsvp-org" placeholder="公司／機構名稱">
       </div>
 
       <div class="field">
-        <label class="label">職稱（選填）</label>
+        <label class="label">職稱（必填）</label>
         <input type="text" id="rsvp-title" placeholder="例如：董事長、總經理">
       </div>
 
       <div class="field">
-        <label class="label">手機（選填）</label>
+        <label class="label">手機（必填）</label>
         <input type="tel" id="rsvp-mobile" placeholder="09XX-XXX-XXX" inputmode="tel">
         <div class="hint">方便當天聯繫與製作桌卡</div>
       </div>
@@ -224,6 +224,13 @@ async function init(){
 async function submitRsvp(){
   const name = document.getElementById('rsvp-name').value.trim();
   if(!name){ showErr('請輸入姓名'); return; }
+  const orgV = document.getElementById('rsvp-org').value.trim();
+  if(!orgV){ showErr('請輸入單位（公司／機構名稱）'); return; }
+  const titleV = document.getElementById('rsvp-title').value.trim();
+  if(!titleV){ showErr('請輸入職稱'); return; }
+  const mobileV = document.getElementById('rsvp-mobile').value.trim();
+  if(!mobileV){ showErr('請輸入手機號碼'); return; }
+  if(!/^09\d{2}[- ]?\d{3}[- ]?\d{3}$/.test(mobileV)){ showErr('手機格式請用 09XX-XXX-XXX'); return; }
   if(!userId){ showErr('初始化尚未完成，請重新整理頁面。'); return; }
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = '送出中…';
