@@ -70,13 +70,13 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
         <div class="chart" id="chart-s"></div>
       </div>
     </div>
-    <div class="foot" id="foot">每 3 秒自動更新　·　🟡 當選　🟢 候補</div>
+    <div class="foot" id="foot">每 3 秒自動更新　·　🟡 當選　🟢 候補　·　🟠 同票待抽籤（依人民團體選舉慣例，不以號次決定）</div>
   </div>
 </div>
 
 <script>
 let election = null, chartD = null, chartS = null;
-const GOLD='#d4a853', GREEN='#7fae86', GREY='#4a6b52';
+const GOLD='#d4a853', GREEN='#7fae86', GREY='#4a6b52', TIE='#d97b45';
 
 async function rpc(fn, body){
   const res = await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`, { method:'POST', headers: window.tadaSbHeaders(), body: JSON.stringify(body) });
@@ -107,9 +107,12 @@ async function boot(){
 
 async function tick(){
   try{
+    // 當選／候補的權威判定在 vote_outcome（0 票不當選、同票不以號次決勝）；
+    // 舊的 vote_results 只有票數，僅在 outcome 取不到時退回使用。
     const [prog, results] = await Promise.all([
       rpc('vote_progress', { p_election: election.id }),
-      rpc('vote_results',  { p_election: election.id }),
+      rpc('vote_outcome',  { p_election: election.id }).catch(()=>null)
+        .then(r => (r && r.candidates) ? r : rpc('vote_results', { p_election: election.id })),
     ]);
     renderStats(prog);
     const cands = results.candidates || [];
@@ -131,14 +134,21 @@ function renderStats(p){
   document.getElementById('prog-bar').style.width = rate+'%';
 }
 
+const OUTCOME_COLOR={ elected:GOLD, reserve:GREEN, tiebreak:TIE, not_elected:GREY };
 function renderChart(chart, arr, seats, reserve){
-  // 依得票排序（高→低）
+  // 依得票排序（高→低）。同票時僅為畫面排列，不代表名次先後——
+  // 誰當選由 status 決定，跨越分界的同票組會標成 tiebreak 待抽籤。
   arr = arr.slice().sort((a,b)=> b.votes - a.votes || (a.no||0)-(b.no||0));
-  const names = arr.map(c=> c.name + (c.company? '　'+c.company : ''));
+  const names = arr.map(c=> c.name + (c.company? '　'+c.company : '')
+                            + (c.status==='tiebreak' ? '　⚠同票待抽籤' : ''));
   const data = arr.map((c,i)=>{
-    let color = GREY;                       // 落選
-    if(i < seats) color = GOLD;             // 當選
-    else if(i < seats + reserve) color = GREEN; // 候補
+    let color;
+    if(c.status) color = OUTCOME_COLOR[c.status] || GREY;
+    else {                                   // 退回舊邏輯（vote_outcome 取不到時）
+      color = GREY;
+      if(i < seats) color = GOLD;
+      else if(i < seats + reserve) color = GREEN;
+    }
     return { value: c.votes, itemStyle:{ color, borderRadius:[0,6,6,0] } };
   });
   // 橫向長條，最高票在最上方 → yAxis 反轉
