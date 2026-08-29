@@ -223,10 +223,12 @@ async function tryLogin(){
   document.getElementById('gate').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('pdate').valueAsDate=new Date();
-  updateSample();
   document.getElementById('start').addEventListener('input',updateSample);
   document.getElementById('pdate').addEventListener('change',updateSample);
-  loadCands(); loadVoterCount();
+  // 席次／上限一律由 BALLOT_SPEC（必要時再由 tada_v_election 覆寫）帶入，
+  // 不吃 HTML 的預設值，避免載入時停在舊數字被直接列印。
+  loadSpecFromDB().then(onKindChange);
+  loadVoterCount();
 }
 document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin()});
 
@@ -286,6 +288,27 @@ async function loadVoterCount(){
     const n=cr.split('/')[1];
     if(n && n!=='*') document.getElementById('voter-n').textContent=n;
   }catch(e){}
+}
+/* 應選席次與圈選上限的權威值在 tada_v_election，
+   與後台開票判定、/scan/ 掃描頁共用同一份設定。 */
+async function loadSpecFromDB(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_v_election?id=eq.${ELECTION_ID}`
+      +`&select=director_seats,director_pick,director_reserve,supervisor_seats,supervisor_pick,`
+      +`supervisor_reserve,executive_seats,executive_pick`,{headers:SB_H});
+    if(!r.ok) return;
+    const e=(await r.json())[0]; if(!e) return;
+    const n=(v,d)=>Number.isFinite(+v)&&+v>0?+v:d;
+    const S=BALLOT_SPEC;
+    S.director.seats=n(e.director_seats,S.director.seats);
+    S.director.limit=n(e.director_pick,S.director.seats);
+    S.director.alt  =Number.isFinite(+e.director_reserve)?+e.director_reserve:S.director.alt;
+    S.supervisor.seats=n(e.supervisor_seats,S.supervisor.seats);
+    S.supervisor.limit=n(e.supervisor_pick,S.supervisor.seats);
+    S.supervisor.alt  =Number.isFinite(+e.supervisor_reserve)?+e.supervisor_reserve:S.supervisor.alt;
+    S.executive.seats=n(e.executive_seats,S.executive.seats);
+    S.executive.limit=n(e.executive_pick,S.executive.seats);
+  }catch(err){ /* 用 BALLOT_SPEC 的保底值 */ }
 }
 function onKindChange(){
   const sp=BALLOT_SPEC[document.getElementById('kind').value]||BALLOT_SPEC.director;
@@ -392,7 +415,7 @@ function build(preview){
       <div class="b-sec">
         <div class="b-sec-h">${posName}候選人</div>
         ${rows}
-        ${wn?`<div class="w-hd">另行填寫 <span>（如欲圈選名單以外之會員，請於空格右方正楷書寫姓名，並於左方空格畫 ○；仍計入 ${limit} 人上限）</span></div>
+        ${wn?`<div class="w-hd">另行填寫 <span>（如欲圈選名單以外之會員，請於空格右方正楷書寫姓名，並於左方空格畫 ○）</span></div>
         ${Array.from({length:wn},()=>`<div class="w-row"><span class="c-no"></span><span class="c-box"></span><span class="w-line"></span></div>`).join('')}`:''}
       </div>
 
