@@ -90,8 +90,10 @@ video{width:100%;max-width:420px;border-radius:10px;background:#000;display:bloc
         <select id="kind" onchange="onKind()">
           <option value="director">理事票（應選 11 席）</option>
           <option value="supervisor">監事票（應選 3 席）</option>
+          <option value="executive">常務理事票（應選 3 席）</option>
+          <option value="exec_supervisor">常務監事票（應選 1 席）</option>
         </select></div>
-      <div class="fld"><label>每票圈選上限</label><input id="limit" type="number" value="6" min="1" style="width:90px"></div>
+      <div class="fld"><label>每票圈選上限</label><input id="limit" type="number" value="11" min="1" style="width:90px"></div>
       <div class="fld"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
         <input type="checkbox" id="test" onchange="document.getElementById('testmode').classList.toggle('on',this.checked)">
         測試模式（彩排用）</label></div>
@@ -166,11 +168,29 @@ async function tryLogin(){
   if(h!==LOGIN_PW_HASH){document.getElementById('gate-err').textContent='密碼錯誤';return}
   document.getElementById('gate').style.display='none';
   document.getElementById('app').style.display='block';
+  loadKindLimit();
 }
 document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin()});
 
+/* 圈選上限的權威值在 tada_v_election.*_pick，載入後覆寫；
+   取不到時用保底值（第六屆連記法：上限＝應選席次）。 */
+let KIND_LIMIT={director:11,supervisor:3,executive:3,exec_supervisor:1};
+async function loadKindLimit(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_v_election?id=eq.${ELECTION_ID}`
+      +`&select=director_seats,director_pick,supervisor_seats,supervisor_pick,executive_seats,executive_pick`,
+      {headers:SB_H});
+    if(!r.ok) return;
+    const e=(await r.json())[0]; if(!e) return;
+    const n=(v,d)=>Number.isFinite(+v)&&+v>0?+v:d;
+    KIND_LIMIT={ director:n(e.director_pick,n(e.director_seats,11)),
+                 supervisor:n(e.supervisor_pick,n(e.supervisor_seats,3)),
+                 executive:n(e.executive_pick,n(e.executive_seats,3)), exec_supervisor:1 };
+  }catch(err){ /* 保底值繼續用 */ }
+  onKind();
+}
 function onKind(){
-  document.getElementById('limit').value = document.getElementById('kind').value==='director'?6:1;
+  document.getElementById('limit').value = KIND_LIMIT[document.getElementById('kind').value]||11;
 }
 
 /* ── 檔案收集 ── */
@@ -229,7 +249,7 @@ async function start(){
 
 async function handle(item){
   item.status='run'; render();
-  const limit=parseInt(document.getElementById('limit').value,10)||6;
+  const limit=parseInt(document.getElementById('limit').value,10)||11;
   const kind=document.getElementById('kind').value;
   const isTest=document.getElementById('test').checked;
   try{

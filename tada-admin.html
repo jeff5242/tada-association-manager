@@ -5326,9 +5326,27 @@ function showApp(){
 
 /* ══════════ 紙本選票：開票看板與人工複核 ══════════ */
 const BALLOT_ELECTION_ID='66666666-6666-4666-8666-666666666666';
-// 應選席次（章程第十六條）與「每票圈選上限」（限制連記法）是兩回事，廢票依上限判定
-const BALLOT_SEATS = { director:11, supervisor:3 };
-const BALLOT_LIMIT = { director:6,  supervisor:1 };
+// 應選席次（章程第十六條）與「每票圈選上限」是兩回事，廢票依上限判定。
+// 權威值在 tada_v_election 的 *_seats / *_pick 欄位，載入時覆寫；
+// 這裡只是取不到設定時的保底值（第六屆採連記法，上限＝應選席次）。
+let BALLOT_SEATS = { director:11, supervisor:3, executive:3, exec_supervisor:1 };
+let BALLOT_LIMIT = { director:11, supervisor:3, executive:3, exec_supervisor:1 };
+async function loadBallotConfig(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_v_election?id=eq.${BALLOT_ELECTION_ID}`
+      +`&select=director_seats,director_pick,supervisor_seats,supervisor_pick,executive_seats,executive_pick`,
+      {headers:SB_HEADERS});
+    if(!r.ok) return;
+    const e=(await r.json())[0]; if(!e) return;
+    const n=(v,d)=>Number.isFinite(+v)&&+v>0?+v:d;
+    BALLOT_SEATS={ director:n(e.director_seats,11), supervisor:n(e.supervisor_seats,3),
+                   executive:n(e.executive_seats,3), exec_supervisor:1 };
+    // 未設定 *_pick 時退回應選席次（連記法）
+    BALLOT_LIMIT={ director:n(e.director_pick,BALLOT_SEATS.director),
+                   supervisor:n(e.supervisor_pick,BALLOT_SEATS.supervisor),
+                   executive:n(e.executive_pick,BALLOT_SEATS.executive), exec_supervisor:1 };
+  }catch(err){ /* 保底值繼續用 */ }
+}
 let ballotAutoTimer=null;
 
 function toggleBallotAuto(){
@@ -5342,6 +5360,7 @@ async function loadBallotScans(){
   const isTest=document.getElementById('bs-test')?.checked||false;
   if(st) st.textContent='載入中…';
   try{
+    await loadBallotConfig();
     const [sRes,rRes]=await Promise.all([
       fetch(`${SB_URL}/rest/v1/rpc/tada_ballot_stats`,{method:'POST',headers:SB_HEADERS,
         body:JSON.stringify({p_election_id:BALLOT_ELECTION_ID,p_test:isTest})}),
@@ -5382,7 +5401,7 @@ function renderBallotPending(rows){
   tb.innerHTML=rows.map(r=>{
     const pos=r.position==='director'?'理事':'監事';
     const seats=BALLOT_SEATS[r.position]||11;
-    const limit=BALLOT_LIMIT[r.position]||6;
+    const limit=BALLOT_LIMIT[r.position]||11;
     const nos=(r.marked_nos||[]).join('、')||'—';
     const why=[];
     if(r.agree===false) why.push('兩次判讀不一致');
@@ -5430,7 +5449,7 @@ async function ballotReview(id, decision){
     const r=await fetch(`${SB_URL}/rest/v1/tada_ballot_scans?id=eq.${id}&select=marked_nos,marked_count,position,verdict`,{headers:SB_HEADERS});
     const row=(await r.json())[0];
     if(!row) throw new Error('找不到該筆紀錄');
-    const limit=BALLOT_LIMIT[row.position]||6;
+    const limit=BALLOT_LIMIT[row.position]||11;
     if(decision==='valid'){
       if(!row.marked_nos||!row.marked_nos.length) throw new Error('無圈選內容，不能裁為有效票');
       if(row.marked_count>limit) throw new Error(`圈選 ${row.marked_count} 人超過每票上限 ${limit} 人，依規定為廢票`);
@@ -5493,7 +5512,7 @@ async function resolveWriteIn(scanId, slot){
 
     const nos=[...new Set([...(row.marked_nos||[]), cr.no])].sort((a,b)=>a-b);
     const wi=(row.write_ins||[]).map(w=>w.slot===slot?{...w,state:'resolved',name:nm,resolved_no:cr.no}:w);
-    const limit=BALLOT_LIMIT[row.position]||6;
+    const limit=BALLOT_LIMIT[row.position]||11;
     if(nos.length>limit){
       if(!confirm(`加入後圈選數為 ${nos.length}，已超過每票上限 ${limit} 人。\n仍要認定嗎？（之後只能裁為廢票）`)) return;
     }
