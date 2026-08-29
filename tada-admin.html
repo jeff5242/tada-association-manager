@@ -1697,7 +1697,7 @@ function memberMainRow(m, seq){
   // 個人：公司後面接（職稱）
   const coTitle = (!memberIsGroup(m) && m.title) ? `<span style="color:var(--gray);">（${escapeHtml(m.title)}）</span>` : '';
   const editFn = memberIsGroup(m) ? `openGroupModal('${m.id}')` : `editMemberRow('${m.id}')`;
-  return `<tr>
+  return `<tr id="mrow-${m.id}">
     <td data-label="#" style="color:var(--gray);font-size:11px;text-align:right;">${seq}</td>
     <td data-label="會員編號" style="font-family:'DM Mono',monospace;color:${m.member_no?'var(--gold-lt)':'var(--gray)'};white-space:nowrap;">${m.member_no?escapeHtml(m.member_no):'—'}</td>
     <td data-label="姓名" class="name-cell">${escapeHtml(m.name)} ${mTypeBadge(m.member_type)}</td>
@@ -1750,7 +1750,7 @@ function memberEditRow(m, seq){
   const v = s => escapeHtml(s==null?'':String(s));
   const opt = (val,lbl,cur)=>`<option value="${val}"${cur===val?' selected':''}>${lbl}</option>`;
   const statusOpts = ['<option value="">—</option>'].concat(STATUS_LIST.map(s=>opt(s,s,m.status||''))).join('');
-  return `<tr style="background:rgba(196,146,42,0.08);">
+  return `<tr id="mrow-${m.id}" style="background:rgba(196,146,42,0.08);">
     <td style="color:var(--gray);font-size:11px;text-align:right;">${seq||''}</td>
     <td><input id="me-no" class="search-input" style="width:92px;" placeholder="編號" value="${v(m.member_no)}">
         <input id="me-join" class="search-input" style="width:92px;margin-top:4px;" placeholder="入會日" value="${v(m.join_date)}"></td>
@@ -1765,12 +1765,31 @@ function memberEditRow(m, seq){
     <td></td>
     <td style="white-space:nowrap;">
       <button class="btn btn-sm btn-gold" onclick="saveMemberRow('${m.id}')">儲存</button>
-      <button class="btn btn-sm btn-outline" onclick="editingMemberId=null;renderMemberDir()">取消</button>
+      <button class="btn btn-sm btn-outline" onclick="cancelMemberEdit()">取消</button>
     </td>
   </tr>`;
 }
 
-function editMemberRow(id){ editingMemberId=id; renderMemberDir(); }
+/* 重繪整個 tbody 會讓捲動位置失去參考，點編輯後那一列就跑出畫面，
+   使用者得自己捲回去找。記下該列位置，重繪後補回捲動量。 */
+function keepMemberRowInPlace(id, mutate){
+  const at=()=>{ const e=document.getElementById('mrow-'+id); return e?e.getBoundingClientRect():null; };
+  const before=at();
+  mutate();
+  if(!before) return;
+  const el=document.getElementById('mrow-'+id); if(!el) return;
+  const d=el.getBoundingClientRect().top-before.top;
+  if(d) window.scrollBy(0,d);
+  const r=el.getBoundingClientRect();
+  if(r.bottom>window.innerHeight){
+    window.scrollBy(0, Math.min(r.bottom-window.innerHeight+12, Math.max(0,r.top-12)));
+  }
+}
+function cancelMemberEdit(){
+  const id=editingMemberId;
+  keepMemberRowInPlace(id,()=>{ editingMemberId=null; renderMemberDir(); });
+}
+function editMemberRow(id){ keepMemberRowInPlace(id,()=>{ editingMemberId=id; renderMemberDir(); }); }
 
 // ── 會員名冊寄信 ──────────────────────────────────────────
 let mmailMember = null;
