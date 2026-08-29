@@ -23,7 +23,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--i
 .bank b{color:var(--gold-light);letter-spacing:0.05em;}
 .field{margin-bottom:16px;}
 .label{font-size:13px;font-weight:700;color:var(--green-deep);margin-bottom:8px;display:block;}
-select,input[type=text],input[type=number],textarea{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:15px;color:var(--ink);outline:none;background:#fff;}
+select,input[type=text],input[type=tel],input[type=number],textarea{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:15px;color:var(--ink);outline:none;background:#fff;}
 select:focus,input:focus,textarea:focus{border-color:var(--gold);}
 textarea{resize:vertical;min-height:56px;}
 .amount-show{font-family:'Noto Serif TC',serif;font-size:22px;font-weight:900;color:var(--gold);}
@@ -66,9 +66,15 @@ textarea{resize:vertical;min-height:56px;}
         </select>
         <div class="hint">秘書處代填：從入會申請清單選擇繳費人（自動帶入姓名與類別）</div>
       </div>
-      <div class="field" id="name-field" style="display:none;">
-        <label class="label">姓名 <span style="color:#c0392b;">*</span></label>
-        <input type="text" id="payer-name" placeholder="請輸入您的姓名">
+      <div class="field" id="name-field">
+        <label class="label">會員名稱 <span style="color:#c0392b;">*</span></label>
+        <input type="text" id="payer-name" placeholder="個人請填真實姓名／團體請填公司全名">
+        <div class="hint">請勿填 LINE 暱稱，會務人員需以此核對匯款</div>
+      </div>
+      <div class="field">
+        <label class="label">手機號碼 <span style="color:#c0392b;">*</span></label>
+        <input type="tel" id="payer-mobile" inputmode="numeric" maxlength="15" placeholder="09xxxxxxxx">
+        <div class="hint">款項有疑問時，會務人員以此聯繫您</div>
       </div>
       <div class="field">
         <label class="label">繳費類別</label>
@@ -112,6 +118,7 @@ textarea{resize:vertical;min-height:56px;}
     <div class="ic">✅</div>
     <div class="msg">匯款回報已送出！</div>
     <div class="sub2">會務人員核對後會為您確認，感謝您的支持 🌾</div>
+    <div id="done-extra"></div>
   </div>
 </div>
 
@@ -133,6 +140,54 @@ async function rosterBound(uid){
 }
 
 const STAFF_MODE = new URLSearchParams(location.search).get('staff')==='1';
+
+const PAY_TYPE_LBL = {
+  personal_new:'個人會員・新入會', group_new:'團體會員・新入會',
+  personal_renew:'個人會員・續約', group_renew:'團體會員・續約',
+};
+
+// 09xxxxxxxx。容許輸入 +886／空白／連字號，回傳統一格式；不合格式回空字串。
+function normalizeMobile(raw){
+  let d = String(raw||'').replace(/\D/g,'');
+  if(/^8869\d{8}$/.test(d)) d = '0' + d.slice(3);
+  return /^09\d{8}$/.test(d) ? d : '';
+}
+
+// LIFF 只有從聊天室（1:1／群組）開啟時才能代發訊息
+function chatCapable(){
+  try{
+    if(!window.liff || !liff.isInClient()) return false;
+    const t = ((liff.getContext && liff.getContext()) || {}).type;
+    return ['utou','room','group','square_chat'].indexOf(t) >= 0;
+  }catch(e){ return false; }
+}
+
+// 以會員本人的身分在官方帳號聊天室留一則訊息。
+// 目的：LINE 官方帳號後台只看得到「講過話」的人，沒留言就找不到這個對話框，
+// 會務人員也就無法回覆繳費核對結果。
+// 需要該 LIFF app 開啟 chat_message.write 權限，未開啟則靜默失敗、改走手動提示。
+async function sayInChat(text){
+  if(!chatCapable()) return false;
+  try{
+    if(liff.isApiAvailable && !liff.isApiAvailable('sendMessages')) return false;
+    await liff.sendMessages([{ type:'text', text: text }]);
+    return true;
+  }catch(e){
+    console.warn('sendMessages 失敗（請確認 LIFF app 已勾選 chat_message.write）', e);
+    return false;
+  }
+}
+
+function chatSummary(p){
+  return ['【會員繳費填寫】',
+    '會員名稱：' + p.applicant_name,
+    '手機：' + p.mobile,
+    '類別：' + (PAY_TYPE_LBL[p.member_type] || p.member_type),
+    '金額：NT$' + Number(p.amount||0).toLocaleString(),
+    '匯款日：' + p.paid_date,
+    '帳號後五碼：' + p.last5,
+  ].join('\n');
+}
 
 async function loadApplicantsForStaff(){
   const sel = document.getElementById('staff-applicant');
@@ -191,7 +246,6 @@ async function init(){
     // 秘書處代填：不綁 LINE，改由清單選擇申請人
     document.querySelector('.title') && (document.querySelector('.title').textContent = '代填匯款回報');
     document.getElementById('staff-field').style.display = '';
-    document.getElementById('name-field').style.display = '';
     await loadApplicantsForStaff();
     return;
   }
@@ -212,23 +266,21 @@ async function init(){
       const sel = document.getElementById('member-type');
       sel.value = b.member_type==='group' ? 'group_renew' : 'personal_renew';
       updateAmount();
-    } else {
-      // LINE 但未綁定 → 帶暱稱，顯示姓名欄可自填
-      document.getElementById('payer-name').value = profile.displayName || '';
-      document.getElementById('name-field').style.display = '';
     }
+    // 未綁定時「不」帶入 LINE 暱稱：暱稱常是「Paul~楊定勝-阿堂師」這類，
+    // 會務人員無從核對匯款。暱稱另存 display_name 欄，這裡一律請本人填會員名稱。
   } else {
-    // 網頁進入：顯示姓名欄 + 宣傳加入 LINE
-    document.getElementById('name-field').style.display = '';
-    document.getElementById('line-promo').style.display = '';
+    document.getElementById('line-promo').style.display = '';   // 網頁進入 → 宣傳加入 LINE
   }
 }
 
 async function submitPay(){
   const name = document.getElementById('payer-name').value.trim();
+  const mobile = normalizeMobile(document.getElementById('payer-mobile').value);
   const paidDate = document.getElementById('paid-date').value;
   const last5 = document.getElementById('last5').value.trim();
-  if(!name){ showErr('請輸入姓名'); return; }
+  if(!name){ showErr('請輸入會員名稱'); return; }
+  if(!mobile){ showErr('請輸入正確的手機號碼（例如 0912345678）'); return; }
   if(!paidDate){ showErr('請選擇繳費日期'); return; }
   if(!/^\d{5}$/.test(last5)){ showErr('請輸入正確的帳號後 5 碼（5 位數字）'); return; }
   const sel = document.getElementById('member-type');
@@ -239,6 +291,7 @@ async function submitPay(){
     user_id: profile ? profile.userId : null,
     display_name: profile ? profile.displayName : null,
     applicant_name: name,
+    mobile: mobile,
     paid_date: paidDate,
     member_type: sel.value,
     amount: Number(sel.options[sel.selectedIndex].dataset.amt),
@@ -252,7 +305,19 @@ async function submitPay(){
     if(!res.ok) throw new Error('HTTP '+res.status);
     document.getElementById('form-view').style.display='none';
     document.getElementById('done-view').style.display='block';
-    setTimeout(()=>{ if(liff.isInClient()) liff.closeWindow(); }, 2600);
+
+    const inClient = !!(window.liff && liff.isInClient());
+    const spoke = await sayInChat(chatSummary(payload));
+    if(inClient && !spoke){
+      // 代發失敗（權限未開或不是從聊天室進來）→ 請本人自己講一句，否則後台找不到人
+      document.getElementById('done-extra').innerHTML =
+        '<div style="margin-top:18px;background:#fff7e6;border:1px solid #e6d29a;border-radius:8px;'
+      + 'padding:12px 14px;font-size:13px;line-height:1.9;color:#7a5c14;text-align:left;">'
+      + '📩 最後一步：請回到聊天室<b>隨意傳一則訊息</b>（例如「已繳費」），'
+      + '會務人員才能在 LINE 後台找到您並回覆核對結果。</div>';
+    } else if(inClient){
+      setTimeout(()=>{ liff.closeWindow(); }, 2600);
+    }
   }catch(e){
     showErr('送出失敗：'+e.message); btn.disabled=false; btn.textContent='送出回報';
   }
