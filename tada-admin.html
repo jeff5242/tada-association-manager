@@ -1123,6 +1123,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div style="margin-top:24px;">
     <div class="section-title" style="font-size:15px;margin-bottom:10px;">🪑 尚未排桌 <span id="seat-un-count" style="font-size:12px;color:var(--gray);"></span></div>
     <div id="seating-unassigned" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+    <div id="seating-pending"></div>
   </div>
 </div>
 
@@ -4322,13 +4323,29 @@ function seatSplitComp(t){
     .filter(x=>x && !['無','無。','none','-','na','n/a','nil'].includes(x.toLowerCase()));
 }
 
+// 出席資料以 tada_rsvp 為權威來源，tada_guests 只是報到用的參考。
+// 同一人兩張表都有時（貴賓名冊「謝明達」無桌次、出席回報「謝明達」第16桌），
+// 兩筆都畫出來會讓同一個人同時出現在第16桌與「尚未排桌」，看起來像漏排。
+function seatRsvpNames(){
+  return new Set(seatMembers.map(m=>seatDeTitle(m.display_name)).filter(Boolean));
+}
+
+// 尚未回覆出席者暫不排桌（理事長 2026/8/30 裁示）：
+// 貴賓名冊上有、但 tada_rsvp 沒有出席回報 = 還沒答應要來，先不佔桌位。
+// 這些人不進待排區，改列在下方「邀請中・尚未回覆」，回覆後自動進場。
+function seatPendingInvites(){
+  const inRsvp = seatRsvpNames();
+  return seatGuests.filter(g => !g.seat && (g.sort==null||g.sort<900) && g.status!=='declined'
+                                && !inRsvp.has(seatDeTitle(g.name)));
+}
+
 function seatOccupants(){
   const list=[];
-  // 貴賓只顯示「已實際排位」者（依原則：桌次以出席回報為主，長官貴賓回報後由貴賓名冊指定桌號才進場）
-  seatGuests.filter(g=>g.seat).forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:(g.title?g.title+'・':'')+(g.org||g.category||''), table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
-  // 未排桌的「邀請/手動新增」貴賓也進待排區（sort<900 排除出席登記同步來的親友列；婉謝不列）
-  seatGuests.filter(g=>!g.seat && (g.sort==null||g.sort<900) && g.status!=='declined')
-    .forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:(g.title?g.title+'・':'')+(g.org||g.category||''), table:'', size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
+  const inRsvp = seatRsvpNames();
+  // 貴賓只顯示「已實際排位」者（長官貴賓由貴賓名冊指定桌號才進場）；
+  // 名字已在 rsvp 的不再畫第二次，桌次一律以 rsvp 為準。
+  seatGuests.filter(g => g.seat && !inRsvp.has(seatDeTitle(g.name)))
+    .forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:(g.title?g.title+'・':'')+(g.org||g.category||''), table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
   seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:(m.title?m.title+'・':'')+(m.org||m.note||m.companions||''), table:m.table_no||'', size:(m.headcount||1), veg:(m.vegetarian||0), grp:readableGroup(m), comp:m.companions||'' }));
   return list;
 }
@@ -4417,6 +4434,22 @@ function renderSeating(){
       ${sel}${hideBtn}
     </span>`;
   }).join('') : '<span style="color:var(--gray);font-size:12px;">全部已排桌 🎉</span>';
+
+  renderPendingInvites();
+}
+
+// 邀請中・尚未回覆出席：依規則暫不排桌，但要看得到，才知道還在等誰
+function renderPendingInvites(){
+  const box=document.getElementById('seating-pending'); if(!box) return;
+  const p=seatPendingInvites();
+  if(!p.length){ box.innerHTML=''; return; }
+  const chips=p.map(g=>`<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.04);border:1px dashed var(--border);border-radius:99px;padding:4px 10px;font-size:12px;color:var(--gray);">
+      ✉️ ${escapeHtml(g.name)}${g.org?`<span style="font-size:10px;opacity:.7;">${escapeHtml(g.org)}</span>`:''}
+    </span>`).join('');
+  box.innerHTML = `<div class="section-title" style="font-size:15px;margin:18px 0 10px;">✉️ 邀請中・尚未回覆出席
+      <span style="font-size:12px;color:var(--gray);">（${p.length} 位・依規則暫不排桌）</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">${chips}</div>
+    <div style="font-size:11px;color:var(--gray);margin-top:8px;">這些人在貴賓名冊上，但出席回報（tada_rsvp）還沒有資料。回報出席後會自動出現在上方待排區。</div>`;
 }
 
 // 桌號對調：兩桌成員整批互換（會員 tada_rsvp.table_no ＋ 貴賓 tada_guests.seat）

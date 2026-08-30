@@ -226,6 +226,12 @@ const SCH=/大學|學院|學校|國小|國中|高中|科大/;
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const clean=v=>{v=(v==null?'':String(v)).trim();return (v===''||v==='?'||v==='？')?'':v;};
 const tk=t=>{const m=/\d+/.exec(t||'');return m?+m[0]:999;};
+// 貴賓名冊常把職稱寫進姓名（「徐前院長源泰」），出席回報則是「徐源泰」，
+// 去職稱後才比得出是同一人。長職稱要排在短的前面。
+const TITLES=['理事長','董事長','總經理','執行長','副校長','校長','副司長','司長','副署長','署長',
+  '副院長','前院長','院長','教授','研究員','總監','副總','經理','主任','技正','技監','組長',
+  '分所長','副所長','所長','處長','鄉長','社長','顧問','博士','董事','前所長','老師'];
+const deTitle=n=>TITLES.reduce((t,x)=>t.split(x).join(''), String(n||'').replace(/\s+/g,''));
 
 async function load(){
   try{
@@ -256,7 +262,9 @@ function render(rs,gs,ms,vm){
   rs.forEach(r=>{const n=(r.display_name||'').trim();
     P.push({n,ti:clean(r.title),o:clean(r.org)||comp[n]||'',note:clean(r.note),cmp:clean(r.companions),
             h:r.headcount||1,veg:r.vegetarian||0,t:r.table_no||'未排'});});
-  gs.forEach(g=>P.push({n:g.name,ti:clean(g.title),o:clean(g.org),note:clean(g.note),cmp:'',
+  // 出席資料以 tada_rsvp 為準：兩張表都有的人只畫一次，否則同一人會出現在兩張桌卡
+  const inRsvp=new Set(rs.map(r=>deTitle(r.display_name)).filter(Boolean));
+  gs.filter(g=>!inRsvp.has(deTitle(g.name))).forEach(g=>P.push({n:g.name,ti:clean(g.title),o:clean(g.org),note:clean(g.note),cmp:'',
             h:g.party_size||1,veg:0,t:g.seat}));
   P.forEach(p=>{
     p.c = (/第五屆理監/.test(p.note)||b5.has(p.n)) ? '理監事'
