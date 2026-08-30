@@ -88,6 +88,51 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 .aisle{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);
   writing-mode:vertical-rl;letter-spacing:.3em}
 @media print{ .plan{break-inside:avoid} .tbox{cursor:default} }
+
+/* 桌位類型配色 */
+.tbox.t-member{border-color:#5B8C5A;background:rgba(91,140,90,.14)}
+.tbox.t-member .bl{color:#4E7D4D}
+.tbox.t-gov{border-color:var(--gold);background:var(--gold-soft)}
+.tbox.t-gov .bl{color:var(--gold)}
+.tbox.t-group{border-color:#4C8C93;background:rgba(76,140,147,.14)}
+.tbox.t-group .bl{color:#3E767C}
+.tbox.t-vip{border-color:#9A7B4F;background:rgba(154,123,79,.12)}
+.tbox.t-vip .bl{color:#8A6C42}
+.tbox .bt{font-size:9.5px;letter-spacing:.08em;opacity:.75;margin-top:1px}
+@media (prefers-color-scheme:dark){
+  .tbox.t-member{border-color:#7FB07E;background:rgba(127,176,126,.16)} .tbox.t-member .bl{color:#9BC79A}
+  .tbox.t-group{border-color:#6FB2B9;background:rgba(111,178,185,.16)} .tbox.t-group .bl{color:#8FCBD1}
+  .tbox.t-vip{border-color:#C09A63;background:rgba(192,154,99,.14)} .tbox.t-vip .bl{color:#D3B183}
+}
+/* 編輯模式 */
+.editbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.editbar .eb{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 14px;
+  font:inherit;font-size:13px;color:var(--green);cursor:pointer;font-weight:700}
+.editbar .eb.on{background:var(--gold);color:#1a1a12;border-color:var(--gold)}
+.editbar .tip{font-size:12px;color:var(--muted)}
+.floor.editing .tbox{cursor:pointer;outline:1px dashed var(--gold);outline-offset:2px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1.5px solid}
+.lg-member i{border-color:#5B8C5A;background:rgba(91,140,90,.3)}
+.lg-gov i{border-color:var(--gold);background:var(--gold-soft)}
+.lg-group i{border-color:#4C8C93;background:rgba(76,140,147,.3)}
+.lg-vip i{border-color:#9A7B4F;background:rgba(154,123,79,.3)}
+/* 編輯對話框 */
+.tmodal{position:fixed;inset:0;background:rgba(10,18,12,.7);display:none;align-items:center;justify-content:center;z-index:80;padding:20px}
+.tmodal.on{display:flex}
+.tcard{background:var(--surface);border:1px solid var(--gold);border-radius:16px;padding:26px 28px;width:400px;max-width:94vw}
+.tcard h3{font-family:var(--serif);font-size:19px;color:var(--green);margin-bottom:4px}
+.tcard .sub2{font-size:12.5px;color:var(--muted);margin-bottom:18px}
+.tcard label{display:block;font-size:12px;font-weight:700;color:var(--gold);margin:14px 0 6px}
+.tcard input,.tcard select{width:100%;background:var(--paper);border:1.5px solid var(--line);border-radius:9px;
+  padding:11px 12px;font:inherit;font-size:15px;color:var(--ink);outline:none}
+.tcard input:focus,.tcard select:focus{border-color:var(--gold)}
+.tbtns{display:flex;gap:9px;justify-content:flex-end;margin-top:20px}
+.tbtns button{border-radius:9px;padding:10px 18px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.tb-cancel{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.tb-clear{background:transparent;border:1px solid var(--over);color:var(--over)}
+.tb-ok{background:var(--green);border:none;color:#fff}
+@media print{ .editbar,.tmodal{display:none!important} .floor.editing .tbox{outline:none} }
 /* 搜尋 */
 .finder{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .finder input{flex:1;min-width:200px;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;
@@ -184,8 +229,19 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 
   <section class="plan" id="plan">
     <h2>會場平面圖</h2>
-    <p class="ph">依臻愛婚宴會館桌位配置。點任一桌可跳到該桌名單；金框為主題桌、<b style="color:var(--green);">綠框為會員桌</b>、虛線為預備桌。</p>
+    <p class="ph">依臻愛婚宴會館桌位配置。點任一桌可跳到該桌名單；顏色代表桌位類型，虛線為空桌／預備桌。按「✎ 編輯桌位」可修改主題名稱與類型。</p>
+    <div class="editbar">
+      <button class="eb" id="eb-toggle" onclick="toggleEdit()">✎ 編輯桌位</button>
+      <span class="tip" id="eb-tip">可修改各桌的主題名稱與類型（設定會同步給所有人）</span>
+    </div>
     <div class="floor" id="floor"></div>
+    <div class="legend">
+      <span class="lg-gov"><i></i>官學界</span>
+      <span class="lg-member"><i></i>協會會員</span>
+      <span class="lg-group"><i></i>團體</span>
+      <span class="lg-vip"><i></i>貴賓</span>
+      <span>虛線＝空桌／預備桌</span>
+    </div>
   </section>
 
   <div class="finder">
@@ -194,6 +250,28 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
   </div>
 
   <div id="body"><div class="load">載入桌次資料…</div></div>
+
+  <div class="tmodal" id="tmodal" onclick="if(event.target===this)closeTableEdit()">
+    <div class="tcard">
+      <h3 id="tm-title">桌位設定</h3>
+      <div class="sub2" id="tm-sub"></div>
+      <label>主題名稱（留空則不顯示標題）</label>
+      <input id="tm-label" placeholder="例如：中衛發展、大叔鐵人" autocomplete="off">
+      <label>桌位類型</label>
+      <select id="tm-type">
+        <option value="">未分類</option>
+        <option value="官學界">官學界</option>
+        <option value="協會會員">協會會員</option>
+        <option value="團體">團體</option>
+        <option value="貴賓">貴賓</option>
+      </select>
+      <div class="tbtns">
+        <button class="tb-clear" onclick="saveTableEdit(true)">清除設定</button>
+        <button class="tb-cancel" onclick="closeTableEdit()">取消</button>
+        <button class="tb-ok" onclick="saveTableEdit(false)">儲存</button>
+      </div>
+    </div>
+  </div>
 
   <footer class="foot">台灣科技農企業發展協會（TADA）秘書處　｜　本頁與後台桌次規劃即時同步，每 60 秒自動更新</footer>
 </div>
@@ -241,13 +319,15 @@ const deTitle=n=>TITLES.reduce((t,x)=>t.split(x).join(''), String(n||'').replace
 
 async function load(){
   try{
-    const [r1,r2,r3,r4]=await Promise.all([
+    const [r1,r2,r3,r4,r5]=await Promise.all([
       fetch(`${SB}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=display_name,org,title,note,companions,headcount,vegetarian,table_no&limit=500`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_guests?seat=not.is.null&select=name,org,title,seat,party_size,note,checked_in&limit=400`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_members?select=name,member_type,terms,reps,company&limit=1000`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${BALLOT}&select=name,is_checked_in&limit=400`,{headers:H()}),
+      fetch(`${SB}/rest/v1/tada_config?key=eq.${CFG_KEY}&select=value`,{headers:H()}),
     ]);
     const rs=r1.ok?await r1.json():[], gs=r2.ok?await r2.json():[], ms=r3.ok?await r3.json():[], vm=r4.ok?await r4.json():[];
+    try{ const cf=r5&&r5.ok?await r5.json():[]; TCFG=cf.length?JSON.parse(cf[0].value||'{}'):{}; }catch(e){ TCFG={}; }
     render(rs,gs,ms,vm);
     document.getElementById('s-time').textContent='更新於 '+new Date().toLocaleTimeString('zh-TW',{hour12:false});
   }catch(e){ document.getElementById('s-time').textContent='更新失敗，請檢查網路'; }
@@ -309,7 +389,7 @@ function render(rs,gs,ms,vm){
   let html='';
   zones.forEach(([zn,tables])=>{
     const cards=tables.filter(t=>by[t]).map(t=>{
-      const lb=THEME[t], h=heads(t), v=vegs(t);
+      const lb=tLabel(t), h=heads(t), v=vegs(t);
       const rows=by[t].map(p=>`<li class="row">
         <span class="nm">${esc(p.n)}${p.h>1?`<b class="mult">×${p.h}</b>`:''}${p.ti?`<span class="ttl">${esc(p.ti)}</span>`:''}</span>
         <span class="org">${esc(p.o)||'—'}${p.cmp?`<div class="cmp">同行：${esc(p.cmp)}</div>`:''}</span>
@@ -343,19 +423,56 @@ const SPARE={22:'工作人員桌',23:'飯店預備桌'};
 const MEMBER=new Set([2,5,6,9,10]);
 function renderFloor(by,heads){
   const f=document.getElementById('floor');
+  f.classList.toggle('editing', editMode);
   let html='<div class="stage">舞　台</div>';
   FLOOR.forEach(row=>{
     row.forEach(([no,col])=>{
       const t='第'+no+'桌', ppl=by[t]||[], h=ppl.length?heads(t):0;
-      const lb=THEME[t]||'', role=SPARE[no]||'';
-      const cls=['tbox']; if(lb)cls.push('theme'); if(!h)cls.push('spare'); if(no===22)cls.push('staff'); if(MEMBER.has(no))cls.push('member');
-      html+=`<div class="${cls.join(' ')}" style="grid-column:${col}" onclick="jumpTo('${t}')" title="${esc(t)}">
-        <div class="bn">${no}</div>
-        ${lb?`<div class="bl">${esc(lb)}</div>`:(role?`<div class="bl" style="color:var(--muted);font-weight:500;">${role}</div>`:'')}
+      const lb=tLabel(t), ty=tType(t), role=SPARE[no]||'';
+      const cls=['tbox'];
+      if(ty && TYPE_CLASS[ty]) cls.push(TYPE_CLASS[ty]);
+      if(!h) cls.push('spare');
+      const sub = lb ? `<div class="bl">${esc(lb)}</div>`
+                     : (role ? `<div class="bl" style="color:var(--muted);font-weight:500;">${role}</div>` : '');
+      html+=`<div class="${cls.join(' ')}" style="grid-column:${col}" onclick="onTableClick('${t}')" title="${esc(t)}${ty?'｜'+ty:''}">
+        <div class="bn">${no}</div>${sub}
+        ${ty?`<div class="bt">${esc(ty)}</div>`:''}
         <div class="bc">${h?h+' 人':'（空桌）'}</div></div>`;
     });
   });
   f.innerHTML=html;
+}
+function onTableClick(t){ editMode ? openTableEdit(t) : jumpTo(t); }
+function toggleEdit(){
+  editMode=!editMode;
+  document.getElementById('eb-toggle').classList.toggle('on',editMode);
+  document.getElementById('eb-toggle').textContent = editMode ? '✓ 完成編輯' : '✎ 編輯桌位';
+  document.getElementById('eb-tip').textContent = editMode
+    ? '點任一桌即可修改主題名稱與類型'
+    : '可修改各桌的主題名稱與類型（設定會同步給所有人）';
+  document.getElementById('floor').classList.toggle('editing',editMode);
+}
+function openTableEdit(t){
+  editingTable=t;
+  document.getElementById('tm-title').textContent=t+' 桌位設定';
+  document.getElementById('tm-sub').textContent='修改後所有開啟本頁的人都會看到（下次更新時同步）';
+  document.getElementById('tm-label').value=tLabel(t);
+  document.getElementById('tm-type').value=tType(t);
+  document.getElementById('tmodal').classList.add('on');
+  setTimeout(()=>document.getElementById('tm-label').focus(),50);
+}
+function closeTableEdit(){ document.getElementById('tmodal').classList.remove('on'); editingTable=null; }
+async function saveTableEdit(clear){
+  const t=editingTable; if(!t) return;
+  if(clear) delete TCFG[t];
+  else TCFG[t]={label:document.getElementById('tm-label').value.trim(), type:document.getElementById('tm-type').value};
+  try{
+    const r=await fetch(`${SB}/rest/v1/tada_config`,{method:'POST',
+      headers:{...H(),'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({key:CFG_KEY,value:JSON.stringify(TCFG)})});
+    if(!r.ok) throw new Error(await r.text());
+    closeTableEdit(); load();
+  }catch(e){ alert('儲存失敗：'+e.message); }
 }
 function jumpTo(t){
   const el=[...document.querySelectorAll('.tno')].find(x=>x.textContent===t);
