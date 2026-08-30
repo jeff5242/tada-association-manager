@@ -4646,9 +4646,52 @@ function parseCompanionNames(r){
   for(let i=0;i<extra;i++) out.push(`${main}的友人${extra>1?(i+1):''}`);
   return out;
 }
+// 匯出用職稱表（長職稱在前，否則「副署長」會先被「署長」吃掉）
+const EXPORT_TITLES=['副理事長','理事長','副董事長','董事長','副總經理','總經理','執行長助理','執行長',
+  '副校長','校長','副司長','司長','副署長','署長','副院長','前院長','院長','副所長','分所長','前所長','所長',
+  '副處長','處長','副主任','主任','總幹事','秘書長','副總','總監','名譽教授','教授','副研究員','助理研究員',
+  '研究員','副場長','場長','業務經理','副理','襄理','協理','經理','技正','技監','組長','鄉長','社長','顧問',
+  '董事','老師','高專','特助','專員','秘書','政務次長','次長','局長','科長','課長'];
+
+/* 姓名欄一律輸出「純姓名」，職稱另外成欄。實際資料兩種寫法都有：
+     「蘇家榛（六合化工 業務經理）」→ 姓名 蘇家榛／職稱 業務經理／單位 六合化工
+     「黃佳敏總幹事」「胡署長忠一」   → 職稱夾在姓名裡，要抽出來                */
+function splitNameTitle(raw){
+  let s=String(raw||'').trim(), inner='';
+  s=s.replace(/[（(]([^）)]*)[）)]/g,(m,p)=>{ inner=(inner?inner+' ':'')+p.trim(); return ''; }).trim();
+  let title='', org='';
+  if(inner){
+    const parts=inner.split(/\s+/).filter(Boolean);
+    if(parts.length>1){ title=parts[parts.length-1]; org=parts.slice(0,-1).join(' '); }
+    else title=parts[0]||'';
+  }
+  for(const t of EXPORT_TITLES){
+    if(s.includes(t) && s.replace(t,'').trim().length>=2){
+      if(!title) title=t;
+      s=s.split(t).join('').trim();
+      break;
+    }
+  }
+  return { name:s, title, org };
+}
+
+// Excel 會把「6-1」自動轉成「6月1日」，用 ="…" 強制當文字
+const csvTextCell = v => '="' + String(v==null?'':v).replace(/"/g,'""') + '"';
+
 async function exportRsvpCSV() {
-  const list = allRsvp.filter(r => !r.hidden);
-  if (!list.length) { alert('尚無資料可匯出'); return; }
+  // 不克出席者不列入名單（秘書長裁示）；隱藏列本來就不匯出
+  const declined = allRsvp.filter(r => !r.hidden && !r.attending).length;
+  const list = allRsvp.filter(r => !r.hidden && r.attending);
+  if (!list.length) { alert('尚無出席資料可匯出'); return; }
+  // 貴賓名冊是「已整理過」的職稱／單位來源，同行者只有這裡查得到
+  const gMap=new Map();
+  try{
+    const gr=await fetch(`${SB_URL}/rest/v1/tada_guests?select=name,title,org&limit=500`,{headers:SB_HEADERS});
+    if(gr.ok)(await gr.json()).forEach(x=>{
+      const k=seatDeTitle(splitNameTitle(x.name).name); if(k && !gMap.has(k)) gMap.set(k,x);
+    });
+  }catch(e){ /* 取不到就照原樣匯出 */ }
+  const gOf=nm=>gMap.get(seatDeTitle(nm))||{};
   // 單位空白但是會員 → 帶入會員名冊/投票名冊的公司資料（同行者跟著主報名人）
   const orgMap=new Map();
   try{
@@ -4663,20 +4706,30 @@ async function exportRsvpCSV() {
   list.forEach((r, gi) => {
     const label=classifyRsvp(r).label;
     const gno=String(gi+1);
-    const effOrg = r.org || orgMap.get((r.display_name||'').trim()) || '';
+    const me=splitNameTitle(r.display_name);
+    const gm=gOf(me.name);
+    const effOrg = r.org || me.org || gm.org || orgMap.get(me.name) || '';
     rows.push([
-      ++seq, gno, r.display_name || '', '本人', '', label, effOrg, r.title || '', r.mobile || '',
+      ++seq, csvTextCell(gno), me.name, '本人', '',
+      label, effOrg, r.title || me.title || gm.title || '', r.mobile || '',
       (r.user_id||'').startsWith('web-') ? '網頁自填' : 'LINE',
-      r.attending ? '出席' : '不克出席',
-      r.attending ? (r.headcount ?? 0) : 0, r.attending ? (r.vegetarian ?? 0) : 0,
+      '出席', (r.headcount ?? 0), (r.vegetarian ?? 0),
       r.note || '', r.table_no || '',
       r.updated_at ? new Date(r.updated_at).toLocaleString('zh-TW') : '',
     ]);
-    if(r.attending) parseCompanionNames(r).forEach((nm,ci)=>rows.push([
-      // 同行友人一律視為貴賓（即使主報名人是會員）
-      ++seq, `${gno}-${ci+1}`, nm, '同行友人', r.display_name||'', '貴賓', effOrg, '', '', '', '出席', '', '', '', r.table_no||'', '',
-    ]));
+    parseCompanionNames(r).forEach((raw,ci)=>{
+      const c=splitNameTitle(raw), cg=gOf(c.name);
+      rows.push([
+        // 同行友人一律視為貴賓（即使主報名人是會員）
+        ++seq, csvTextCell(`${gno}-${ci+1}`), c.name, '同行友人', me.name, '貴賓',
+        cg.org || c.org || effOrg, c.title || cg.title || '', '', '', '出席', '', '', '',
+        r.table_no || '', '',
+      ]);
+    });
   });
+  rows.push([]);
+  rows.push([`出席合計 ${seq} 人（本人 ${list.length} 組）`]);
+  if(declined) rows.push([`※ 已排除不克出席 ${declined} 筆；姓名欄為純姓名，職稱另立一欄`]);
   const csv = '﻿' + rows.map(row => row.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
