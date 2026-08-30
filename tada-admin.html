@@ -4489,7 +4489,9 @@ function renderSeating(){
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
         <span style="width:8px;height:8px;border-radius:50%;background:${col};"></span>
         <b style="color:${col};font-size:14px;">${tableLabel(t)}</b>
-        ${(()=>{const lb=seatLabel(t)||mainGrp, ty=seatType(t);
+        ${(()=>{/* 已設定過的桌（含刻意留白）以設定為準；從未設定過才退回自動推測的團體名 */
+          const cfgd=Object.prototype.hasOwnProperty.call(SEAT_CFG,t);
+          const lb=cfgd?(SEAT_CFG[t].label||''):mainGrp, ty=seatType(t);
           return (lb?`<span style="font-size:11px;color:var(--gold-lt);font-weight:700;">· ${escapeHtml(lb)}</span>`:'')
                + (ty?`<span style="font-size:10px;color:var(--gray);border:1px solid var(--border);border-radius:99px;padding:0 6px;">${escapeHtml(ty)}</span>`:'')
                + `<button class="btn btn-sm btn-outline" style="padding:0 6px;font-size:10px;line-height:18px;" onclick="editSeatTable('${escapeHtml(t)}')" title="修改桌次名稱與類型（與會場平面圖同步）">✎</button>`;})()}
