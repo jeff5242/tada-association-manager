@@ -218,6 +218,7 @@ header .prog.on .l{color:var(--gold-lt)}
 <div class="overlay" id="setModal" onclick="closeSettings()"><div class="addcard" onclick="event.stopPropagation()" style="max-width:440px">
   <div class="add-h">前台顯示設定</div>
   <div class="add-sub">控制這台裝置上「貴賓報到頁」要顯示哪些按鈕。給貴賓自助時可關閉工作人員按鈕。</div>
+  <label class="set-row"><span>顯示未回覆出席的受邀貴賓<small>預設只顯示出席名單內的貴賓；臨時到場者可打開此項尋找</small></span><input type="checkbox" id="set-showall"></label>
   <label class="set-row"><span>隱藏「已報到」的貴賓<small>報到完成即從名單消失，只剩未報到者</small></span><input type="checkbox" id="set-hidedone"></label>
   <label class="set-row"><span>顯示「貴賓報到」按鈕<small>關閉＝純展示，貴賓無法自己點報到</small></span><input type="checkbox" id="set-checkin"></label>
   <label class="set-row"><span>顯示「＋ 貴賓」按鈕<small>工作人員現場新增用</small></span><input type="checkbox" id="set-add"></label>
@@ -279,6 +280,20 @@ function catFor(g){ return clean(g.category)||'農業合作單位'; }
 async function rpc(fn,body){ const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:'POST',headers:H(),body:JSON.stringify(body)}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 function noteWithoutCompanion(g){ return String(g.note||'').split('｜').filter(x=>!/同行於/.test(x)).join('｜').trim(); }
+let attendKeys=new Set();
+const REL_WORDS=['太太','先生','夫人','眷屬','友人','家人','小孩','兒子','女兒','助理','司機','母親','父親','媽媽','爸爸','秘書'];
+function splitComp(raw){
+  return String(raw||'').split(/[、,，;；/]+/).flatMap(p=>{
+    p=p.trim(); if(!p) return [];
+    return /[（(]/.test(p) ? [p] : p.split(/\s+/);
+  }).filter(t=>t.length>=2);
+}
+/* 在出席名單＝RSVP 有此人／已排桌／狀態已確認 */
+function isAttending(g){
+  if((g.seat||'').trim()) return true;
+  if(g.status==='confirmed') return true;
+  return nameKeys(g.name).some(k=>attendKeys.has(k));
+}
 function companionOf(g){ const m=/同行於\s*([^｜]+)/.exec(g.note||''); return m?('同行於 '+m[1].trim()):''; }
 function clean(v){ v=(v==null?'':String(v)).trim(); return (v===''||v==='?'||v==='？')?'':v; }
 
@@ -300,9 +315,10 @@ function nameKeys(n){
 }
 async function load(){
   try{
-    const [r,m]=await Promise.all([
-      fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in,party_size,title&order=sort.asc,name.asc`,{headers:H()}),
-      fetch(`${SB}/rest/v1/tada_members?select=name,reps`,{headers:H()})
+    const [r,m,a]=await Promise.all([
+      fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in,party_size,title,status&order=sort.asc,name.asc`,{headers:H()}),
+      fetch(`${SB}/rest/v1/tada_members?select=name,reps`,{headers:H()}),
+      fetch(`${SB}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=display_name,companions`,{headers:H()})
     ]);
     const all=r.ok?await r.json():[];
     const memberKeys=new Set();
@@ -310,7 +326,18 @@ async function load(){
       nameKeys(x.name).forEach(k=>memberKeys.add(k));
       (x.reps||[]).forEach(rp=>nameKeys(rp&&rp.name).forEach(k=>memberKeys.add(k)));
     }); }
-    guests=all.filter(g=>!nameKeys(g.name).some(k=>memberKeys.has(k)));
+    // 出席名單（RSVP 本人＋同行，寬鬆比對）：未回覆出席的受邀貴賓預設不顯示
+    attendKeys=new Set();
+    if(a.ok){ (await a.json()).forEach(x=>{
+      const main=(x.display_name||'').trim();
+      nameKeys(main).forEach(k=>attendKeys.add(k));
+      splitComp(x.companions).forEach(t=>{
+        const nm = REL_WORDS.includes(t) ? (main+'的'+t) : t;
+        nameKeys(nm).forEach(k=>attendKeys.add(k));
+      });
+    }); }
+    const notMember=g=>!nameKeys(g.name).some(k=>memberKeys.has(k));
+    guests=all.filter(g=>notMember(g) && (GS.showAll || isAttending(g)));
   }catch(e){ document.getElementById('list').innerHTML='<div class="empty">載入失敗，請確認網路後重新整理。</div>'; return; }
   renderCats(); renderUnits(); renderSurnames(); renderList(); renderProg();
 }
@@ -544,7 +571,7 @@ function showWalkinQR(){
 }
 function closeQR(){ document.getElementById('qrModal').classList.remove('show'); }
 // ── 前台顯示設定（記在該裝置）──────────────────────
-let GS={checkin:true,add:true,qr:true,hideDone:false};
+let GS={checkin:true,add:true,qr:true,hideDone:false,showAll:false};
 try{ const s=JSON.parse(localStorage.getItem('tadaGuestUI')||'{}'); GS={...GS,...s}; }catch(e){}
 function applySettings(){
   const ab=document.getElementById('add-btn'); if(ab) ab.style.display=GS.add?'':'none';
@@ -552,6 +579,7 @@ function applySettings(){
   if(typeof renderList==='function') renderList();
 }
 function openSettings(){
+  document.getElementById('set-showall').checked=GS.showAll;
   document.getElementById('set-hidedone').checked=GS.hideDone;
   document.getElementById('set-checkin').checked=GS.checkin;
   document.getElementById('set-add').checked=GS.add;
@@ -560,12 +588,13 @@ function openSettings(){
 }
 function closeSettings(){ document.getElementById('setModal').classList.remove('show'); }
 function saveSettings(){
-  GS={hideDone:document.getElementById('set-hidedone').checked,
+  GS={showAll:document.getElementById('set-showall').checked,
+      hideDone:document.getElementById('set-hidedone').checked,
       checkin:document.getElementById('set-checkin').checked,
       add:document.getElementById('set-add').checked,
       qr:document.getElementById('set-qr').checked};
   try{ localStorage.setItem('tadaGuestUI',JSON.stringify(GS)); }catch(e){}
-  closeSettings(); applySettings();
+  closeSettings(); applySettings(); load();
 }
 
 /* 簽名板 */
