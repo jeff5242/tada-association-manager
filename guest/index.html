@@ -282,11 +282,18 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','
 function noteWithoutCompanion(g){ return String(g.note||'').split('｜').filter(x=>!/同行於/.test(x)).join('｜').trim(); }
 let attendKeys=new Set();
 const REL_WORDS=['太太','先生','夫人','眷屬','友人','家人','小孩','兒子','女兒','助理','司機','母親','父親','媽媽','爸爸','秘書'];
+const COMP_TITLES=['高專','經理','副理','襄理','協理','總經理','副總經理','執行長','秘書','特助','助理','主任','組長','專員','顧問','董事長','課長','總監','副總','處長','科長','技正','所長','場長','司機','總幹事','秘書長','董事','理事','監事'];
+/* 同行欄可能寫「姓名 職稱」，職稱不可拆成另一個人；含括號者整段保留 */
 function splitComp(raw){
   return String(raw||'').split(/[、,，;；/]+/).flatMap(p=>{
-    p=p.trim(); if(!p) return [];
-    return /[（(]/.test(p) ? [p] : p.split(/\s+/);
-  }).filter(t=>t.length>=2);
+    p=p.replace(/^\s*(眷屬|同行|友人)\s*[：:]\s*/,'').trim();
+    if(!p) return [];
+    if(/[（(]/.test(p)) return [p];
+    const toks=p.split(/\s+/).filter(Boolean);
+    const out=[];
+    toks.forEach(t=>{ if(COMP_TITLES.includes(t) && out.length) return; out.push(t); });
+    return out;
+  }).filter(t=>t.length>=2 && !COMP_TITLES.includes(t));
 }
 /* 在出席名單＝RSVP 有此人／已排桌／狀態已確認 */
 function isAttending(g){
