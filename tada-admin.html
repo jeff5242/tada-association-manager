@@ -4326,8 +4326,16 @@ function seatSplitComp(t){
 // 出席資料以 tada_rsvp 為權威來源，tada_guests 只是報到用的參考。
 // 同一人兩張表都有時（貴賓名冊「謝明達」無桌次、出席回報「謝明達」第16桌），
 // 兩筆都畫出來會讓同一個人同時出現在第16桌與「尚未排桌」，看起來像漏排。
+// 同行者也算已排桌：溝頭社區是「陳閎家 ×6」一列帶 5 位同行，
+// 但貴賓名冊那 6 個人各有一列。只比對主報名人的話，同行者（林秀英）
+// 會被當成還沒回覆而列進待排，實際上她已經跟著坐第23桌。
 function seatRsvpNames(){
-  return new Set(seatMembers.map(m=>seatDeTitle(m.display_name)).filter(Boolean));
+  const s=new Set();
+  seatMembers.forEach(m=>{
+    const k=seatDeTitle(m.display_name); if(k) s.add(k);
+    seatSplitComp(m.companions).forEach(c=>{ const kk=seatDeTitle(c); if(kk) s.add(kk); });
+  });
+  return s;
 }
 
 // 尚未回覆出席者暫不排桌（理事長 2026/8/30 裁示）：

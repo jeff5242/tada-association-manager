@@ -263,7 +263,14 @@ function render(rs,gs,ms,vm){
     P.push({n,ti:clean(r.title),o:clean(r.org)||comp[n]||'',note:clean(r.note),cmp:clean(r.companions),
             h:r.headcount||1,veg:r.vegetarian||0,t:r.table_no||'未排'});});
   // 出席資料以 tada_rsvp 為準：兩張表都有的人只畫一次，否則同一人會出現在兩張桌卡
-  const inRsvp=new Set(rs.map(r=>deTitle(r.display_name)).filter(Boolean));
+  const inRsvp=new Set();
+  rs.forEach(r=>{
+    const k=deTitle(r.display_name); if(k) inRsvp.add(k);
+    // 同行欄一列帶多人（「尤文君、趙英雯、…」），他們在貴賓名冊各有一列
+    String(r.companions||'').split(/[,，、;；。／/\n]+/).forEach(c=>{
+      const kk=deTitle(c.replace(/^\s*(眷屬|同行)\s*[:：]\s*/,'')); if(kk) inRsvp.add(kk);
+    });
+  });
   gs.filter(g=>!inRsvp.has(deTitle(g.name))).forEach(g=>P.push({n:g.name,ti:clean(g.title),o:clean(g.org),note:clean(g.note),cmp:'',
             h:g.party_size||1,veg:0,t:g.seat}));
   P.forEach(p=>{
