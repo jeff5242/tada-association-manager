@@ -4488,7 +4488,8 @@ function renderSeating(){
     return `<div style="background:var(--surface,rgba(255,255,255,0.03));border:1px solid ${over?'#ef5350':'var(--border,rgba(196,146,42,0.25))'};border-radius:12px;padding:12px 13px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
         <span style="width:8px;height:8px;border-radius:50%;background:${col};"></span>
-        <b style="color:${col};font-size:14px;">${tableLabel(t)}</b>
+        <a href="/seating/?t=${encodeURIComponent(t)}" target="_blank" rel="noopener"
+           title="在會場桌次表開啟這一桌" style="color:${col};font-size:14px;font-weight:700;text-decoration:none;border-bottom:1px dotted ${col};">${tableLabel(t)} ↗</a>
         ${(()=>{/* 已設定過的桌（含刻意留白）以設定為準；從未設定過才退回自動推測的團體名 */
           const cfgd=Object.prototype.hasOwnProperty.call(SEAT_CFG,t);
           const lb=cfgd?(SEAT_CFG[t].label||''):mainGrp, ty=seatType(t);
