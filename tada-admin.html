@@ -3848,12 +3848,27 @@ const tableCapWithVeg = veg => TABLE_CAP + (veg||0);
 const tableLabel = t => t==='工作桌' ? '工作桌（備桌）' : t;
 // 各桌現況：renderSeating() 每次重繪時更新，供桌次下拉顯示「團體名 · 人數/容量」
 let TABLE_INFO = new Map();   // table -> {head, cap, veg, grp, full}
-function tableOptText(t){
-  if(!TABLE_INFO.size) return tableLabel(t);        // 桌次資料尚未載入
+let SEAT_CFG={};   // 桌位主題設定（tada_config.seating_tables）；宣告需早於 seatTag 使用
+/* 下拉選單文字：優先用「桌位設定」的主題名稱與類型（與會場平面圖同步）；
+   從未設定過的桌才退回自動推測的主要團體名。 */
+function seatTag(t){
+  const cfgd = (typeof SEAT_CFG==='object') && Object.prototype.hasOwnProperty.call(SEAT_CFG,t);
+  if(cfgd){
+    const c=SEAT_CFG[t]||{}, parts=[];
+    if(c.label) parts.push(c.label);
+    if(c.type)  parts.push(c.type);
+    return parts.join('・');
+  }
   const i=TABLE_INFO.get(t);
-  if(!i || !i.head) return `${tableLabel(t)}（空桌）`;
+  return (i && i.grp) ? i.grp : '';
+}
+function tableOptText(t){
+  const tag=seatTag(t);
+  if(!TABLE_INFO.size) return tableLabel(t)+(tag?' · '+tag:'');   // 桌次資料尚未載入
+  const i=TABLE_INFO.get(t);
+  if(!i || !i.head) return `${tableLabel(t)}${tag?' · '+tag:''}（空桌）`;
   const state = i.head>i.cap ? '超載' : (i.head===i.cap ? '已滿' : `空${i.cap-i.head}`);
-  return `${tableLabel(t)}${i.grp?' · '+i.grp:''} ${i.head}/${i.cap} ${state}`;
+  return `${tableLabel(t)}${tag?' · '+tag:''} ${i.head}/${i.cap} ${state}`;
 }
 const EVENT_TABLES = EVENT_TABLE_GROUPS.flatMap(g => g.tables);
 function eventTableRank(v){
@@ -4293,7 +4308,6 @@ const MEMBER_TABLES = (EVENT_TABLE_GROUPS.find(g=>g.label==='桌次') || EVENT_T
 /* 桌位主題名稱／類型：與 /seating/ 平面圖共用 tada_config.seating_tables */
 const SEAT_CFG_KEY='seating_tables';
 const SEAT_TYPES=['官學界','協會會員','團體','貴賓'];
-let SEAT_CFG={};
 const seatLabel=t=>(SEAT_CFG[t]&&SEAT_CFG[t].label)||'';
 const seatType =t=>(SEAT_CFG[t]&&SEAT_CFG[t].type)||'';
 async function loadSeatCfg(){
