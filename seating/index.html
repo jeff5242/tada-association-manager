@@ -79,6 +79,8 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 .tbox.theme{border-color:var(--gold);background:var(--gold-soft)}
 .tbox.spare{border-style:dashed;opacity:.72}
 .tbox.staff{background:var(--green-soft)}
+.tbox.member{border-color:var(--green);background:var(--green-soft);box-shadow:inset 0 0 0 1px var(--green)}
+.tbox.member .bl{color:var(--green)}
 .tbox .bn{font-family:var(--serif);font-size:17px;font-weight:900;color:var(--green);line-height:1.1}
 .tbox .bl{font-size:10.5px;color:var(--gold);font-weight:700;line-height:1.35;overflow-wrap:anywhere}
 .tbox .bc{font-size:11px;color:var(--muted)}
@@ -153,6 +155,7 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
       <div class="stat"><b id="s-people">—</b><span>出席人數</span></div>
       <div class="stat"><b id="s-tables">—</b><span>使用桌數</span></div>
       <div class="stat"><b id="s-checked">—</b><span>已報到</span></div>
+      <div class="stat" title="以 23 桌 × 每桌 10 位計；另有飯店預備桌 1 桌可再加 10 位"><b id="s-left">—</b><span>剩餘座位</span><small id="s-left-note" style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px;">＋預備桌 10 位</small></div>
       <div class="rfr"><span id="s-time">載入中…</span><button onclick="load()">↻ 更新</button></div>
     </div>
   </header>
@@ -170,6 +173,7 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
       </ol>
       <div class="notes">
         <p>每桌以 10 人估算；標示 11 人以上者為滿桌加座，請預留椅位。</p>
+        <p>「剩餘座位」＝23 桌 × 10 位 − 目前已排人數；飯店另備預備桌 1 桌（可再容納 10 位），臨時來賓請洽會館加桌。</p>
         <p>名單均附職稱，接待與引導時請以職稱稱呼。</p>
         <p>素食為另出套餐、不佔共享桌菜位，故素食份數不計入桌容量。</p>
         <p>貴賓報到後名字右側會顯示「✓ 已報到」；未列名者請引導至服務台由工作人員現場登記。</p>
@@ -180,7 +184,7 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 
   <section class="plan" id="plan">
     <h2>會場平面圖</h2>
-    <p class="ph">依臻愛婚宴會館桌位配置。點任一桌可跳到該桌名單；金框為主題桌、虛線為預備桌。</p>
+    <p class="ph">依臻愛婚宴會館桌位配置。點任一桌可跳到該桌名單；金框為主題桌、<b style="color:var(--green);">綠框為會員桌</b>、虛線為預備桌。</p>
     <div class="floor" id="floor"></div>
   </section>
 
@@ -214,14 +218,16 @@ function show(){
 
 const SB=window.TADA_SB_URL, H=()=>window.tadaSbHeaders();
 const BALLOT='66666666-6666-4666-8666-666666666666';
-const THEME={"第1桌":"農業部本部・署級長官","第3桌":"改良場・試驗所","第4桌":"學校單位",
-  "第11桌":"異父異母兄弟","第12桌":"大叔鐵人","第13桌":"扶輪社①","第14桌":"扶輪社②・中興路跑團",
-  "第15桌":"淡江校友","第16桌":"中衛發展","第17桌":"上市櫃公司協會","第18桌":"中小企協・彰南二區",
-  "第21桌":"米糧加工・農機","第23桌":"溝頭社區・幸福學堂"};
-const ZONE=[["長官席",["第1桌","第3桌"]],["理監事席",["第2桌"]],["學校單位區",["第4桌"]],
-  ["貴賓・公司群",["第5桌","第6桌","第7桌","第8桌","第9桌","第10桌"]],
+const THEME={"第1桌":"農業部本部・署級長官","第2桌":"協會理監事桌","第3桌":"改良場・試驗所","第4桌":"學校單位","第5桌":"協會團體會員桌","第6桌":"個人會員桌",
+  "第9桌":"中衛發展","第10桌":"大叔鐵人",
+  "第11桌":"異父異母兄弟","第12桌":"米糧加工・農機","第13桌":"扶輪社①","第14桌":"扶輪社②・中興路跑團",
+  "第15桌":"淡江校友","第17桌":"上市櫃公司協會","第18桌":"中小企協・彰南二區",
+  "第23桌":"溝頭社區・幸福學堂"};
+const ZONE=[["長官席",["第1桌","第3桌"]],["學校單位區",["第4桌"]],
+  ["會員區",["第2桌","第5桌","第6桌","第9桌","第10桌"]],
+  ["貴賓・公司群",["第7桌","第8桌","第19桌","第20桌"]],
   ["主題桌區",["第11桌","第12桌","第13桌","第14桌","第15桌","第16桌","第17桌","第18桌","第21桌","第23桌"]],
-  ["會員區",["第19桌","第20桌"]],["工作人員",["第22桌"]]];
+  ["工作人員",["第22桌"]]];
 const SCH=/大學|學院|學校|國小|國中|高中|科大/;
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const clean=v=>{v=(v==null?'':String(v)).trim();return (v===''||v==='?'||v==='？')?'':v;};
@@ -288,6 +294,14 @@ function render(rs,gs,ms,vm){
   document.getElementById('s-tables').textContent=Object.keys(by).length;
   document.getElementById('s-checked').textContent=P.filter(p=>p.ok).reduce((s,p)=>s+p.h,0);
   document.getElementById('qhint').textContent='共 '+total+' 人';
+  // 剩餘座位＝23 桌 × 每桌 10 位 − 已排人數；飯店另備 1 桌（10 位）
+  const CAP_TABLES=23, CAP_PER=10, SPARE=1;
+  const left=CAP_TABLES*CAP_PER-total;
+  const el=document.getElementById('s-left');
+  el.textContent=left;
+  el.style.color = left<0 ? 'var(--over)' : (left<=5 ? 'var(--gold)' : 'var(--green)');
+  document.getElementById('s-left-note').textContent =
+    (left<0 ? `超出 ${-left} 位・` : '') + `＋預備桌 ${SPARE*CAP_PER} 位`;
 
   const listed=new Set([].concat(...ZONE.map(z=>z[1])));
   const zones=ZONE.concat([['其他',Object.keys(by).filter(t=>!listed.has(t)).sort((a,b)=>tk(a)-tk(b))]]);
@@ -324,7 +338,9 @@ const FLOOR=[
   [[19,1],[20,2],[21,4],[22,5]],
   [[23,1]],
 ];
-const SPARE={21:'協會預備桌',22:'工作人員桌',23:'飯店預備桌'};
+const SPARE={22:'工作人員桌',23:'飯店預備桌'};
+// 會員桌（平面圖以綠框標示）：理監事、團體會員、個人會員及會員友人桌
+const MEMBER=new Set([2,5,6,9,10]);
 function renderFloor(by,heads){
   const f=document.getElementById('floor');
   let html='<div class="stage">舞　台</div>';
@@ -332,7 +348,7 @@ function renderFloor(by,heads){
     row.forEach(([no,col])=>{
       const t='第'+no+'桌', ppl=by[t]||[], h=ppl.length?heads(t):0;
       const lb=THEME[t]||'', role=SPARE[no]||'';
-      const cls=['tbox']; if(lb)cls.push('theme'); if(!h)cls.push('spare'); if(no===22)cls.push('staff');
+      const cls=['tbox']; if(lb)cls.push('theme'); if(!h)cls.push('spare'); if(no===22)cls.push('staff'); if(MEMBER.has(no))cls.push('member');
       html+=`<div class="${cls.join(' ')}" style="grid-column:${col}" onclick="jumpTo('${t}')" title="${esc(t)}">
         <div class="bn">${no}</div>
         ${lb?`<div class="bl">${esc(lb)}</div>`:(role?`<div class="bl" style="color:var(--muted);font-weight:500;">${role}</div>`:'')}
