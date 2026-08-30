@@ -94,13 +94,14 @@ header .prog.on .l{color:var(--gold-lt)}
 .unit.on .u-cnt{color:rgba(26,26,18,.72)}
 .unit .u-cnt b{color:var(--gold-lt)}
 .unit.on .u-cnt b{color:#3a2e08}
-.cats .unit.cat{padding:11px 22px}
-.cats .unit.cat .u-name{font-size:21px}
+.cats .unit.cat{padding:11px 16px}
+.cats .unit.cat .u-name{font-size:19px}
 .cats .unit.cat.on{background:linear-gradient(160deg,#2c4a32,#1a3020);border-color:var(--gold-lt)}
 .cats .unit.cat.on .u-name{color:var(--gold-lt)}
 .cats .unit.cat.on .u-cnt,.cats .unit.cat.on .u-cnt b{color:var(--cream)}
-/* 姓名搜尋列 */
-.q-in{flex:1;min-width:0;background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.3);border-radius:12px;padding:11px 16px;color:var(--cream);font-size:18px;font-family:inherit;outline:none}
+/* 姓名搜尋：併入「類別」列靠右，省下原本獨立一列的高度 */
+.q-wrap{flex:0 0 auto;display:flex;align-items:center;gap:8px;margin-left:14px}
+.q-in{width:clamp(150px,19vw,230px);background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.3);border-radius:12px;padding:11px 16px;color:var(--cream);font-size:18px;font-family:inherit;outline:none}
 .q-in:focus{border-color:var(--gold-lt)}
 .q-in::placeholder{color:rgba(245,236,212,.35)}
 .q-clear{flex:0 0 auto;background:rgba(255,255,255,.06);border:1px solid rgba(196,146,42,.3);color:var(--cream);border-radius:12px;width:46px;height:46px;font-size:18px;cursor:pointer;display:none}
@@ -179,10 +180,14 @@ header .prog.on .l{color:var(--gold-lt)}
 </header>
 
 <div class="top">
-  <div class="filter-row"><span class="fr-label">類別</span><div class="units cats" id="cats"></div></div>
+  <div class="filter-row"><span class="fr-label">類別</span><div class="units cats" id="cats"></div>
+    <div class="q-wrap">
+      <input id="q" class="q-in" placeholder="🔍 搜尋姓名" autocomplete="off" oninput="onSearch(this.value)">
+      <button class="q-clear" id="q-clear" onclick="clearSearch()">✕</button>
+    </div>
+  </div>
   <div class="filter-row"><span class="fr-label">單位</span><div class="units" id="units"></div></div>
   <div class="filter-row"><span class="fr-label">姓氏</span><div class="units" id="surnames"></div></div>
-  <div class="filter-row"><span class="fr-label">姓名</span><input id="q" class="q-in" placeholder="輸入姓名搜尋（跨全部類別）" autocomplete="off" oninput="onSearch(this.value)"><button class="q-clear" id="q-clear" onclick="clearSearch()">✕</button></div>
 </div>
 
 <div class="bottom">
