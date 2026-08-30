@@ -306,6 +306,17 @@ const ZONE=[["長官席",["第1桌","第3桌"]],["理監事席",["第2桌"]],["�
   ["主題桌區",["第9桌","第10桌","第11桌","第12桌","第13桌","第14桌","第15桌","第17桌","第18桌","第23桌"]],
   ["貴賓・公司群",["第7桌","第8桌","第16桌","第19桌","第20桌","第21桌"]],
   ["工作人員",["第22桌"]]];
+const CFG_KEY='seating_tables';
+/* 桌位類型預設（未自訂時採用）；自訂值存 tada_config.seating_tables（JSON） */
+const TYPE_DEFAULT={"第1桌":"官學界","第2桌":"協會會員","第3桌":"官學界","第4桌":"官學界",
+  "第5桌":"協會會員","第6桌":"協會會員","第9桌":"團體","第10桌":"團體","第11桌":"團體",
+  "第12桌":"團體","第13桌":"團體","第14桌":"團體","第15桌":"團體","第17桌":"團體",
+  "第18桌":"團體","第22桌":"協會會員","第23桌":"團體"};
+const TYPE_CLASS={"官學界":"t-gov","協會會員":"t-member","團體":"t-group","貴賓":"t-vip"};
+let TCFG={};                      // { "第N桌": {label, type} }
+const tLabel=t=>(TCFG[t]&&TCFG[t].label!==undefined)?TCFG[t].label:(THEME[t]||'');
+const tType =t=>(TCFG[t]&&TCFG[t].type !==undefined)?TCFG[t].type :(TYPE_DEFAULT[t]||'');
+let editMode=false, editingTable=null;
 const SCH=/大學|學院|學校|國小|國中|高中|科大/;
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const clean=v=>{v=(v==null?'':String(v)).trim();return (v===''||v==='?'||v==='？')?'':v;};
