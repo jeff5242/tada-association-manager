@@ -4265,6 +4265,38 @@ let seatGuests = [], seatMembers = [];
 // 可排的桌號（非工作桌那一組；相容舊「會員桌」標籤）
 const MEMBER_TABLES = (EVENT_TABLE_GROUPS.find(g=>g.label==='桌次') || EVENT_TABLE_GROUPS.find(g=>g.label==='會員桌') || {tables:[]}).tables;
 
+/* 桌位主題名稱／類型：與 /seating/ 平面圖共用 tada_config.seating_tables */
+const SEAT_CFG_KEY='seating_tables';
+const SEAT_TYPES=['官學界','協會會員','團體','貴賓'];
+let SEAT_CFG={};
+const seatLabel=t=>(SEAT_CFG[t]&&SEAT_CFG[t].label)||'';
+const seatType =t=>(SEAT_CFG[t]&&SEAT_CFG[t].type)||'';
+async function loadSeatCfg(){
+  try{ const r=await sbEl(`tada_config?key=eq.${SEAT_CFG_KEY}&select=value`);
+       const d=r.ok?await r.json():[]; SEAT_CFG=d.length?JSON.parse(d[0].value||'{}'):{}; }
+  catch(e){ SEAT_CFG={}; }
+}
+async function saveSeatCfg(){
+  const r=await fetch(`${SB_URL}/rest/v1/tada_config`,{method:'POST',
+    headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({key:SEAT_CFG_KEY,value:JSON.stringify(SEAT_CFG)})});
+  if(!r.ok) throw new Error(await r.text());
+}
+/* 編輯桌位主題（與平面圖同步） */
+async function editSeatTable(t){
+  const cur=seatLabel(t), curT=seatType(t);
+  const nl=prompt(`${t} 主題名稱（留空＝不顯示；此設定與會場平面圖同步）`, cur);
+  if(nl===null) return;
+  const idx=prompt(`${t} 桌位類型：\n1=官學界　2=協會會員　3=團體　4=貴賓\n0=未分類`,
+                   String(SEAT_TYPES.indexOf(curT)+1));
+  if(idx===null) return;
+  const n=parseInt(idx,10);
+  SEAT_CFG[t]={label:nl.trim(), type:(n>=1&&n<=4)?SEAT_TYPES[n-1]:''};
+  if(!SEAT_CFG[t].label && !SEAT_CFG[t].type) delete SEAT_CFG[t];
+  try{ await saveSeatCfg(); await loadSeating(); }
+  catch(e){ alert('儲存失敗：'+e.message); }
+}
+
 async function loadSeating(){
   const st=document.getElementById('seating-status');
   st.textContent='載入中…'; st.style.color='var(--gray)';
@@ -4274,6 +4306,7 @@ async function loadSeating(){
       fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,title,note,companions,headcount,vegetarian,table_no`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps`, { headers: SB_HEADERS }),
     ]);
+    await loadSeatCfg();
     seatGuests  = gRes.ok ? await gRes.json() : [];
     seatMembers = mRes.ok ? await mRes.json() : [];
     buildMemberPool(roRes.ok ? await roRes.json() : []);
@@ -4421,7 +4454,10 @@ function renderSeating(){
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
         <span style="width:8px;height:8px;border-radius:50%;background:${col};"></span>
         <b style="color:${col};font-size:14px;">${tableLabel(t)}</b>
-        ${mainGrp?`<span style="font-size:11px;color:var(--gold-lt);font-weight:700;">· ${escapeHtml(mainGrp)}</span>`:''}
+        ${(()=>{const lb=seatLabel(t)||mainGrp, ty=seatType(t);
+          return (lb?`<span style="font-size:11px;color:var(--gold-lt);font-weight:700;">· ${escapeHtml(lb)}</span>`:'')
+               + (ty?`<span style="font-size:10px;color:var(--gray);border:1px solid var(--border);border-radius:99px;padding:0 6px;">${escapeHtml(ty)}</span>`:'')
+               + `<button class="btn btn-sm btn-outline" style="padding:0 6px;font-size:10px;line-height:18px;" onclick="editSeatTable('${escapeHtml(t)}')" title="修改桌次名稱與類型（與會場平面圖同步）">✎</button>`;})()}
         ${vegTotal>0?`<span style="font-size:10px;color:#4fc3f7;background:rgba(41,182,246,0.15);border-radius:99px;padding:1px 7px;">🥗 素食 ${vegTotal} 份</span>`:''}
         <span style="margin-left:auto;font-size:12px;color:${over?'#ef5350':'var(--gray)'};font-weight:700;">${head}/${capT}${vegTotal>0?`<span style="font-weight:400;color:var(--gray);font-size:10px;"> (10+${vegTotal}素)</span>`:''}</span>
         <select onchange="swapTables('${escapeHtml(t)}',this.value);this.value='';" class="filter-select" style="padding:1px 2px;font-size:10px;width:92px;" title="與另一桌整桌對調成員"><option value="">⇄ 對調…</option>${orderTables.filter(x=>x!==t).map(x=>`<option value="${escapeHtml(x)}">${tableLabel(x)}</option>`).join('')}</select>
