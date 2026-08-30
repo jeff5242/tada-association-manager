@@ -1116,6 +1116,31 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="stat-card"><div class="stat-label">總桌數</div><div class="stat-num" style="color:var(--white);">26</div></div><!-- 第1-25桌+工作桌 -->
   </div>
 
+  <!-- 桌位主題設定（與 /seating/ 平面圖同步） -->
+  <div id="st-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSeatEdit()">
+    <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:26px 28px;width:420px;max-width:92vw;">
+      <h3 id="st-title" style="color:var(--gold-lt);font-size:17px;margin-bottom:4px;">桌位設定</h3>
+      <p style="font-size:12px;color:var(--gray);margin-bottom:16px;">此設定與<b style="color:var(--gold-lt);">會場平面圖</b>同步，所有工作人員都會看到。</p>
+      <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">主題名稱（留空＝不顯示標題）</label>
+      <input id="st-label" placeholder="例如：中衛發展、大叔鐵人" autocomplete="off"
+             style="width:100%;background:var(--surface2,rgba(255,255,255,.06));border:1px solid var(--border);border-radius:8px;padding:11px 12px;color:var(--ink);font-size:15px;outline:none;font-family:inherit;">
+      <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin:14px 0 6px;">桌位類型</label>
+      <select id="st-type" class="filter-select" style="width:100%;padding:11px 12px;font-size:15px;">
+        <option value="">未分類</option>
+        <option value="官學界">官學界</option>
+        <option value="協會會員">協會會員</option>
+        <option value="團體">團體</option>
+        <option value="貴賓">貴賓</option>
+      </select>
+      <div id="st-err" style="color:#ef5350;font-size:12px;min-height:16px;margin-top:10px;"></div>
+      <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:8px;">
+        <button class="btn btn-sm btn-outline" style="color:var(--warn);border-color:rgba(224,119,106,.4);" onclick="saveSeatEdit(true)">清除設定</button>
+        <button class="btn btn-sm btn-outline" onclick="closeSeatEdit()">取消</button>
+        <button class="btn btn-gold btn-sm" onclick="saveSeatEdit(false)">✓ 儲存</button>
+      </div>
+    </div>
+  </div>
+
   <div id="seating-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
     <div style="color:var(--gray);padding:30px;">點「重新載入」讀取桌次…</div>
   </div>
@@ -4282,19 +4307,29 @@ async function saveSeatCfg(){
     body:JSON.stringify({key:SEAT_CFG_KEY,value:JSON.stringify(SEAT_CFG)})});
   if(!r.ok) throw new Error(await r.text());
 }
-/* 編輯桌位主題（與平面圖同步） */
-async function editSeatTable(t){
-  const cur=seatLabel(t), curT=seatType(t);
-  const nl=prompt(`${t} 主題名稱（留空＝不顯示；此設定與會場平面圖同步）`, cur);
-  if(nl===null) return;
-  const idx=prompt(`${t} 桌位類型：\n1=官學界　2=協會會員　3=團體　4=貴賓\n0=未分類`,
-                   String(SEAT_TYPES.indexOf(curT)+1));
-  if(idx===null) return;
-  const n=parseInt(idx,10);
-  SEAT_CFG[t]={label:nl.trim(), type:(n>=1&&n<=4)?SEAT_TYPES[n-1]:''};
-  if(!SEAT_CFG[t].label && !SEAT_CFG[t].type) delete SEAT_CFG[t];
-  try{ await saveSeatCfg(); await loadSeating(); }
-  catch(e){ alert('儲存失敗：'+e.message); }
+/* 編輯桌位主題（與平面圖同步）：正式對話框 */
+let seatEditing=null;
+function editSeatTable(t){
+  seatEditing=t;
+  document.getElementById('st-title').textContent=t+' 桌位設定';
+  document.getElementById('st-label').value=seatLabel(t);
+  document.getElementById('st-type').value=seatType(t);
+  document.getElementById('st-err').textContent='';
+  document.getElementById('st-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('st-label').focus(),50);
+}
+function closeSeatEdit(){ document.getElementById('st-modal').style.display='none'; seatEditing=null; }
+async function saveSeatEdit(clear){
+  const t=seatEditing; if(!t) return;
+  const err=document.getElementById('st-err');
+  if(clear) delete SEAT_CFG[t];
+  else{
+    const lb=document.getElementById('st-label').value.trim();
+    const ty=document.getElementById('st-type').value;
+    if(!lb && !ty) delete SEAT_CFG[t]; else SEAT_CFG[t]={label:lb,type:ty};
+  }
+  try{ await saveSeatCfg(); closeSeatEdit(); await loadSeating(); }
+  catch(e){ err.textContent='儲存失敗：'+e.message; }
 }
 
 async function loadSeating(){
