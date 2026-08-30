@@ -118,6 +118,7 @@ header .prog.on .l{color:var(--gold-lt)}
 .gcard .g-name{font-family:var(--serif);font-size:32px;font-weight:900;color:var(--cream);line-height:1.15}
 .gcard .g-org{font-size:15px;color:var(--muted);margin-top:4px}
 .gcard .g-title{color:var(--gold-lt);font-weight:700}
+.gcard .g-with{font-size:13px;color:var(--muted);margin-top:3px;opacity:.9}
 .gcard .g-btn{margin-top:auto;background:var(--gold);color:#1a1a12;border:none;border-radius:12px;padding:18px;font-size:22px;font-weight:900;font-family:inherit;letter-spacing:.06em;cursor:pointer}
 .gcard.done{opacity:.6;border-color:rgba(102,187,106,.4)}
 .gcard.done .g-done{margin-top:auto;text-align:center;background:rgba(102,187,106,.14);border:1px solid rgba(102,187,106,.4);border-radius:12px;padding:17px;font-size:19px;font-weight:700;color:#9be0a3}
@@ -277,6 +278,8 @@ function catFor(g){ return clean(g.category)||'農業合作單位'; }
 
 async function rpc(fn,body){ const r=await fetch(`${SB}/rest/v1/rpc/${fn}`,{method:'POST',headers:H(),body:JSON.stringify(body)}); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function noteWithoutCompanion(g){ return String(g.note||'').split('｜').filter(x=>!/同行於/.test(x)).join('｜').trim(); }
+function companionOf(g){ const m=/同行於\s*([^｜]+)/.exec(g.note||''); return m?('同行於 '+m[1].trim()):''; }
 function clean(v){ v=(v==null?'':String(v)).trim(); return (v===''||v==='?'||v==='？')?'':v; }
 
 /* 會員一律走會員證報到（/checkin），不出現在貴賓報到清單。
@@ -370,7 +373,7 @@ function renderList(){
     arr=arr.filter(g=>g.checked_in).sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-Hant'));
     const el0=document.getElementById('list');
     if(!arr.length){ el0.innerHTML='<div class="empty">目前沒有人完成報到。</div>'; return; }
-    el0.innerHTML=arr.map(g=>`<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>　`:""}${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`).join('');
+    el0.innerHTML=arr.map(g=>`<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}</div><div class="g-done">✓ 已完成報到</div></div>`).join('');
     return;
   }
   if(searchQ){ arr=arr.filter(g=>(g.name||'').includes(searchQ)); }
@@ -382,10 +385,10 @@ function renderList(){
   const el=document.getElementById('list');
   if(!arr.length){ el.innerHTML='<div class="empty">'+(GS.hideDone?'此分類已全部完成報到 ✓':'此分類目前沒有貴賓，請改選其他單位或搜尋姓名。')+'</div>'; return; }
   el.innerHTML=arr.map(g=>g.checked_in
-    ? `<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="按錯了？恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>　`:""}${esc(clean(g.org))}</div></div><div class="g-done">✓ 已完成報到</div></div>`
+    ? `<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="按錯了？恢復未報到">↺ reset</button>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}</div><div class="g-done">✓ 已完成報到</div></div>`
     : (GS.checkin
-        ? `<div class="gcard" onclick="doCheckin('${g.id}')"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>　`:""}${esc(clean(g.org))}</div></div><button class="g-btn" onclick="event.stopPropagation();doCheckin('${g.id}')">貴賓報到</button></div>`
-        : `<div class="gcard viewonly"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>　`:""}${esc(clean(g.org))}</div></div><div class="g-wait">未報到</div></div>`)
+        ? `<div class="gcard" onclick="doCheckin('${g.id}')"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}</div><button class="g-btn" onclick="event.stopPropagation();doCheckin('${g.id}')">貴賓報到</button></div>`
+        : `<div class="gcard viewonly"><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}</div><div class="g-wait">未報到</div></div>`)
   ).join('');
 }
 // 報到前先確認入座人數（＋/－），確認後才真正報到
@@ -501,10 +504,11 @@ function showWelcome(d, gid){
      <div class="w-hi">歡　迎　蒞　臨</div>
      <div class="w-name">${esc(d.name)}${wTitle?` <span class="w-ttl">${esc(wTitle)}</span>`:''}</div>
      ${clean(d.org)?`<div class="w-org">${esc(clean(d.org))}</div>`:''}
+     ${companionOf(gLocal)?`<div class="w-org" style="font-size:15px;opacity:.8;">${esc(companionOf(gLocal))}</div>`:''}
      ${seat?`<div class="w-seat"><div class="s-l">您的桌號</div><div class="s-v">${esc(seat)}</div></div>`
            :`<div class="w-seat"><div class="s-l">桌號</div><div class="s-v" style="font-size:24px;">請洽接待人員</div></div>`}
      ${chips.length?`<div class="w-info">${chips.map(c=>'<span>'+c+'</span>').join('')}</div>`:''}
-     ${clean(d.note)?`<div class="w-note">📌 ${esc(clean(d.note))}</div>`:''}
+     ${noteWithoutCompanion(d)?`<div class="w-note">📌 ${esc(noteWithoutCompanion(d))}</div>`:''}
      <div class="w-bless">
        <div class="wb-label">🙏 感謝您的蒞臨，為大會獻上祝福</div>
        <div class="wb-chips" id="wb-chips"></div>
