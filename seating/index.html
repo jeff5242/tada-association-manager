@@ -71,7 +71,7 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 .plan{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:clamp(14px,3vw,24px);overflow-x:auto}
 .plan h2{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--green);margin-bottom:4px}
 .plan .ph{font-size:12.5px;color:var(--muted);margin-bottom:16px}
-.floor{display:grid;grid-template-columns:1fr 1fr .32fr 1fr 1fr;gap:9px;min-width:560px}
+.floor{display:grid;grid-template-columns:repeat(12,1fr);gap:9px;min-width:560px}
 .stage{grid-column:1/-1;background:linear-gradient(180deg,var(--green),#24422b);color:#F5ECD4;
   border-radius:10px;padding:13px;text-align:center;font-family:var(--serif);font-size:16px;
   font-weight:700;letter-spacing:.5em;margin-bottom:6px}
@@ -435,16 +435,18 @@ function render(rs,gs,ms,vm){
 }
 
 
-/* 飯店桌位配置：[桌號, 欄位(1..5，3=走道)]，依現場平面圖 */
+/* 飯店桌位配置：一列一個陣列，桌號由左到右。
+   版面走 12 欄格線，每列平均分配（3 桌→各佔 4 欄；4 桌→各佔 3 欄），
+   所以不論一列幾桌都會等寬鋪滿、左右對齊。 */
 const FLOOR=[
-  [[1,2],[2,4]],
-  [[3,1],[4,2],[5,4],[6,5]],
-  [[7,1],[8,2],[9,4],[10,5]],
-  [[11,1],[12,2],[13,4],[14,5]],
-  [[15,1],[16,2],[17,4],[18,5]],
-  [[19,1],[20,2],[21,4],[22,5]],
-  [[23,1]],
+  [1, 2, 3],              // 第一列：靠舞台，3 桌
+  [4, 5, 6, 7],
+  [8, 9, 10, 11],
+  [12, 13, 14, 15],
+  [16, 17, 18, 19],
+  [20, 21, 22, 23],
 ];
+const FLOOR_COLS=12;
 const SPARE={22:'工作人員桌',23:'飯店預備桌'};
 // 會員桌（平面圖以綠框標示）：理監事、團體會員、個人會員及會員友人桌
 const MEMBER=new Set([2,5,6,9,10]);
@@ -453,7 +455,9 @@ function renderFloor(by,heads,vegs){
   f.classList.toggle('editing', editMode);
   let html='<div class="stage">舞　台</div>';
   FLOOR.forEach(row=>{
-    row.forEach(([no,col])=>{
+    const span=Math.max(1,Math.floor(FLOOR_COLS/row.length));
+    row.forEach((no,i)=>{
+      const col=`${i*span+1} / span ${span}`;
       const t='第'+no+'桌', ppl=by[t]||[], h=ppl.length?heads(t):0, v=ppl.length?vegs(t):0;
       const dish=h-v;                       // 佔桌菜位人數（素食另出套餐、不佔位）
       const lb=tLabel(t), ty=tType(t), role=SPARE[no]||'';
