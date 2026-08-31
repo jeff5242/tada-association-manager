@@ -514,7 +514,7 @@ async function saveTableEdit(clear){
 /* 主題桌清單改由後台設定即時產生，換桌後不會再停在舊桌號 */
 function renderThemeRule(){
   const el=document.getElementById('rule-themes'); if(!el) return;
-  const list=Object.keys(TCFG).filter(t=>(tLabel(t)||'').trim() && tType(t)==='團體')
+  const list=Object.keys(TCFG).filter(t=>(tLabel(t)||'').trim() && tType(t)==='佳賓團體')
     .sort((a,b)=>tk(a)-tk(b))
     .map(t=>`${esc(tLabel(t))}（${esc(t).replace('第','').replace('桌','')}）`);
   el.textContent = list.length ? list.join('、')+'。' : '尚未設定主題桌。';
