@@ -64,6 +64,17 @@ textarea{resize:vertical;min-height:60px;}
 
     <div id="err-box"></div>
 
+    <!-- 已經回覆過的人多半只想確認桌次，不需要再填一次表單 -->
+    <a href="/confirm/" style="display:flex;align-items:center;gap:12px;background:var(--green-deep,#1e3320);color:#faf6ea;
+       text-decoration:none;border-radius:10px;padding:15px 18px;margin-bottom:16px;">
+      <span style="font-size:26px;line-height:1;">🪑</span>
+      <span style="flex:1;">
+        <span style="display:block;font-size:15px;font-weight:700;color:#d4a853;">出席確認・查詢我的桌次</span>
+        <span style="display:block;font-size:12px;color:rgba(255,255,255,.62);margin-top:3px;line-height:1.7;">已經回覆過了？可查看座位、修改人數或素食份數</span>
+      </span>
+      <span style="font-size:20px;color:#d4a853;">›</span>
+    </a>
+
     <div class="card">
       <div class="greet">回覆 9/4 大會出席　<span id="edit-badge"></span></div>
 
@@ -152,6 +163,10 @@ textarea{resize:vertical;min-height:60px;}
     <div class="ic" id="done-ic">🎉</div>
     <div class="msg" id="done-msg"></div>
     <div class="sub2" id="done-sub"></div>
+    <a id="done-confirm" href="/confirm/" style="display:none;margin-top:20px;text-decoration:none;
+       background:#1e3320;color:#d4a853;border-radius:8px;padding:13px 22px;font-size:14px;font-weight:700;">
+      🪑 查看我的桌次
+    </a>
   </div>
 
 </div>
@@ -335,6 +350,7 @@ async function submitRsvp(){
     if(!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()));
 
     document.getElementById('form-view').style.display = 'none';
+    const cf=document.getElementById('done-confirm'); if(cf) cf.style.display='';
     const done = document.getElementById('done-view');
     if(attending){
       document.getElementById('done-ic').textContent = '🎉';
