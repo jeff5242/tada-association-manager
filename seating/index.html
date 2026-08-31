@@ -250,8 +250,8 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
     <div class="legend">
       <span class="lg-gov"><i></i>貴賓</span>
       <span class="lg-member"><i></i>會員</span>
-      <span class="lg-group"><i></i>佳賓團體</span>
-      <span class="lg-vip"><i></i>佳賓</span>
+      <span class="lg-group"><i></i>嘉賓團體</span>
+      <span class="lg-vip"><i></i>嘉賓</span>
       <span>虛線＝空桌／預備桌</span>
     </div>
   </section>
@@ -274,8 +274,8 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
         <option value="">未分類</option>
         <option value="貴賓">貴賓（長官）</option>
         <option value="會員">會員</option>
-        <option value="佳賓團體">佳賓團體</option>
-        <option value="佳賓">佳賓</option>
+        <option value="嘉賓團體">嘉賓團體</option>
+        <option value="嘉賓">嘉賓</option>
       </select>
       <div class="tbtns">
         <button class="tb-clear" onclick="saveTableEdit(true)">清除設定</button>
@@ -313,12 +313,12 @@ const BALLOT='66666666-6666-4666-8666-666666666666';
    （曾發生分區還停在舊桌號、名字對不上實際坐的人）。 */
 const THEME={};
 /* 分區改由桌位「類型」即時歸類，類型同樣來自後台設定 */
-const ZONE_ORDER=['貴賓','會員','佳賓團體','佳賓'];
-const ZONE_NAME={'貴賓':'貴賓・長官席','會員':'會員區','佳賓團體':'佳賓團體區','佳賓':'佳賓・公司群'};
+const ZONE_ORDER=['貴賓','會員','嘉賓團體','嘉賓'];
+const ZONE_NAME={'貴賓':'貴賓・長官席','會員':'會員區','嘉賓團體':'嘉賓團體區','嘉賓':'嘉賓・公司群'};
 const CFG_KEY='seating_tables';
 /* 桌位類型預設（未自訂時採用）；自訂值存 tada_config.seating_tables（JSON） */
 const TYPE_DEFAULT={};   // 未設定就不歸類，寧可留白也不要顯示過期的分區
-const TYPE_CLASS={"貴賓":"t-gov","會員":"t-member","佳賓團體":"t-group","佳賓":"t-vip"};
+const TYPE_CLASS={"貴賓":"t-gov","會員":"t-member","嘉賓團體":"t-group","嘉賓":"t-vip"};
 let TCFG={};                      // { "第N桌": {label, type} }
 const tLabel=t=>(TCFG[t]&&TCFG[t].label!==undefined)?TCFG[t].label:(THEME[t]||'');
 const tType =t=>(TCFG[t]&&TCFG[t].type !==undefined)?TCFG[t].type :(TYPE_DEFAULT[t]||'');
@@ -377,10 +377,10 @@ function render(rs,gs,ms,vm){
   gs.filter(g=>!inRsvp.has(deTitle(g.name))).forEach(g=>P.push({n:g.name,ti:clean(g.title),o:clean(g.org),note:clean(g.note),cmp:'',
             h:g.party_size||1,veg:0,t:g.seat}));
   P.forEach(p=>{
-    // 分類與桌位類別同一套詞彙：會員／貴賓（長官）／佳賓團體／佳賓
+    // 分類與桌位類別同一套詞彙：會員／貴賓（長官）／嘉賓團體／嘉賓
     // 非會員者直接沿用其所在桌的類別，桌子改類型時名單自動跟著改
     p.c = (grp.has(p.n)||ind.has(p.n)||/第五屆理監/.test(p.note)||b5.has(p.n)) ? '會員'
-        : (tType(p.t) || '佳賓');
+        : (tType(p.t) || '嘉賓');
     p.ok = checked.has(p.n);
   });
 
@@ -412,7 +412,7 @@ function render(rs,gs,ms,vm){
   const zones=ZONE_ORDER.map(ty=>[ZONE_NAME[ty], used.filter(t=>tType(t)===ty)])
     .concat([['未分類', used.filter(t=>!ZONE_ORDER.includes(tType(t)))]])
     .filter(z=>z[1].length);
-  const CH={'會員':'c-grp','貴賓':'c-board','佳賓團體':'c-sch','佳賓':'c-vip'};
+  const CH={'會員':'c-grp','貴賓':'c-board','嘉賓團體':'c-sch','嘉賓':'c-vip'};
   let html='';
   zones.forEach(([zn,tables])=>{
     const cards=tables.filter(t=>by[t]).map(t=>{
@@ -514,7 +514,7 @@ async function saveTableEdit(clear){
 /* 主題桌清單改由後台設定即時產生，換桌後不會再停在舊桌號 */
 function renderThemeRule(){
   const el=document.getElementById('rule-themes'); if(!el) return;
-  const list=Object.keys(TCFG).filter(t=>(tLabel(t)||'').trim() && tType(t)==='佳賓團體')
+  const list=Object.keys(TCFG).filter(t=>(tLabel(t)||'').trim() && tType(t)==='嘉賓團體')
     .sort((a,b)=>tk(a)-tk(b))
     .map(t=>`${esc(tLabel(t))}（${esc(t).replace('第','').replace('桌','')}）`);
   el.textContent = list.length ? list.join('、')+'。' : '尚未設定主題桌。';
