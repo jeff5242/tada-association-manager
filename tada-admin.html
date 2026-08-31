@@ -1099,7 +1099,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <!-- 2026-08-29 桌次已定稿：全部重排會覆蓋手動排位，先隱藏（要復原刪掉 display:none 即可） -->
       <button class="btn btn-gold btn-sm" style="display:none;" onclick="reseatAllMembers()" title="清掉所有會員桌，依目前『備註／單位』把全部出席會員重新排一次（貴賓桌不受影響）">♻️ 全部重排</button>
       <button class="btn btn-outline btn-sm" onclick="clearMemberSeats()" title="清除所有『會員桌』排位（不動貴賓桌與主桌）">🧹 清空會員桌</button>
-      <button class="btn btn-outline btn-sm" onclick="exportSeatingCSV()">⬇ 匯出桌次表</button>
+      <button class="btn btn-outline btn-sm" onclick="openSeatExport()">⬇ 匯出桌次表…</button>
       <span id="seating-status" style="font-size:11px;"></span>
     </div>
   </div>
@@ -1114,6 +1114,35 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="stat-card"><div class="stat-label">尚未排桌</div><div class="stat-num" style="color:var(--gold);" id="seat-unassigned">–</div></div>
     <div class="stat-card"><div class="stat-label">使用桌數</div><div class="stat-num" style="color:#29b6f6;" id="seat-tables">–</div></div>
     <div class="stat-card"><div class="stat-label">總桌數</div><div class="stat-num" style="color:var(--white);">26</div></div><!-- 第1-25桌+工作桌 -->
+  </div>
+
+  <!-- 匯出桌次表：先選要匯出哪幾桌 -->
+  <div id="sx-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSeatExport()">
+    <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:24px 26px;width:560px;max-width:94vw;max-height:88vh;display:flex;flex-direction:column;">
+      <h3 style="color:var(--gold-lt);font-size:17px;margin-bottom:4px;">匯出桌次表</h3>
+      <p style="font-size:12px;color:var(--gray);margin-bottom:14px;">勾選要匯出的桌次；也可以用上排的類型一次勾選整組。</p>
+      <div style="font-size:12px;color:var(--gold-lt);font-weight:700;margin-bottom:6px;">依類型</div>
+      <div id="sx-types" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:12px;color:var(--gold-lt);font-weight:700;">依桌號</span>
+        <button class="btn btn-sm btn-outline" style="padding:0 8px;font-size:11px;" onclick="sxAll(true)">全選</button>
+        <button class="btn btn-sm btn-outline" style="padding:0 8px;font-size:11px;" onclick="sxAll(false)">全不選</button>
+        <span id="sx-count" style="margin-left:auto;font-size:12px;color:var(--gray);"></span>
+      </div>
+      <div id="sx-tables" style="flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:6px;padding:4px 2px 10px;"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--gold-lt);font-weight:700;">格式</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);cursor:pointer;"><input type="radio" name="sx-fmt" value="csv" checked> CSV</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);cursor:pointer;"><input type="radio" name="sx-fmt" value="excel"> Excel</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);cursor:pointer;"><input type="radio" name="sx-fmt" value="pdf"> PDF（列印）</label>
+        <span style="margin-left:auto;display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="closeSeatExport()">取消</button>
+          <button class="btn btn-gold btn-sm" onclick="doSeatExport()">⬇ 匯出所選</button>
+        </span>
+      </div>
+      <p style="font-size:11px;color:var(--gray);margin-top:8px;line-height:1.7;">
+        PDF 會開啟列印視窗，在印表機選「另存為 PDF」即可。Excel 為 .xls 格式，Excel／Numbers 皆可直接開啟。</p>
+    </div>
   </div>
 
   <!-- 桌位主題設定（與 /seating/ 平面圖同步） -->
@@ -4750,13 +4779,50 @@ async function clearMemberSeats(){
   if(res.ok){ await loadSeating(); } else alert('清空失敗：'+await res.text());
 }
 
-async function exportSeatingCSV(){
-  await loadSeatCfg();          // 桌位名稱／類型以最新設定為準（與會場平面圖同一份設定）
+/* 匯出前先選桌：整場 26 桌一次匯出，接待組要找某一區還得自己過濾 */
+async function openSeatExport(){
+  await loadSeatCfg();
   const occ=seatOccupants().filter(o=>o.table);
+  if(!occ.length){ alert('目前沒有已排桌的資料可匯出。'); return; }
+  const head={}; occ.forEach(o=>{ head[o.table]=(head[o.table]||0)+o.size; });
+  const tables=Object.keys(head).sort((a,b)=>eventTableRank(a)-eventTableRank(b));
+  const types=[...new Set(tables.map(t=>seatType(t)||'未分類'))];
+  document.getElementById('sx-types').innerHTML = types.map(ty=>
+    `<button class="btn btn-sm btn-outline" style="font-size:11px;padding:2px 10px;" onclick="sxByType('${escapeHtml(ty)}')">${escapeHtml(ty)}</button>`).join('');
+  document.getElementById('sx-tables').innerHTML = tables.map(t=>{
+    const lb=seatLabel(t), ty=seatType(t)||'未分類';
+    return `<label data-type="${escapeHtml(ty)}" style="display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px;color:var(--ink);">
+      <input type="checkbox" class="sx-t" value="${escapeHtml(t)}" checked onchange="sxCount()">
+      <span style="flex:1;min-width:0;"><b style="color:var(--white);">${escapeHtml(t)}</b>
+        <span style="color:var(--gray);">${lb?' · '+escapeHtml(lb):''}</span></span>
+      <span style="color:var(--gold-lt);white-space:nowrap;">${head[t]} 人</span></label>`;
+  }).join('');
+  sxCount();
+  document.getElementById('sx-modal').style.display='flex';
+}
+function closeSeatExport(){ document.getElementById('sx-modal').style.display='none'; }
+function sxBoxes(){ return [...document.querySelectorAll('#sx-tables .sx-t')]; }
+function sxAll(v){ sxBoxes().forEach(b=>b.checked=v); sxCount(); }
+function sxByType(ty){ sxBoxes().forEach(b=>{ b.checked = b.closest('label').dataset.type===ty; }); sxCount(); }
+function sxCount(){
+  const on=sxBoxes().filter(b=>b.checked);
+  document.getElementById('sx-count').textContent=`已選 ${on.length} / ${sxBoxes().length} 桌`;
+}
+function doSeatExport(){
+  const picked=new Set(sxBoxes().filter(b=>b.checked).map(b=>b.value));
+  if(!picked.size){ alert('請至少選擇一桌。'); return; }
+  const fmt=(document.querySelector('input[name="sx-fmt"]:checked')||{}).value||'csv';
+  closeSeatExport();
+  exportSeating(picked, fmt);
+}
+
+/* 先把資料整理成表格（純值，未轉義），三種格式共用 */
+async function buildSeatRows(picked){
+  await loadSeatCfg();          // 桌位名稱／類型以最新設定為準（與會場平面圖同一份設定）
+  const occ=seatOccupants().filter(o=>o.table && (!picked || picked.has(o.table)));
   occ.sort((a,b)=>eventTableRank(a.table)-eventTableRank(b.table));
-  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
-  const rows=[['桌號','桌位名稱','類型','同行群組','姓名','身分','會員編號','會員狀態','單位/備註','素食','報到']];
-  let gseq=0;
+  const head=['桌號','桌位名稱','類型','同行群組','姓名','身分','會員編號','會員狀態','單位/備註','素食','報到'];
+  const body=[]; let gseq=0;
   occ.forEach(o=>{
     // 一人一列：把同行者展開，同組共用群組編號
     const names=[o.name, ...seatSplitComp(o.comp)];
@@ -4764,28 +4830,102 @@ async function exportSeatingCSV(){
     const gid = names.length>1 ? 'G'+String(++gseq).padStart(3,'0') : '';
     names.forEach((nm,i)=>{
       const id=seatIdentity(nm);
-      rows.push([
+      body.push([
         o.table, seatLabel(o.table), seatType(o.table), gid, nm,
         id.isMember?'會員':'貴賓', id.no, id.st,
         i===0 ? o.sub : ('同行 ← '+o.name),
         i===0 ? (o.veg||'') : '',
         o.kind==='guest' ? (o.checked?'已報到':'') : ''
-      ].map(esc));
+      ]);
     });
   });
-  const people=rows.length-1;
-  const mem=rows.slice(1).filter(r=>r[5]==='"會員"').length;
+  const people=body.length, mem=body.filter(r=>r[5]==='會員').length;
   const vegTot=occ.reduce((s,o)=>s+(o.veg||0),0);
-  rows.push([]);
-  rows.push([`"登記總人數：${people} 人"`]);
-  rows.push([`"素食總份數：${vegTot} 份"`]);
-  rows.push([`"　├ 會員 ${mem} 人／貴賓 ${people-mem} 人"`]);
-  rows.push([`"　└ ${gseq} 組為兩人以上同行"`]);
-  rows.push(['"※ 身分以會員名冊為準（含團體會員代表）；不在名冊者一律為貴賓"']);
-  const csv='﻿'+rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download=`TADA_桌次表_${todayTag()}.csv`; a.click();
+  const tables=[...new Set(body.map(r=>r[0]))];
+  const notes=[
+    `登記總人數：${people} 人（${tables.length} 桌）`,
+    `素食總份數：${vegTot} 份`,
+    `　├ 會員 ${mem} 人／貴賓 ${people-mem} 人`,
+    `　└ ${gseq} 組為兩人以上同行`,
+    '※ 身分以會員名冊為準（含團體會員代表）；不在名冊者一律為貴賓',
+  ];
+  return { head, body, notes, tables };
 }
+
+function dlBlob(content, mime, filename){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download=filename; a.click();
+}
+
+async function exportSeating(picked, fmt){
+  const d=await buildSeatRows(picked);
+  if(!d.body.length){ alert('所選桌次沒有資料。'); return; }
+  const stamp=todayTag(), name=`TADA_桌次表_${stamp}`;
+  if(fmt==='excel') return exportSeatXls(d, name);
+  if(fmt==='pdf')   return exportSeatPdf(d, stamp);
+  const q=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const csv='﻿'+[d.head.map(q).join(','), ...d.body.map(r=>r.map(q).join(',')), '',
+    ...d.notes.map(n=>q(n))].join('\n');
+  dlBlob(csv,'text/csv;charset=utf-8;',name+'.csv');
+}
+
+/* .xls＝帶 Excel 標頭的 HTML 表格。不必外掛函式庫，Excel／Numbers 都開得起來；
+   全欄位標記為文字格式，桌號「第13桌」與群組「G001」不會被當成日期或數字。 */
+function exportSeatXls(d, name){
+  const e=v=>escapeHtml(String(v==null?'':v));
+  const td=v=>`<td style="mso-number-format:'\\@'">${e(v)}</td>`;
+  const html='<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">'
+    +'<style>table{border-collapse:collapse}th,td{border:1px solid #999;padding:4px 8px;font-size:12px}'
+    +'th{background:#1e3320;color:#d4a853;font-weight:700}</style></head><body>'
+    +`<table><thead><tr>${d.head.map(h=>'<th>'+e(h)+'</th>').join('')}</tr></thead><tbody>`
+    +d.body.map(r=>'<tr>'+r.map(td).join('')+'</tr>').join('')
+    +`</tbody></table><br><table><tbody>${d.notes.map(n=>'<tr>'+td(n)+'</tr>').join('')}</tbody></table>`
+    +'</body></html>';
+  dlBlob('﻿'+html,'application/vnd.ms-excel;charset=utf-8;',name+'.xls');
+}
+
+/* PDF 走瀏覽器列印（印表機選「另存為 PDF」），一桌一段、盡量不跨頁切斷 */
+function exportSeatPdf(d, stamp){
+  const e=v=>escapeHtml(String(v==null?'':v));
+  const byTable=new Map();
+  d.body.forEach(r=>{ if(!byTable.has(r[0])) byTable.set(r[0],[]); byTable.get(r[0]).push(r); });
+  let sections='';
+  byTable.forEach((rows,t)=>{
+    const lb=rows[0][1], ty=rows[0][2];
+    sections+=`<section><h2>${e(t)}${lb?'　<small>'+e(lb)+'</small>':''}`
+      +`<span class="cnt">${rows.length} 人${ty?'　'+e(ty):''}</span></h2>`
+      +'<table><thead><tr><th>姓名</th><th>身分</th><th>單位／備註</th><th>同行群組</th><th>素食</th></tr></thead><tbody>'
+      +rows.map(r=>`<tr><td class="nm">${e(r[4])}</td><td>${e(r[5])}</td><td>${e(r[8])}</td><td>${e(r[3])}</td><td>${e(r[9])}</td></tr>`).join('')
+      +'</tbody></table></section>';
+  });
+  const w=window.open('','_blank');
+  if(!w){ alert('瀏覽器阻擋了列印視窗，請允許彈出視窗後再試一次。'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="utf-8">
+    <title>TADA 桌次表 ${e(stamp)}</title><style>
+    @page{size:A4;margin:14mm}
+    body{font-family:"Noto Sans TC","PingFang TC",sans-serif;color:#1a1a14;margin:0}
+    h1{font-size:19px;margin:0 0 2px}
+    .sub{font-size:11px;color:#5a8a60;margin-bottom:14px}
+    section{break-inside:avoid;page-break-inside:avoid;margin-bottom:14px}
+    h2{font-size:14px;color:#1e3320;border-bottom:2px solid #b8913a;padding-bottom:4px;margin:0 0 6px;display:flex;align-items:baseline}
+    h2 small{font-size:11px;color:#b8913a;font-weight:500}
+    h2 .cnt{margin-left:auto;font-size:11px;color:#5a8a60;font-weight:400}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid #e5ddc8;padding:4px 6px;font-size:11.5px;text-align:left}
+    th{color:#5a8a60;font-weight:500;font-size:10.5px}
+    td.nm{font-weight:700;white-space:nowrap}
+    .notes{margin-top:16px;padding-top:10px;border-top:1px solid #e5ddc8;font-size:11px;color:#5a8a60;line-height:1.9}
+    </style></head><body>
+    <h1>TADA 第六屆會員大會　桌次表</h1>
+    <div class="sub">2026 / 9 / 4（五）　臻愛婚宴會館 烏日高鐵店　｜　列印於 ${e(stamp)}</div>
+    ${sections}
+    <div class="notes">${d.notes.map(n=>e(n)).join('<br>')}</div>
+    </body></html>`);
+  w.document.close();
+  setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 500);
+}
+
 
 // 同行者解析：有名字用本名；填關係詞（太太/友人…）或未填名字 → 「某某的○○」
 const RSVP_REL_WORDS=['太太','先生','夫人','眷屬','友人','家人','小孩','兒子','女兒','助理','司機','母親','父親','媽媽','爸爸','秘書'];
