@@ -67,6 +67,21 @@ textarea{resize:vertical;min-height:60px;}
     <div class="card">
       <div class="greet">回覆 9/4 大會出席　<span id="edit-badge"></span></div>
 
+      <!-- 多數會員的回覆是秘書處代登記或用別台裝置填的，LINE 這邊比對不到，
+           直接送出會變成第二筆。先讓本人用姓名查回原本那筆再修改。 -->
+      <div id="lookup-box" style="display:none;background:#fdf8ec;border:1px solid #e6d29a;border-radius:8px;padding:12px 14px;margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:700;color:#7a5c14;margin-bottom:8px;">已經回覆過了嗎？</div>
+        <div style="font-size:12px;color:#8a6d2a;line-height:1.8;margin-bottom:10px;">
+          若您先前用網頁填過、或由秘書處代為登記，請先查詢帶出原本的回覆再修改，<br>避免產生兩筆重複登記。
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="lk-name" placeholder="您的姓名" style="flex:1;min-width:120px;padding:10px;border:1.5px solid #e6d29a;border-radius:8px;font-family:inherit;font-size:14px;">
+          <input type="tel" id="lk-mobile" placeholder="手機（同名時需要）" inputmode="tel" style="flex:1;min-width:120px;padding:10px;border:1.5px solid #e6d29a;border-radius:8px;font-family:inherit;font-size:14px;">
+          <button type="button" onclick="lookupMine()" style="padding:10px 16px;background:#7a5c14;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;">查詢</button>
+        </div>
+        <div id="lk-msg" style="font-size:12px;margin-top:8px;line-height:1.7;"></div>
+      </div>
+
       <div class="field">
         <label class="label">姓名 <span style="color:#c0392b;">*</span></label>
         <input type="text" id="rsvp-name" placeholder="請輸入您的姓名">
@@ -149,6 +164,58 @@ const SB_HEADERS = window.tadaSbHeaders();
 
 let profile = null, userId = null, inClient = false;
 let attending = true;
+/* 送出時實際要更新的那一筆。多數會員的回覆掛在秘書處代登記的 user_id 上，
+   若不指回原本那筆，upsert 會以 LINE 的 userId 新增第二筆，人數與餐數就重複算。 */
+let targetUserId = null;
+
+const digits = v => String(v||'').replace(/\D/g,'');
+const nameKey = v => String(v||'').replace(/\s+/g,'');
+
+function fillForm(r){
+  if(r.display_name) document.getElementById('rsvp-name').value = r.display_name;
+  document.getElementById('rsvp-org').value = r.org ?? '';
+  document.getElementById('rsvp-title').value = r.title ?? '';
+  document.getElementById('rsvp-mobile').value = r.mobile ?? '';
+  setAttend(r.attending);
+  document.getElementById('headcount').value = r.headcount ?? 1;
+  document.getElementById('vegetarian').value = r.vegetarian ?? 0;
+  document.getElementById('companions').value = r.companions ?? '';
+  document.getElementById('note').value = r.note ?? '';
+  targetUserId = r.user_id;
+}
+
+async function findByName(name){
+  const q = `${SB_URL}/rest/v1/tada_rsvp?hidden=eq.false&display_name=eq.${encodeURIComponent(nameKey(name))}`;
+  const res = await fetch(q, { headers: SB_HEADERS });
+  return res.ok ? await res.json() : [];
+}
+
+/* 本人用姓名（同名時再加手機）查回原本的登記 */
+async function lookupMine(){
+  const msg = document.getElementById('lk-msg');
+  const name = nameKey(document.getElementById('lk-name').value);
+  const mob  = digits(document.getElementById('lk-mobile').value);
+  if(name.length < 2){ msg.style.color='#c0392b'; msg.textContent='請輸入完整姓名'; return; }
+  msg.style.color='#8a6d2a'; msg.textContent='查詢中…';
+  try{
+    let rows = await findByName(name);
+    if(rows.length > 1 && mob) rows = rows.filter(r => digits(r.mobile).endsWith(mob.slice(-3)));
+    if(!rows.length){
+      msg.style.color='#c0392b';
+      msg.textContent='查無這個姓名的回覆紀錄。若確定沒填過，請直接在下方填寫送出即可。';
+      return;
+    }
+    if(rows.length > 1){
+      msg.style.color='#c0392b';
+      msg.textContent=`有 ${rows.length} 筆同名紀錄，請補填手機號碼再查一次。`;
+      return;
+    }
+    fillForm(rows[0]);
+    document.getElementById('edit-badge').innerHTML = '<span class="badge-edit">已帶出原本的回覆，可直接修改</span>';
+    msg.style.color='#2d7a3a';
+    msg.textContent='✓ 已帶出您先前的回覆，修改後按下方「送出回覆」即可更新（不會新增第二筆）。';
+  }catch(e){ msg.style.color='#c0392b'; msg.textContent='查詢失敗：'+e.message; }
+}
 function getWebId(){
   let id = localStorage.getItem('tada_rsvp_webid');
   if(!id){ id = 'web-' + ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now()+'-'+Math.random().toString(16).slice(2)); localStorage.setItem('tada_rsvp_webid', id); }
@@ -196,24 +263,33 @@ async function init(){
     userId = getWebId();     // LIFF 初始化失敗（多為從網頁開啟）→ 網頁模式
   }
 
+  targetUserId = userId;
   // 讀取既有回覆（若有）→ 預填
   try{
     const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(userId)}`, { headers: SB_HEADERS });
     const rows = res.ok ? await res.json() : [];
     if(rows.length){
-      const r = rows[0];
-      if(r.display_name) document.getElementById('rsvp-name').value = r.display_name;
-      document.getElementById('rsvp-org').value = r.org ?? '';
-      document.getElementById('rsvp-title').value = r.title ?? '';
-      document.getElementById('rsvp-mobile').value = r.mobile ?? '';
-      setAttend(r.attending);
-      document.getElementById('headcount').value = r.headcount ?? 1;
-      document.getElementById('vegetarian').value = r.vegetarian ?? 0;
-      document.getElementById('companions').value = r.companions ?? '';
-      document.getElementById('note').value = r.note ?? '';
+      fillForm(rows[0]);
       document.getElementById('edit-badge').innerHTML = '<span class="badge-edit">您已回覆過，可修改</span>';
     } else {
       setAttend(true);
+      // 這個 user_id 沒有紀錄，但本人可能早就由秘書處代登記或用別台裝置填過。
+      // 已綁定會員 → 用真實姓名自動比對；只有一筆才自動帶入，避免抓錯人。
+      let auto = false;
+      const nm = nameKey(document.getElementById('rsvp-name').value);
+      if(inClient && nm.length >= 2){
+        try{
+          const hits = await findByName(nm);
+          if(hits.length === 1){
+            fillForm(hits[0]); auto = true;
+            document.getElementById('edit-badge').innerHTML = '<span class="badge-edit">已帶出既有回覆，可修改</span>';
+          }
+        }catch(e){}
+      }
+      if(!auto){
+        document.getElementById('lookup-box').style.display = '';
+        document.getElementById('lk-name').value = nm;
+      }
     }
   }catch(e){ setAttend(true); }
 
@@ -250,6 +326,7 @@ async function submitRsvp(){
   };
 
   try{
+    payload.user_id = targetUserId || userId;   // 指回原本那筆，避免新增重複登記
     const res = await fetch(`${SB_URL}/rest/v1/tada_rsvp?on_conflict=user_id`, {
       method: 'POST',
       headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates,return=minimal' },
