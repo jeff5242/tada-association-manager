@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出席確認｜TADA 第六屆會員大會</title>
+<meta name="description" content="TADA 2026 第六屆會員大會出席確認與座位查詢。">
+<meta name="robots" content="noindex">
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1a1a14;--gold:#b8913a;--gold-light:#d4a853;--green-deep:#1e3320;--green-mid:#2d5235;--green-light:#5a8a60;--cream:#f8f4ea;--line:#e5ddc8;--red:#c0392b;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:0 0 48px;}
+.top-bar{height:4px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
+.wrap{max-width:540px;margin:0 auto;padding:26px 20px;}
+.head{text-align:center;margin-bottom:20px;}
+.kick{font-size:11px;letter-spacing:.3em;color:var(--gold);font-weight:600;margin-bottom:6px;}
+.title{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;color:var(--green-deep);line-height:1.4;}
+.sub{font-size:12.5px;color:var(--green-light);margin-top:8px;line-height:1.8;}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 6px 20px rgba(30,51,32,.05);}
+.label{font-size:13px;font-weight:700;color:var(--green-deep);margin-bottom:8px;display:block;}
+input[type=text],input[type=tel],textarea{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit;font-size:16px;color:var(--ink);outline:none;background:#fff;}
+input:focus,textarea:focus{border-color:var(--gold);}
+textarea{resize:vertical;min-height:56px;font-size:15px;}
+.hint{font-size:11.5px;color:var(--green-light);margin-top:6px;line-height:1.7;}
+.btn{width:100%;padding:15px;font-size:16px;font-weight:700;font-family:inherit;background:var(--green-deep);color:var(--gold-light);border:none;border-radius:8px;cursor:pointer;letter-spacing:.1em;}
+.btn:disabled{opacity:.5;}
+.btn-2{background:#fff;color:var(--green-deep);border:1.5px solid var(--line);}
+.field{margin-bottom:16px;}
+.pick{display:flex;flex-direction:column;gap:10px;}
+.pick button{text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:14px 16px;cursor:pointer;font-family:inherit;}
+.pick button:hover{border-color:var(--gold);}
+.pick .p-n{font-family:'Noto Serif TC',serif;font-size:18px;font-weight:700;color:var(--green-deep);}
+.pick .p-s{font-size:12.5px;color:var(--green-light);margin-top:3px;line-height:1.7;}
+.seat{background:var(--green-deep);color:#faf6ea;border-radius:10px;padding:18px 20px;margin-bottom:16px;}
+.seat .s-lb{font-size:11px;letter-spacing:.24em;color:rgba(255,255,255,.5);}
+.seat .s-no{font-family:'Noto Serif TC',serif;font-size:34px;font-weight:900;color:var(--gold-light);line-height:1.2;margin-top:4px;}
+.seat .s-nm{font-size:15px;font-weight:700;margin-top:10px;}
+.seat .s-org{font-size:12.5px;color:rgba(255,255,255,.62);margin-top:3px;line-height:1.7;}
+.kv{display:flex;gap:10px;font-size:13.5px;padding:9px 0;border-bottom:1px dashed var(--line);}
+.kv:last-child{border-bottom:none;}
+.kv b{color:var(--green-light);font-weight:500;width:76px;flex:none;}
+.seg{display:flex;gap:8px;}
+.seg button{flex:1;padding:13px;border:1.5px solid var(--line);background:#fff;border-radius:8px;font-family:inherit;font-size:15px;font-weight:700;color:var(--green-light);cursor:pointer;}
+.seg button.on-yes{background:var(--green-deep);color:var(--gold-light);border-color:var(--green-deep);}
+.seg button.on-no{background:var(--red);color:#fff;border-color:var(--red);}
+.stepper{display:flex;align-items:center;gap:12px;}
+.stepper button{width:46px;height:46px;border:1.5px solid var(--line);background:#fff;border-radius:8px;font-size:22px;color:var(--green-deep);cursor:pointer;font-family:inherit;line-height:1;}
+.stepper input{width:74px;text-align:center;font-size:19px;font-weight:700;font-family:'Noto Serif TC',serif;padding:10px;border:1.5px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);}
+.err{background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.3);color:var(--red);font-size:13px;padding:12px;border-radius:8px;margin-bottom:14px;line-height:1.7;}
+.ok{background:#eef6ee;border:1px solid #cfe6cf;color:#2d5235;font-size:13px;padding:12px;border-radius:8px;margin-bottom:14px;line-height:1.7;}
+.state{text-align:center;padding:56px 20px;}
+.state .ic{font-size:56px;margin-bottom:16px;}
+.state .msg{font-size:17px;color:var(--green-deep);font-weight:700;line-height:1.7;}
+.state .sub2{font-size:13.5px;color:var(--green-light);margin-top:12px;line-height:1.9;}
+.back{background:none;border:none;color:var(--green-light);font-family:inherit;font-size:13px;cursor:pointer;padding:6px 0;text-decoration:underline;}
+.foot{text-align:center;font-size:12px;color:var(--green-light);line-height:2;margin-top:22px;}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+  <div class="head">
+    <div class="kick">TADA 第六屆會員大會</div>
+    <div class="title">出席確認・座位查詢</div>
+    <div class="sub">2026 / 9 / 4（五）　臻愛婚宴會館 烏日高鐵店 2F 風情雅典廳</div>
+  </div>
+
+  <div id="err-box"></div>
+
+  <!-- ① 搜尋 -->
+  <div class="card" id="s-search">
+    <div class="field">
+      <label class="label">請輸入您的姓名</label>
+      <input type="text" id="q" placeholder="例如：王大明" autocomplete="off">
+      <div class="hint">查詢您目前登記的出席狀況與桌次。同行親友請輸入「主要報名人」的姓名。</div>
+    </div>
+    <button class="btn" id="btn-find" onclick="doSearch()">查詢我的出席資料</button>
+  </div>
+
+  <!-- ② 多筆時選擇本人 -->
+  <div class="card" id="s-pick" style="display:none;">
+    <div class="label">找到多筆同名紀錄，請選擇您本人</div>
+    <div class="pick" id="pick-list"></div>
+    <button class="back" onclick="goSearch()">← 重新查詢</button>
+  </div>
+
+  <!-- ③ 確認與修改 -->
+  <div id="s-detail" style="display:none;">
+    <div class="seat">
+      <div class="s-lb">您的桌次</div>
+      <div class="s-no" id="d-seat">—</div>
+      <div class="s-nm" id="d-name"></div>
+      <div class="s-org" id="d-org"></div>
+    </div>
+
+    <div class="card">
+      <div class="label" style="margin-bottom:12px;">目前登記內容</div>
+      <div class="kv"><b>出席狀態</b><span id="d-att"></span></div>
+      <div class="kv"><b>出席人數</b><span id="d-head"></span></div>
+      <div class="kv"><b>素食份數</b><span id="d-veg"></span></div>
+      <div class="kv" id="d-cmp-row"><b>同行親友</b><span id="d-cmp"></span></div>
+    </div>
+
+    <div class="card" id="gate-box" style="display:none;">
+      <div class="field">
+        <label class="label">修改前請先驗證身分</label>
+        <input type="tel" id="g-mob" placeholder="您手機號碼的後 3 碼" inputmode="numeric" maxlength="3">
+        <div class="hint">為避免他人誤改您的資料，修改前請輸入登記手機的末 3 碼。忘記了請洽秘書處 0988-558246。</div>
+      </div>
+      <button class="btn btn-2" onclick="unlock()">解鎖修改</button>
+    </div>
+
+    <div class="card" id="edit-box" style="display:none;">
+      <div class="label" style="margin-bottom:12px;">修改出席資料</div>
+      <div class="field">
+        <label class="label">是否出席</label>
+        <div class="seg">
+          <button type="button" id="b-yes" onclick="setAttend(true)">✓ 會出席</button>
+          <button type="button" id="b-no" onclick="setAttend(false)">✕ 無法出席</button>
+        </div>
+      </div>
+      <div id="att-fields">
+        <div class="field">
+          <label class="label">出席人數（含本人）</label>
+          <div class="stepper">
+            <button type="button" onclick="step('e-head',-1)">−</button>
+            <input type="number" id="e-head" value="1" min="1" max="20" readonly>
+            <button type="button" onclick="step('e-head',1)">＋</button>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">素食份數</label>
+          <div class="stepper">
+            <button type="button" onclick="step('e-veg',-1)">−</button>
+            <input type="number" id="e-veg" value="0" min="0" max="20" readonly>
+            <button type="button" onclick="step('e-veg',1)">＋</button>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">同行親友姓名（選填）</label>
+          <input type="text" id="e-cmp" placeholder="例如：陳大明、陳小華">
+          <div class="hint">請以頓號分隔，我們會據此製作桌卡。</div>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">給秘書處的話（選填）</label>
+        <textarea id="e-note" placeholder="行動不便需安排靠走道座位、飲食禁忌等…"></textarea>
+      </div>
+      <button class="btn" id="btn-save" onclick="save()">儲存修改</button>
+      <div class="hint" style="text-align:center;margin-top:10px;">席次與餐點請於 9/3（三）中午前確認完成。</div>
+    </div>
+
+    <button class="back" onclick="goSearch()">← 查詢其他人</button>
+  </div>
+
+  <!-- ④ 完成 -->
+  <div id="s-done" class="state" style="display:none;">
+    <div class="ic" id="done-ic">✅</div>
+    <div class="msg" id="done-msg"></div>
+    <div class="sub2" id="done-sub"></div>
+    <button class="btn btn-2" style="margin-top:22px;" onclick="goSearch()">再查詢一次</button>
+  </div>
+
+  <div class="foot">
+    有任何問題請洽秘書處<br>📞 0988-558246　📧 service@tada-ai.org.tw
+  </div>
+</div>
+
+<script>
+const SB = window.TADA_SB_URL, H = () => window.tadaSbHeaders();
+let row = null, attending = true, unlocked = false;
+
+const digits = v => String(v||'').replace(/\D/g,'');
+const nameKey = v => String(v||'').replace(/\s+/g,'');
+const esc = s => String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function showErr(m){ document.getElementById('err-box').innerHTML = m ? '<div class="err">'+m+'</div>' : ''; }
+function only(id){
+  ['s-search','s-pick','s-detail','s-done'].forEach(x=>{
+    document.getElementById(x).style.display = (x===id) ? (x==='s-detail'?'block':(x==='s-done'?'block':'block')) : 'none';
+  });
+}
+function goSearch(){ showErr(''); row=null; unlocked=false; only('s-search'); document.getElementById('q').value=''; }
+
+async function doSearch(){
+  const q = nameKey(document.getElementById('q').value);
+  showErr('');
+  if(q.length < 2){ showErr('請輸入完整姓名（至少 2 個字）'); return; }
+  const btn = document.getElementById('btn-find');
+  btn.disabled = true; btn.textContent = '查詢中…';
+  try{
+    // 先找主要報名人；找不到再找同行欄（同行親友輸入自己的名字也查得到）
+    let rows = await fetchBy(`display_name=eq.${encodeURIComponent(q)}`);
+    if(!rows.length) rows = await fetchBy(`companions=ilike.*${encodeURIComponent(q)}*`);
+    if(!rows.length){
+      showErr('查無「'+esc(q)+'」的出席登記。<br>請確認姓名是否與報名時相同；同行親友請改輸入主要報名人的姓名，或洽秘書處 0988-558246。');
+      return;
+    }
+    if(rows.length === 1){ openDetail(rows[0]); return; }
+    document.getElementById('pick-list').innerHTML = rows.map((r,i)=>
+      `<button onclick="pick(${i})"><div class="p-n">${esc(r.display_name)}</div>
+        <div class="p-s">${esc(r.title||'')}${r.title&&r.org?' · ':''}${esc(r.org||'')}<br>${esc(r.table_no||'桌次未定')}　${r.headcount||1} 位</div></button>`).join('');
+    window.__picks = rows;
+    only('s-pick');
+  }catch(e){ showErr('查詢失敗：'+e.message); }
+  finally{ btn.disabled = false; btn.textContent = '查詢我的出席資料'; }
+}
+async function fetchBy(filter){
+  const r = await fetch(`${SB}/rest/v1/tada_rsvp?hidden=eq.false&attending=eq.true&${filter}`, { headers: H() });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return await r.json();
+}
+function pick(i){ openDetail(window.__picks[i]); }
+
+function openDetail(r){
+  row = r; unlocked = false;
+  document.getElementById('d-seat').textContent = (r.table_no||'').trim() || '安排中';
+  document.getElementById('d-name').textContent = r.display_name || '';
+  document.getElementById('d-org').textContent = [r.title, r.org].filter(Boolean).join(' · ');
+  document.getElementById('d-att').textContent = r.attending ? '已確認出席' : '不克出席';
+  document.getElementById('d-head').textContent = (r.headcount||1) + ' 位';
+  document.getElementById('d-veg').textContent = (r.vegetarian||0) + ' 份';
+  document.getElementById('d-cmp').textContent = r.companions || '無';
+  document.getElementById('d-cmp-row').style.display = r.companions ? '' : 'none';
+  // 有登記手機 → 要驗證末 3 碼才能改；沒登記手機 → 直接開放（無從驗證）
+  const hasMob = digits(r.mobile).length >= 3;
+  document.getElementById('gate-box').style.display = hasMob ? '' : 'none';
+  document.getElementById('edit-box').style.display = hasMob ? 'none' : '';
+  if(!hasMob) unlocked = true;
+  fillEdit(r);
+  showErr('');
+  only('s-detail');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function fillEdit(r){
+  setAttend(!!r.attending);
+  document.getElementById('e-head').value = r.headcount || 1;
+  document.getElementById('e-veg').value = r.vegetarian || 0;
+  document.getElementById('e-cmp').value = r.companions || '';
+  document.getElementById('e-note').value = r.note || '';
+}
+function unlock(){
+  if(unlocked) return;              // 沒登記手機者一開始就是解鎖狀態，不必再驗
+  const v = digits(document.getElementById('g-mob').value);
+  if(v.length !== 3){ showErr('請輸入手機號碼的後 3 碼'); return; }
+  if(!digits(row.mobile).endsWith(v)){ showErr('與登記的手機末 3 碼不符，請再確認，或洽秘書處 0988-558246。'); return; }
+  unlocked = true; showErr('');
+  document.getElementById('gate-box').style.display = 'none';
+  document.getElementById('edit-box').style.display = '';
+}
+function setAttend(v){
+  attending = v;
+  document.getElementById('b-yes').className = v ? 'on-yes' : '';
+  document.getElementById('b-no').className = v ? '' : 'on-no';
+  document.getElementById('att-fields').style.display = v ? '' : 'none';
+}
+function step(id,d){
+  const el = document.getElementById(id);
+  el.value = Math.max(+el.min, Math.min(+el.max, (+el.value) + d));
+}
+
+async function save(){
+  if(!row || !unlocked) return;
+  const head = attending ? (+document.getElementById('e-head').value || 1) : 0;
+  const veg  = attending ? (+document.getElementById('e-veg').value || 0) : 0;
+  if(veg > head){ showErr('素食份數不能多於出席人數。'); return; }
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = '儲存中…';
+  const body = {
+    attending: attending,
+    headcount: head,
+    vegetarian: veg,
+    companions: document.getElementById('e-cmp').value.trim() || null,
+    note: document.getElementById('e-note').value.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+  try{
+    const res = await fetch(`${SB}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(row.user_id)}`, {
+      method:'PATCH', headers:{ ...H(), Prefer:'return=minimal' }, body: JSON.stringify(body),
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    document.getElementById('done-ic').textContent = attending ? '🎉' : '🙏';
+    document.getElementById('done-msg').textContent = attending ? '出席資料已更新！' : '已為您取消出席登記';
+    document.getElementById('done-sub').innerHTML = attending
+      ? `${esc(row.display_name)}　${head} 位${veg?`（素食 ${veg} 份）`:''}<br>桌次：${esc((row.table_no||'').trim()||'安排中')}<br><br>9/4（五）15:00 起報到，期待與您相見。`
+      : '感謝您的告知，我們會調整席次安排。<br>若之後行程有變，歡迎再回到本頁修改。';
+    only('s-done');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }catch(e){ showErr('儲存失敗：'+e.message); }
+  finally{ btn.disabled = false; btn.textContent = '儲存修改'; }
+}
+
+document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
+document.getElementById('g-mob').addEventListener('keydown', e=>{ if(e.key==='Enter') unlock(); });
+</script>
+</body>
+</html>
