@@ -49,7 +49,11 @@ const SYSTEM_PROMPT = `你是「TADA醬」（TADA-chan），台灣科技農企�
 
 // 第③層：都不會回答時的固定訊息（下方會附上「你是不是想問」Quick Reply 按鈕）
 const FALLBACK_TEXT = `這個問題我還不太確定 🙇 你想問的是不是下面這些呢？👇
-（若不是，我已經幫你記下來轉給會務人員，也可直接聯繫秘書處 📞 0988-558246 / 📧 service@tada-ai.org.tw）`;
+（若不是，我已經幫你記下來轉給會務人員）
+
+📞 秘書處 0988-558246
+📧 service@tada-ai.org.tw
+🌐 協會官網 tada-ai.org.tw`;
 
 const WELCOME_TEXT = `嗨～我是 TADA醬 🐝
 台灣科技農企業發展協會（TADA）的 AI 秘書，很開心認識你！
@@ -60,7 +64,11 @@ const WELCOME_TEXT = `嗨～我是 TADA醬 🐝
 🤝 政府補助、資源對接
 📮 聯繫秘書處
 
-直接打字告訴我就好～`;
+直接打字告訴我就好～
+
+━━━━━━━━━━━━
+🌐 協會官網　tada-ai.org.tw
+📞 秘書處　0988-558246`;
 
 interface LineEvent {
   type: string;
