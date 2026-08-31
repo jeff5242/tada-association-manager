@@ -1156,10 +1156,10 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin:14px 0 6px;">桌位類型</label>
       <select id="st-type" class="filter-select" style="width:100%;padding:11px 12px;font-size:15px;">
         <option value="">未分類</option>
-        <option value="官學界">官學界</option>
-        <option value="協會會員">協會會員</option>
-        <option value="團體">團體</option>
-        <option value="貴賓">貴賓</option>
+        <option value="貴賓">貴賓（長官）</option>
+        <option value="會員">會員</option>
+        <option value="佳賓團體">佳賓團體</option>
+        <option value="佳賓">佳賓</option>
       </select>
       <div id="st-err" style="color:#ef5350;font-size:12px;min-height:16px;margin-top:10px;"></div>
       <div style="display:flex;gap:9px;justify-content:flex-end;margin-top:8px;">
@@ -4407,7 +4407,7 @@ const MEMBER_TABLES = (EVENT_TABLE_GROUPS.find(g=>g.label==='桌次') || EVENT_T
 
 /* 桌位主題名稱／類型：與 /seating/ 平面圖共用 tada_config.seating_tables */
 const SEAT_CFG_KEY='seating_tables';
-const SEAT_TYPES=['官學界','協會會員','團體','貴賓'];
+const SEAT_TYPES=['貴賓','會員','佳賓團體','佳賓'];
 const seatLabel=t=>(SEAT_CFG[t]&&SEAT_CFG[t].label)||'';
 const seatType =t=>(SEAT_CFG[t]&&SEAT_CFG[t].type)||'';
 async function loadSeatCfg(){
