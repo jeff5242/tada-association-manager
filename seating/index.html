@@ -447,7 +447,8 @@ const FLOOR=[
   [20, 21, 22, 23],
 ];
 const FLOOR_COLS=12;
-const SPARE={22:'工作人員桌',23:'飯店預備桌'};
+/* 桌位用途一律由「✎ 編輯桌位」設定（存 tada_config），程式不再寫死任何桌名，
+   免得換桌後平面圖還掛著舊名字（例：工作人員桌從 22 換到 23）。 */
 // 會員桌（平面圖以綠框標示）：理監事、團體會員、個人會員及會員友人桌
 const MEMBER=new Set([2,5,6,9,10]);
 function renderFloor(by,heads,vegs){
@@ -460,12 +461,11 @@ function renderFloor(by,heads,vegs){
       const col=`${i*span+1} / span ${span}`;
       const t='第'+no+'桌', ppl=by[t]||[], h=ppl.length?heads(t):0, v=ppl.length?vegs(t):0;
       const dish=h-v;                       // 佔桌菜位人數（素食另出套餐、不佔位）
-      const lb=tLabel(t), ty=tType(t), role=SPARE[no]||'';
+      const lb=tLabel(t), ty=tType(t);
       const cls=['tbox'];
       if(ty && TYPE_CLASS[ty]) cls.push(TYPE_CLASS[ty]);
       if(!h) cls.push('spare');
-      const sub = lb ? `<div class="bl">${esc(lb)}</div>`
-                     : `<div class="bl${role?'':' ghost'}" style="color:var(--muted);font-weight:500;">${role||'—'}</div>`;
+      const sub = `<div class="bl${lb?'':' ghost'}">${esc(lb||'—')}</div>`;
       const tip=h ? `${t}${ty?'｜'+ty:''}｜共 ${h} 人（椅 ${h} 張）${v?`，其中素食 ${v} 份另出套餐不佔桌菜位`:''}｜佔桌菜位 ${dish}/10`
                   : `${t}${ty?'｜'+ty:''}｜空桌`;
       html+=`<div class="${cls.join(' ')}" style="grid-column:${col}" onclick="onTableClick('${t}')" title="${esc(tip)}">
