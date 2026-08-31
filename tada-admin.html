@@ -1241,7 +1241,11 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       對<b style="color:var(--gold-lt);">全體會員（有 Email）</b>發送開會通知（含出席回覆、委託投票、委任書下載）。
       變數：<code style="color:var(--gold-lt);">{姓名}</code>
       <code style="color:var(--gold-lt);">{桌次}</code>
-      <code style="color:var(--gold-lt);">{出席狀態}</code>（後兩者自出席登記帶入）。
+      <code style="color:var(--gold-lt);">{出席狀態}</code>
+      <code style="color:var(--gold-lt);">{報到資料}</code>
+      <code style="color:var(--gold-lt);">{會員編號}</code>
+      <code style="color:var(--gold-lt);">{統編}</code>
+      <code style="color:var(--gold-lt);">{手機}</code>。
       ⚠️ Resend 免費版每日上限 100 封；曾退信的地址會自動跳過。
     </p>
     <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">選擇範本（可切換不同版本，編輯後按「儲存範本」存回該版本）</label>
@@ -3211,7 +3215,9 @@ async function sendAssemblyTest(){
   const st=document.getElementById('mc-test-status');
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ st.style.color='#ef5350'; st.textContent='請填正確的 Email'; return; }
   if(!subject||!bodyTpl){ st.style.color='#ef5350'; st.textContent='請先填主旨與內文'; return; }
-  const text=bodyTpl.split('{姓名}').join('測試會員');
+  const text=fillMailVars(bodyTpl,
+    {name:'測試會員', member_no:'11071017', tax_id:'12345678', mobile:'0912-345-678'},
+    {attending:true, table:'第2桌', head:2});
   st.style.color='var(--gray)'; st.textContent='寄送中…';
   try{
     const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},
@@ -3251,6 +3257,27 @@ async function loadRsvpSeatMap(){
   };
 }
 
+/* 信件變數代入。報到機支援 會員編號／統一編號／手機 三種查詢，
+   87 位收件人全都有會員編號與手機，但只有 62 位有統編，
+   所以 {報到資料} 只列出該會員實際有的欄位，不會出現空白行。 */
+function fillMailVars(tpl, m, info){
+  const no=String(m.member_no||'').trim();
+  const tax=String(m.tax_id||'').trim();
+  const mob=(String(m.mobile||'').trim() || String(m.contact_phone||'').trim());
+  const lines=[];
+  if(no)  lines.push('　會員編號：'+no);
+  if(mob) lines.push('　手機號碼：'+mob);
+  if(tax) lines.push('　公司統編：'+tax);
+  return String(tpl)
+    .split('{姓名}').join(m.name||'會員')
+    .split('{會員編號}').join(no||'（未登記）')
+    .split('{統編}').join(tax||'（未登記）')
+    .split('{手機}').join(mob||'（未登記）')
+    .split('{報到資料}').join(lines.join('\n') || '　（資料不全，請於報到時洽服務台）')
+    .split('{桌次}').join((info&&info.table) || '尚未安排（報到時由服務台引導）')
+    .split('{出席狀態}').join(info&&info.attending ? `已回覆出席（${info.head} 位）` : '尚未回覆出席');
+}
+
 async function batchSendAssembly(){
   const subject=document.getElementById('mc-subject').value.trim();
   const bodyTpl=document.getElementById('mc-body').value;
@@ -3277,9 +3304,7 @@ async function batchSendAssembly(){
   const prog=document.getElementById('mc-progress'); let ok=0,fail=0;
   for(let i=0;i<mems.length;i++){
     const m=mems[i]; const info=seatOf(m);
-    const text=bodyTpl.split('{姓名}').join(m.name||'會員')
-      .split('{桌次}').join(info.table || '尚未安排（報到時由服務台引導）')
-      .split('{出席狀態}').join(info.attending ? `已回覆出席（${info.head} 位）` : '尚未回覆出席');
+    const text=fillMailVars(bodyTpl, m, info);
     try{
       const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},
         body:JSON.stringify({to:m._email,subject,text,category:'assembly',name:m.name,member_no:m.member_no})});
