@@ -85,7 +85,8 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 .tbox.member{border-color:var(--green);background:var(--green-soft);box-shadow:inset 0 0 0 1px var(--green)}
 .tbox.member .bl{color:var(--green)}
 .tbox .bn{font-family:var(--serif);font-size:17px;font-weight:900;color:var(--green);line-height:1.1}
-.tbox .bl{font-size:10.5px;color:var(--gold);font-weight:700;line-height:1.35;overflow-wrap:anywhere}
+.tbox .bl{font-size:10.5px;color:var(--gold);font-weight:700;line-height:1.35;overflow-wrap:anywhere;
+  min-height:2.7em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .tbox .bc{font-size:11px;color:var(--muted)}
 .tbox .bc.over{color:var(--over);font-weight:700}
 .tbox .bs{font-size:10px;color:var(--muted);opacity:.9;letter-spacing:.02em}
@@ -460,12 +461,12 @@ function renderFloor(by,heads,vegs){
       if(ty && TYPE_CLASS[ty]) cls.push(TYPE_CLASS[ty]);
       if(!h) cls.push('spare');
       const sub = lb ? `<div class="bl">${esc(lb)}</div>`
-                     : (role ? `<div class="bl" style="color:var(--muted);font-weight:500;">${role}</div>` : '');
+                     : `<div class="bl${role?'':' ghost'}" style="color:var(--muted);font-weight:500;">${role||'—'}</div>`;
       const tip=h ? `${t}${ty?'｜'+ty:''}｜共 ${h} 人（椅 ${h} 張）${v?`，其中素食 ${v} 份另出套餐不佔桌菜位`:''}｜佔桌菜位 ${dish}/10`
                   : `${t}${ty?'｜'+ty:''}｜空桌`;
       html+=`<div class="${cls.join(' ')}" style="grid-column:${col}" onclick="onTableClick('${t}')" title="${esc(tip)}">
         <div class="bn">${no}</div>${sub}
-        ${ty?`<div class="bt">${esc(ty)}</div>`:''}
+        <div class="bt${ty?'':' ghost'}">${esc(ty||'—')}</div>
         <div class="bc${dish>10?' over':''}">${h?h+' 人':'（空桌）'}</div>
         <div class="bs${h?'':' ghost'}">椅 ${h} 張</div>
         <div class="bv${v?'':' ghost'}">素食 ${v}</div></div>`;
