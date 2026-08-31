@@ -1238,8 +1238,11 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <span id="mc-status" style="margin-left:auto;font-size:12px;align-self:center;"></span>
     </div>
     <p style="color:var(--gray);font-size:12px;line-height:1.9;margin-bottom:12px;">
-      對<b style="color:var(--gold-lt);">全體會員（有 Email）</b>發送開會通知（含出席回覆、委託投票、委任書下載）。變數 <code style="color:var(--gold-lt);">{姓名}</code>。
-      ⚠️ Resend 免費版每日上限 100 封。
+      對<b style="color:var(--gold-lt);">全體會員（有 Email）</b>發送開會通知（含出席回覆、委託投票、委任書下載）。
+      變數：<code style="color:var(--gold-lt);">{姓名}</code>
+      <code style="color:var(--gold-lt);">{桌次}</code>
+      <code style="color:var(--gold-lt);">{出席狀態}</code>（後兩者自出席登記帶入）。
+      ⚠️ Resend 免費版每日上限 100 封；曾退信的地址會自動跳過。
     </p>
     <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">選擇範本（可切換不同版本，編輯後按「儲存範本」存回該版本）</label>
     <select id="mc-tpl" onchange="onMcTplChange()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 12px;font-size:13px;outline:none;margin-bottom:10px;"></select>
@@ -3219,21 +3222,64 @@ async function sendAssemblyTest(){
       st.style.color='#ef5350'; st.textContent='寄送失敗：'+(M[d.error]||d.error||'未知錯誤'); }
   }catch(e){ st.style.color='#ef5350'; st.textContent='寄送失敗：'+e.message; }
 }
+// 退信名單：同一地址寄過去也是退，先撈起來排除
+async function loadBouncedEmails(){
+  const set=new Set();
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_mail_log?status=eq.bounced&select=to_email&limit=2000`,{headers:SB_HEADERS});
+    if(r.ok)(await r.json()).forEach(x=>{ const e=(x.to_email||'').trim().toLowerCase(); if(e) set.add(e); });
+  }catch(e){ /* 撈不到就照原樣寄，不擋流程 */ }
+  return set;
+}
+
+// 會員 → 出席登記（桌次、人數）。以去職稱姓名比對，團體會員含代表人。
+async function loadRsvpSeatMap(){
+  const map=new Map();
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=display_name,table_no,headcount`,{headers:SB_HEADERS});
+    if(r.ok)(await r.json()).forEach(x=>{
+      const k=seatDeTitle(x.display_name); if(k && !map.has(k)) map.set(k,x);
+    });
+  }catch(e){ /* 撈不到就當作尚未回覆 */ }
+  return m=>{
+    const names=[m.name, ...((m.reps||[]).map(rp=>rp&&rp.name))].filter(Boolean);
+    for(const n of names){
+      const hit=map.get(seatDeTitle(n));
+      if(hit) return { attending:true, table:(hit.table_no||'').trim(), head:hit.headcount||1 };
+    }
+    return { attending:false, table:'', head:0 };
+  };
+}
+
 async function batchSendAssembly(){
   const subject=document.getElementById('mc-subject').value.trim();
   const bodyTpl=document.getElementById('mc-body').value;
   const statuses=selectedSendStatuses();
   if(!subject || !bodyTpl){ alert('請填寫主旨與內文'); return; }
   if(!statuses.length){ alert('請至少勾選一種會員狀態'); return; }
-  const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,email,contact_email,status&order=member_no`, {headers:SB_HEADERS});
+  const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,email,contact_email,status,reps&order=member_no`, {headers:SB_HEADERS});
   let mems=(r.ok?await r.json():[]).map(m=>({...m,_email:(m.email||m.contact_email||'').trim()}))
     .filter(m=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m._email))
     .filter(m=>statuses.includes(m.status));
   if(!mems.length){ alert('沒有符合所選狀態且有 Email 的會員'); return; }
-  if(!confirm(`確定發送「開會通知」給 ${mems.length} 位會員？\n對象狀態：${statuses.join('、')}\n（Resend 免費版每日上限 100 封，超過需分批/隔日）`)) return;
+
+  // 曾經退信的地址不再寄（8/19 那批有 10 個地址退信，重寄只是白費額度）
+  const bounced=await loadBouncedEmails();
+  const skipped=mems.filter(m=>bounced.has(m._email.toLowerCase()));
+  mems=mems.filter(m=>!bounced.has(m._email.toLowerCase()));
+  if(!mems.length){ alert('符合條件的地址全部曾經退信，沒有可寄送的對象。'); return; }
+
+  // {桌次}／{出席狀態} 從出席登記帶入（同行者跟著主報名人）
+  const seatOf=await loadRsvpSeatMap();
+  if(!confirm(`確定發送給 ${mems.length} 位會員？\n對象狀態：${statuses.join('、')}`
+    + (skipped.length?`\n已自動跳過曾退信 ${skipped.length} 位：${skipped.map(m=>m.name).join('、')}`:'')
+    + `\n（Resend 免費版每日上限 100 封，超過需分批/隔日）`)) return;
   const prog=document.getElementById('mc-progress'); let ok=0,fail=0;
   for(let i=0;i<mems.length;i++){
-    const m=mems[i]; const text=bodyTpl.split('{姓名}').join(m.name||'會員');
+    const m=mems[i]; const info=seatOf(m);
+    const text=bodyTpl.split('{姓名}').join(m.name||'會員')
+      .split('{桌次}').join(info.table || '尚未安排（報到時由服務台引導）')
+      .split('{出席狀態}').join(info.attending ? `已回覆出席（${info.head} 位）` : '尚未回覆出席');
     try{
       const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},
         body:JSON.stringify({to:m._email,subject,text,category:'assembly',name:m.name,member_no:m.member_no})});
