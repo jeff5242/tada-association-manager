@@ -4750,13 +4750,12 @@ async function clearMemberSeats(){
   if(res.ok){ await loadSeating(); } else alert('清空失敗：'+await res.text());
 }
 
-function exportSeatingCSV(){
+async function exportSeatingCSV(){
+  await loadSeatCfg();          // 桌位名稱／類型以最新設定為準（與會場平面圖同一份設定）
   const occ=seatOccupants().filter(o=>o.table);
   occ.sort((a,b)=>eventTableRank(a.table)-eventTableRank(b.table));
   const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
-  const rows=[['桌號','主要團體','同行群組','姓名','身分','會員編號','會員狀態','單位/備註','素食','報到']];
-  const byTable=new Map(); occ.forEach(o=>{ if(!byTable.has(o.table)) byTable.set(o.table,[]); byTable.get(o.table).push(o); });
-  const mainOf=t=>tableMainGroup(byTable.get(t)||[]);
+  const rows=[['桌號','桌位名稱','類型','同行群組','姓名','身分','會員編號','會員狀態','單位/備註','素食','報到']];
   let gseq=0;
   occ.forEach(o=>{
     // 一人一列：把同行者展開，同組共用群組編號
@@ -4766,7 +4765,7 @@ function exportSeatingCSV(){
     names.forEach((nm,i)=>{
       const id=seatIdentity(nm);
       rows.push([
-        o.table, mainOf(o.table), gid, nm,
+        o.table, seatLabel(o.table), seatType(o.table), gid, nm,
         id.isMember?'會員':'貴賓', id.no, id.st,
         i===0 ? o.sub : ('同行 ← '+o.name),
         i===0 ? (o.veg||'') : '',
@@ -4775,7 +4774,7 @@ function exportSeatingCSV(){
     });
   });
   const people=rows.length-1;
-  const mem=rows.slice(1).filter(r=>r[4]==='"會員"').length;
+  const mem=rows.slice(1).filter(r=>r[5]==='"會員"').length;
   const vegTot=occ.reduce((s,o)=>s+(o.veg||0),0);
   rows.push([]);
   rows.push([`"登記總人數：${people} 人"`]);
