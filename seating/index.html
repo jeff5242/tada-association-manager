@@ -43,11 +43,14 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 .kick{font-size:12px;letter-spacing:.34em;color:var(--gold);font-weight:700}
 h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);letter-spacing:.03em;color:var(--green)}
 .sub{color:var(--muted);font-size:14px}
-.stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;align-items:center}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 16px;min-width:96px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px;margin-top:6px;align-items:stretch}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 14px;min-width:0;
+  display:flex;flex-direction:column;gap:2px}
 .stat b{font-family:var(--serif);font-size:24px;font-weight:900;color:var(--green);display:block;line-height:1.15}
-.stat span{font-size:11px;color:var(--muted);letter-spacing:.12em}
-.rfr{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.stat span{font-size:11px;color:var(--muted);letter-spacing:.12em;display:block}
+.stat small{display:block;font-size:10.5px;line-height:1.35;color:var(--muted);margin-top:auto;padding-top:3px;
+  min-height:1.35em;overflow-wrap:anywhere}
+.rfr{grid-column:1/-1;display:flex;align-items:center;justify-content:flex-end;gap:10px;font-size:12px;color:var(--muted)}
 .rfr button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 14px;
   font:inherit;font-size:13px;color:var(--green);cursor:pointer;font-weight:700}
 /* 說明 */
@@ -87,6 +90,7 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 .tbox .bc.over{color:var(--over);font-weight:700}
 .tbox .bs{font-size:10px;color:var(--muted);opacity:.9;letter-spacing:.02em}
 .tbox .bv{font-size:10px;font-weight:700;color:#3E767C;letter-spacing:.02em}
+.tbox .ghost{visibility:hidden}
 @media (prefers-color-scheme:dark){ .tbox .bv{color:#8FCBD1} }
 .tbox.hit{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
 .aisle{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);
@@ -201,12 +205,12 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
     <h1 class="t">第六屆會員大會 桌次表</h1>
     <p class="sub">2026 / 9 / 4（五）　臻愛婚宴會館 烏日高鐵店　｜　與後台即時同步</p>
     <div class="stats">
-      <div class="stat"><b id="s-people">—</b><span>出席人數</span><small id="s-people-note" style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px;">＝需排椅子數</small></div>
-      <div class="stat" title="素食為另出套餐，不與桌菜共享，故不佔每桌 10 位的容量"><b id="s-veg">—</b><span>素食份數</span><small style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px;">另出套餐．不佔位</small></div>
-      <div class="stat"><b id="s-tables">—</b><span>使用桌數</span></div>
-      <div class="stat"><b id="s-checked">—</b><span>已報到</span></div>
-      <div class="stat" title="以現有訂桌 23 桌 × 每桌 10 位計；素食另出套餐不佔位，故已扣除"><b id="s-left">—</b><span>剩餘座位</span><small id="s-left-note" style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px;">23 桌 × 10 位</small></div>
-      <div class="stat" title="飯店另備 1 桌，不計入上方剩餘座位；臨時來賓請洽會館開桌"><b id="s-spare">10</b><span>飯店預備桌</span><small style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px;">1 桌．另計</small></div>
+      <div class="stat" title="出席總人數，等於現場需要擺放的椅子數"><b id="s-people">—</b><span>出席人數</span><small id="s-people-note">＝椅子數</small></div>
+      <div class="stat" title="素食為另出套餐，不與桌菜共享，故不佔每桌 10 位的容量"><b id="s-veg">—</b><span>素食份數</span><small>另出套餐</small></div>
+      <div class="stat" title="目前已排入賓客的桌數"><b id="s-tables">—</b><span>使用桌數</span><small>現有訂桌 23 桌</small></div>
+      <div class="stat" title="已完成報到人數"><b id="s-checked">—</b><span>已報到</span><small id="s-checked-note">—</small></div>
+      <div class="stat" title="以現有訂桌 23 桌 × 每桌 10 位計；素食另出套餐不佔位，故已扣除"><b id="s-left">—</b><span>剩餘座位</span><small id="s-left-note">23 桌 × 10 位</small></div>
+      <div class="stat" title="飯店另備 1 桌，不計入上方剩餘座位；臨時來賓請洽會館開桌"><b id="s-spare">10</b><span>飯店預備桌</span><small>1 桌．另計</small></div>
       <div class="rfr"><span id="s-time">載入中…</span><button onclick="load()">↻ 更新</button></div>
     </div>
   </header>
@@ -384,19 +388,21 @@ function render(rs,gs,ms,vm){
   const total=P.reduce((s,p)=>s+p.h,0);
   document.getElementById('s-people').textContent=total;
   document.getElementById('s-tables').textContent=Object.keys(by).length;
-  document.getElementById('s-checked').textContent=P.filter(p=>p.ok).reduce((s,p)=>s+p.h,0);
+  const ckd=P.filter(p=>p.ok).reduce((s,p)=>s+p.h,0);
+  document.getElementById('s-checked').textContent=ckd;
+  document.getElementById('s-checked-note').textContent=total?`${Math.round(ckd/total*100)}%．共 ${total} 位`:'—';
   document.getElementById('qhint').textContent='共 '+total+' 人';
   // 剩餘座位＝現有訂桌 23 桌 × 10 位 −（已排人數 − 素食份數）；素食另出套餐不佔桌菜位
   const CAP_TABLES=23, CAP_PER=10, SPARE_TABLES=1;
   const totalVeg=P.reduce((s,p)=>s+p.veg,0);
   document.getElementById('s-veg').textContent=totalVeg;
-  document.getElementById('s-people-note').textContent=`＝需排 ${total} 張椅子`;
+  document.getElementById('s-people-note').textContent=`＝${total} 張椅子`;
   const left=CAP_TABLES*CAP_PER-(total-totalVeg);
   const el=document.getElementById('s-left');
   el.textContent=left;
   el.style.color = left<0 ? 'var(--over)' : (left<=5 ? 'var(--gold)' : 'var(--green)');
   document.getElementById('s-left-note').textContent =
-    left<0 ? `超出 ${-left} 位，請開預備桌` : `23 桌 × 10 位${totalVeg?`（素食 ${totalVeg} 不佔位）`:''}`;
+    left<0 ? `超出 ${-left} 位．請開桌` : (totalVeg ? `23 桌 × 10 位・已扣素食` : `23 桌 × 10 位`);
   document.getElementById('s-spare').textContent=SPARE_TABLES*CAP_PER;
 
   // 依桌位類型即時分區（類型來自後台，換桌後自動跟著走）
@@ -461,8 +467,8 @@ function renderFloor(by,heads,vegs){
         <div class="bn">${no}</div>${sub}
         ${ty?`<div class="bt">${esc(ty)}</div>`:''}
         <div class="bc${dish>10?' over':''}">${h?h+' 人':'（空桌）'}</div>
-        ${h?`<div class="bs">椅 ${h} 張</div>`:''}
-        ${v?`<div class="bv">素食 ${v}</div>`:''}</div>`;
+        <div class="bs${h?'':' ghost'}">椅 ${h} 張</div>
+        <div class="bv${v?'':' ghost'}">素食 ${v}</div></div>`;
     });
   });
   f.innerHTML=html;
