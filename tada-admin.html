@@ -1128,7 +1128,15 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div id="oc-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeOccEdit()">
     <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:24px 26px;width:440px;max-width:94vw;">
       <h3 id="oc-title" style="color:var(--gold-lt);font-size:17px;margin-bottom:4px;">編輯出席者</h3>
-      <p id="oc-src" style="font-size:12px;color:var(--gray);margin-bottom:16px;"></p>
+      <p id="oc-src" style="font-size:12px;color:var(--gray);margin-bottom:12px;"></p>
+      <div id="oc-member" style="display:none;background:rgba(102,187,106,.08);border:1px solid rgba(102,187,106,.3);border-radius:8px;padding:11px 13px;margin-bottom:16px;">
+        <div style="font-size:12px;color:#66bb6a;font-weight:700;margin-bottom:6px;">會員名冊資料</div>
+        <div id="oc-mbody" style="font-size:12.5px;color:var(--ink);line-height:1.9;"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 10px;" onclick="occPullMember()">⬇ 帶入會員資料</button>
+          <button class="btn btn-outline btn-sm" style="font-size:11px;padding:3px 10px;" onclick="occPushMember()">⬆ 同步回會員名冊</button>
+        </div>
+      </div>
       <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">姓名</label>
       <input id="oc-name" autocomplete="off" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:15px;outline:none;margin-bottom:12px;">
       <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">職稱</label>
@@ -4487,7 +4495,7 @@ async function loadSeating(){
     const [gRes, mRes, roRes] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category,sort,status,title`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,title,note,companions,headcount,vegetarian,table_no`, { headers: SB_HEADERS }),
-      fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps,title,company`, { headers: SB_HEADERS }),
     ]);
     await loadSeatCfg();
     seatGuests  = gRes.ok ? await gRes.json() : [];
@@ -4523,14 +4531,19 @@ function seatDeTitle(n){
 function buildMemberPool(rows){
   seatMemberPool=new Map();
   (rows||[]).forEach(x=>{
-    const put=nm=>{ const k=seatDeTitle(nm); if(k) seatMemberPool.set(k,{no:x.member_no||'',st:x.status||''}); };
-    put(x.name);
-    (x.reps||[]).forEach(r=>r&&r.name&&put(r.name));
+    // 團體會員的代表人：職稱在 reps[].title，公司共用母體的 company
+    const put=(nm,title,repName)=>{
+      const k=seatDeTitle(nm); if(!k) return;
+      seatMemberPool.set(k,{ no:x.member_no||'', st:x.status||'',
+        title:title||'', company:x.company||'', mname:x.name||'', repName:repName||'' });
+    };
+    put(x.name, x.title, '');
+    (x.reps||[]).forEach(r=>r&&r.name&&put(r.name, r.title, r.name));
   });
 }
 function seatIdentity(name){
   const h=seatMemberPool.get(seatDeTitle(name));
-  return h ? {isMember:true, no:h.no, st:h.st} : {isMember:false, no:'', st:''};
+  return h ? {isMember:true, ...h} : {isMember:false, no:'', st:''};
 }
 // 同行欄拆成個別姓名（實際資料的分隔符很雜）
 function seatSplitComp(t){
@@ -4716,7 +4729,7 @@ async function swapTables(a, b){
 // 用下拉改桌／移除（會員→table_no、貴賓→seat）
 /* 座位成員編輯：姓名／職稱／單位／桌次一次改完。
    出席回報（tada_rsvp）與貴賓名冊（tada_guests）欄位名稱不同，在這裡對應。 */
-let occEditing=null;
+let occEditing=null, occMember=null;
 function openOccEdit(kind, id){
   const o=seatOccupants().find(x=>x.kind===kind && String(x.id)===String(id));
   if(!o){ alert('找不到這筆資料，請重新載入。'); return; }
@@ -4729,10 +4742,70 @@ function openOccEdit(kind, id){
   document.getElementById('oc-org').value=o.org||'';
   document.getElementById('oc-table').innerHTML=tableOptionsHtml(o.table);
   document.getElementById('oc-hide').style.display = kind==='member' ? '' : 'none';
+
+  // 名冊有這個人 → 顯示清冊資料，可雙向同步
+  const id2=seatIdentity(o.name);
+  const box=document.getElementById('oc-member');
+  if(id2.isMember){
+    occMember=id2;
+    document.getElementById('oc-mbody').innerHTML =
+      `會員編號 <b style="color:var(--gold-lt);">${escapeHtml(id2.no||'－')}</b>`
+      + `　狀態 ${escapeHtml(id2.st||'－')}`
+      + (id2.repName?`　<span style="color:var(--gray);">（團體代表：${escapeHtml(id2.mname)}）</span>`:'')
+      + `<br>職稱 <b>${escapeHtml(id2.title||'（空）')}</b>　單位 <b>${escapeHtml(id2.company||'（空）')}</b>`;
+    box.style.display='';
+  } else { occMember=null; box.style.display='none'; }
+
   document.getElementById('oc-modal').style.display='flex';
   setTimeout(()=>document.getElementById('oc-name').focus(),50);
 }
 function closeOccEdit(){ document.getElementById('oc-modal').style.display='none'; occEditing=null; }
+
+// 會員名冊 → 出席資料（只填表單，按儲存才寫入）
+function occPullMember(){
+  if(!occMember) return;
+  const t=document.getElementById('oc-title-in'), o=document.getElementById('oc-org');
+  if(occMember.title) t.value=occMember.title;
+  if(occMember.company) o.value=occMember.company;
+  const st=document.getElementById('seating-status');
+  st.style.color='var(--gray)'; st.textContent='已帶入會員名冊資料，按「儲存」才會寫入出席資料';
+}
+
+// 出席資料 → 會員名冊（團體代表只改自己那一位的職稱；單位是整團共用要另外確認）
+async function occPushMember(){
+  if(!occMember || !occMember.no){ alert('這筆沒有會員編號，無法回寫名冊。'); return; }
+  const title=document.getElementById('oc-title-in').value.trim();
+  const company=document.getElementById('oc-org').value.trim();
+  if(!title && !company){ alert('職稱與單位都是空的，沒有東西可以同步。'); return; }
+  const rep=occMember.repName;
+  let msg='將以下資料寫回會員名冊 '+occMember.no+'：\n';
+  if(title)   msg += `\n・職稱 → ${title}` + (rep?`（僅更新代表「${rep}」）`:'');
+  if(company) msg += `\n・單位 → ${company}` + (rep?`（團體共用，同團其他代表也會變）`:'');
+  if(!confirm(msg)) return;
+  try{
+    const body={};
+    if(company) body.company=company;
+    if(title){
+      if(rep){
+        const g=await fetch(`${SB_URL}/rest/v1/tada_members?member_no=eq.${encodeURIComponent(occMember.no)}&select=reps`,{headers:SB_HEADERS});
+        if(!g.ok) throw new Error('讀取代表資料失敗 HTTP '+g.status);
+        const rows=await g.json();
+        const reps=(rows[0]&&rows[0].reps)||[];
+        const hit=reps.filter(r=>r&&seatDeTitle(r.name)===seatDeTitle(rep));
+        if(!hit.length) throw new Error(`在 reps 中找不到「${rep}」`);
+        hit.forEach(r=>{ r.title=title; });
+        body.reps=reps;
+      } else body.title=title;
+    }
+    const r=await fetch(`${SB_URL}/rest/v1/tada_members?member_no=eq.${encodeURIComponent(occMember.no)}`,
+      {method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify(body)});
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+await r.text());
+    const st=document.getElementById('seating-status'); st.style.color='#66bb6a'; st.textContent='✓ 已同步回會員名冊 '+occMember.no;
+    if(typeof loadMembers==='function') loadMembers();
+    await loadSeating();
+    closeOccEdit();
+  }catch(e){ alert('同步失敗：'+e.message); }
+}
 
 async function occSave(){
   if(!occEditing) return;
