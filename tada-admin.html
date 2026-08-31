@@ -32,6 +32,8 @@ body{background:var(--bg);color:var(--ink);font-family:'Noto Sans TC',sans-serif
 .grp-dot{display:none;width:6px;height:6px;border-radius:50%;background:#ef5350;margin-left:5px;vertical-align:middle;}
 .grp-dot.on{display:inline-block;}
 .ai-pill{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gold);border:1px solid rgba(196,146,42,0.3);padding:3px 10px;border-radius:99px;}
+.site-link{margin-left:8px;display:inline-flex;align-items:center;font-size:11px;color:var(--gold-lt);text-decoration:none;border:1px solid rgba(196,146,42,0.45);padding:3px 10px;border-radius:99px;white-space:nowrap;transition:background .15s;}
+.site-link:hover{background:rgba(196,146,42,0.15);}
 .ai-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 
@@ -112,6 +114,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   .topbar-tabs{margin-left:8px;gap:0;}
   .tab{padding:6px 12px;font-size:13px;}
   .ai-pill{font-size:10px;padding:2px 8px;gap:4px;}
+  .site-link{font-size:10px;padding:2px 8px;margin-left:6px;}
 
   .page{padding:12px 10px;}
 
@@ -231,6 +234,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <button class="tab" data-tab="docs" onclick="switchTab('docs')">📁 文件區</button>
   </div>
   <div class="ai-pill"><div class="ai-dot"></div>AI Agent 協作中</div>
+  <a class="site-link" href="https://tada-ai.org.tw/" target="_blank" rel="noopener" title="在新分頁開啟 TADA 官方網站">🌾 回 TADA 官網 ↗</a>
 </div>
 
 <!-- ══════════ 邀請進度 ══════════ -->
