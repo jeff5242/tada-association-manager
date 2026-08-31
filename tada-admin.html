@@ -1120,6 +1120,31 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="stat-card"><div class="stat-label">總桌數</div><div class="stat-num" style="color:var(--white);">26</div></div><!-- 第1-25桌+工作桌 -->
   </div>
 
+  <!-- 座位成員編輯：姓名／職稱／單位／桌次，以及隱藏 -->
+  <div id="oc-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeOccEdit()">
+    <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:24px 26px;width:440px;max-width:94vw;">
+      <h3 id="oc-title" style="color:var(--gold-lt);font-size:17px;margin-bottom:4px;">編輯出席者</h3>
+      <p id="oc-src" style="font-size:12px;color:var(--gray);margin-bottom:16px;"></p>
+      <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">姓名</label>
+      <input id="oc-name" autocomplete="off" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:15px;outline:none;margin-bottom:12px;">
+      <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">職稱</label>
+      <input id="oc-title-in" autocomplete="off" placeholder="例如：董事長、總經理" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:15px;outline:none;margin-bottom:12px;">
+      <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">單位</label>
+      <input id="oc-org" autocomplete="off" placeholder="公司／機構名稱" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:15px;outline:none;margin-bottom:12px;">
+      <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">桌次</label>
+      <select id="oc-table" class="filter-select" style="width:100%;padding:11px 12px;font-size:15px;margin-bottom:18px;"></select>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-sm" id="oc-hide" style="background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.35);" onclick="occHide()">🚫 隱藏此筆</button>
+        <span style="margin-left:auto;display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="closeOccEdit()">取消</button>
+          <button class="btn btn-gold btn-sm" onclick="occSave()">儲存</button>
+        </span>
+      </div>
+      <p style="font-size:11px;color:var(--gray);margin-top:12px;line-height:1.7;">
+        隱藏＝不列入出席人數與桌次規劃，可到「出席統計」勾「顯示已隱藏」還原。</p>
+    </div>
+  </div>
+
   <!-- 匯出桌次表：先選要匯出哪幾桌 -->
   <div id="sx-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSeatExport()">
     <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:24px 26px;width:560px;max-width:94vw;max-height:88vh;display:flex;flex-direction:column;">
@@ -4539,8 +4564,10 @@ function seatOccupants(){
   // 貴賓只顯示「已實際排位」者（長官貴賓由貴賓名冊指定桌號才進場）；
   // 名字已在 rsvp 的不再畫第二次，桌次一律以 rsvp 為準。
   seatGuests.filter(g => g.seat && !inRsvp.has(seatDeTitle(g.name)))
-    .forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, sub:(g.title?g.title+'・':'')+(g.org||g.category||''), table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
-  seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, sub:(m.title?m.title+'・':'')+(m.org||m.note||m.companions||''), table:m.table_no||'', size:(m.headcount||1), veg:(m.vegetarian||0), grp:readableGroup(m), comp:m.companions||'' }));
+    .forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, title:g.title||'', org:g.org||g.category||'',
+      sub:(g.title?g.title+'・':'')+(g.org||g.category||''), table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
+  seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, title:m.title||'', org:m.org||'',
+    sub:(m.title?m.title+'・':'')+(m.org||m.note||m.companions||''), table:m.table_no||'', size:(m.headcount||1), veg:(m.vegetarian||0), grp:readableGroup(m), comp:m.companions||'' }));
   return list;
 }
 // 一桌的主要團體名（占最多人的團體，需至少 2 人）
@@ -4590,17 +4617,17 @@ function renderSeating(){
       const icon=seatIdentity(o.name).isMember?'👤':'🎩';   // 依會員名冊，非資料來源
       const sizeTag=o.size>1?` <span style="color:var(--gold);">×${o.size}</span>`:'';
       const vegTag=o.veg>0?` <span style="background:rgba(41,182,246,0.18);color:#4fc3f7;font-size:10px;border-radius:99px;padding:0 6px;">🥗 素${o.veg>1?'×'+o.veg:''}</span>`:'';
-      const noteBtn = o.kind==='member'
-        ? `<button class="btn btn-sm btn-outline" style="padding:1px 6px;font-size:10px;" onclick="editOccNote('${escapeHtml(String(o.id))}')" title="改備註（影響分組，改完可重排）">✎</button>` : '';
-      const hideBtn = o.kind==='member'
-        ? `<button class="btn btn-sm" style="padding:1px 5px;font-size:10px;background:rgba(192,57,43,0.12);color:#ef5350;border:1px solid rgba(192,57,43,0.3);" onclick="hideOcc('${escapeHtml(String(o.id))}')" title="隱藏此筆（不列入出席與桌次，可還原）">🚫</button>` : '';
-      const sel = `<select onchange="moveOccSelect('${o.kind}','${escapeHtml(String(o.id))}',this.value)" class="filter-select" style="padding:1px 2px;font-size:10px;width:104px;" title="改桌／移除">${tableOptionsHtml(o.table)}</select>`;
-      return `<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
-        <span style="font-size:12px;">${icon}</span>
-        <span style="flex:1;font-size:12.5px;color:var(--white);min-width:0;">${escapeHtml(o.name)}${sizeTag}${vegTag}${o.sub?`<span style="color:var(--gray);font-size:11px;"> · ${escapeHtml(String(o.sub).slice(0,22))}</span>`:''}</span>
-        ${noteBtn}
-        ${hideBtn}
-        ${sel}
+      // 欄位比照會場桌次表：姓名／職稱／單位／類別，所有操作收進 ✎
+      const cat = seatIdentity(o.name).isMember ? '會員' : '貴賓';
+      const catCol = cat==='會員' ? '#66bb6a' : 'var(--gold-lt)';
+      return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="font-size:12px;flex:none;">${icon}</span>
+        <span style="flex:0 0 auto;font-size:12.5px;font-weight:700;color:var(--white);white-space:nowrap;">${escapeHtml(o.name)}${sizeTag}${vegTag}</span>
+        <span style="flex:1;min-width:0;font-size:11px;color:var(--gray);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+              title="${escapeHtml([o.title,o.org].filter(Boolean).join(' · '))}">${escapeHtml([o.title,o.org].filter(Boolean).join(' · '))}</span>
+        <span style="flex:none;font-size:10px;color:${catCol};border:1px solid ${catCol};opacity:.75;border-radius:99px;padding:0 6px;">${cat}</span>
+        <button class="btn btn-sm btn-outline" style="flex:none;padding:1px 7px;font-size:11px;"
+          onclick="openOccEdit('${o.kind}','${escapeHtml(String(o.id))}')" title="編輯姓名／職稱／單位／桌次">✎</button>
       </div>`;
     }).join('') : '<div style="color:var(--gray);font-size:12px;padding:8px 0;">（空桌）</div>';
     return `<div style="background:var(--surface,rgba(255,255,255,0.03));border:1px solid ${over?'#ef5350':'var(--border,rgba(196,146,42,0.25))'};border-radius:12px;padding:12px 13px;">
@@ -4678,6 +4705,57 @@ async function swapTables(a, b){
 }
 
 // 用下拉改桌／移除（會員→table_no、貴賓→seat）
+/* 座位成員編輯：姓名／職稱／單位／桌次一次改完。
+   出席回報（tada_rsvp）與貴賓名冊（tada_guests）欄位名稱不同，在這裡對應。 */
+let occEditing=null;
+function openOccEdit(kind, id){
+  const o=seatOccupants().find(x=>x.kind===kind && String(x.id)===String(id));
+  if(!o){ alert('找不到這筆資料，請重新載入。'); return; }
+  occEditing={kind, id};
+  document.getElementById('oc-title').textContent='編輯　'+o.name;
+  document.getElementById('oc-src').textContent = kind==='member'
+    ? '資料來源：出席回報（tada_rsvp）' : '資料來源：貴賓名冊（tada_guests）';
+  document.getElementById('oc-name').value=o.name||'';
+  document.getElementById('oc-title-in').value=o.title||'';
+  document.getElementById('oc-org').value=o.org||'';
+  document.getElementById('oc-table').innerHTML=tableOptionsHtml(o.table);
+  document.getElementById('oc-hide').style.display = kind==='member' ? '' : 'none';
+  document.getElementById('oc-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('oc-name').focus(),50);
+}
+function closeOccEdit(){ document.getElementById('oc-modal').style.display='none'; occEditing=null; }
+
+async function occSave(){
+  if(!occEditing) return;
+  const name=document.getElementById('oc-name').value.trim();
+  if(!name){ alert('姓名不可空白'); return; }
+  const title=document.getElementById('oc-title-in').value.trim() || null;
+  const org=document.getElementById('oc-org').value.trim() || null;
+  const table=document.getElementById('oc-table').value || null;
+  const {kind,id}=occEditing;
+  const path = kind==='member'
+    ? `/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(id)}`
+    : `/rest/v1/tada_guests?id=eq.${encodeURIComponent(id)}`;
+  const body = kind==='member'
+    ? { display_name:name, title, org, table_no:table, updated_at:new Date().toISOString() }
+    : { name, title, org, seat:table };
+  try{
+    const res=await fetch(SB_URL+path,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify(body)});
+    if(!res.ok) throw new Error(await res.text());
+    closeOccEdit(); await loadSeating();
+    const st=document.getElementById('seating-status'); st.style.color='#66bb6a'; st.textContent='✓ 已更新「'+name+'」';
+  }catch(e){ alert('儲存失敗：'+e.message); }
+}
+
+async function occHide(){
+  if(!occEditing || occEditing.kind!=='member') return;
+  const nm=document.getElementById('oc-name').value.trim();
+  const uid=occEditing.id;                    // closeOccEdit() 會把 occEditing 清掉，先留住
+  if(!confirm(`隱藏「${nm}」？\n將不列入出席人數與桌次規劃（可到出席統計勾「顯示已隱藏」還原）。`)) return;
+  closeOccEdit();
+  await hideOcc(uid, true);
+}
+
 async function moveOccSelect(kind, id, val){
   if(kind==='guest') await setGuestSeat(id, val);
   else await setRsvpTable(id, val);
@@ -4685,9 +4763,9 @@ async function moveOccSelect(kind, id, val){
 }
 
 // 隱藏此筆（不列入出席與桌次，可在出席統計還原）
-async function hideOcc(uid){
+async function hideOcc(uid, skipConfirm){
   const m=seatMembers.find(x=>x.user_id===uid);
-  if(!confirm(`隱藏「${m?m.display_name:''}」？\n將不列入出席人數與桌次規劃（可到出席統計勾「顯示已隱藏」還原）。`)) return;
+  if(!skipConfirm && !confirm(`隱藏「${m?m.display_name:''}」？\n將不列入出席人數與桌次規劃（可到出席統計勾「顯示已隱藏」還原）。`)) return;
   const res=await fetch(`${SB_URL}/rest/v1/tada_rsvp?user_id=eq.${encodeURIComponent(uid)}`, {
     method:'PATCH', headers:{...SB_HEADERS,'Prefer':'return=minimal'}, body:JSON.stringify({ hidden:true, table_no:null }) });
   if(res.ok){ await loadSeating(); const st=document.getElementById('seating-status'); st.style.color='#66bb6a'; st.textContent='✓ 已隱藏一筆'; }
