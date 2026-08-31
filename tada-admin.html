@@ -106,6 +106,9 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 .prog-item .prog-label{font-size:11px;color:var(--gray);display:flex;justify-content:space-between;margin-bottom:4px;}
 .prog-item .prog-num{font-size:16px;font-weight:700;}
 
+/* 平板／窄視窗：3 欄會太擠，降成 2 欄 */
+@media(max-width:1180px){ #seating-grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+
 /* ── MOBILE ── */
 @media(max-width:600px){
   .topbar{padding:0 12px;height:44px;gap:8px;}
@@ -114,6 +117,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   .topbar-tabs{margin-left:8px;gap:0;}
   .tab{padding:6px 12px;font-size:13px;}
   .ai-pill{font-size:10px;padding:2px 8px;gap:4px;}
+  #seating-grid{grid-template-columns:1fr!important;}
   .site-link{font-size:10px;padding:2px 8px;margin-left:6px;}
 
   .page{padding:12px 10px;}
@@ -1199,7 +1203,8 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     </div>
   </div>
 
-  <div id="seating-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+  <!-- 固定 3 欄：原本 auto-fill 在寬螢幕會擠成 4–5 欄，單位名稱一律被截斷 -->
+  <div id="seating-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;">
     <div style="color:var(--gray);padding:30px;">點「重新載入」讀取桌次…</div>
   </div>
 
