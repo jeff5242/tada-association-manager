@@ -61,3 +61,21 @@ window.tadaInitLiff = async function (key) {
   }
   return await liff.getProfile();
 };
+
+// 回官網連結：LIFF／表單頁填完就是死路，補一個出口。
+// 自帶樣式（各頁背景不同，深色頁傳 dark:true），不依賴頁面 CSS。
+// 現場報到機（/guest/、/kiosk/、/checkin/）與投票頁刻意不加，避免誤觸離開。
+window.tadaBackLink = function (opts) {
+  opts = opts || {};
+  var dark = !!opts.dark;
+  var el = document.createElement('div');
+  el.setAttribute('style', 'text-align:center;padding:26px 20px 34px;font-family:"Noto Sans TC","PingFang TC",sans-serif;');
+  el.innerHTML = '<a href="https://tada-ai.org.tw/" target="_blank" rel="noopener" '
+    + 'style="display:inline-flex;align-items:center;gap:7px;text-decoration:none;font-size:13px;font-weight:700;'
+    + 'letter-spacing:.04em;padding:10px 20px;border-radius:99px;'
+    + (dark
+        ? 'color:#d4a853;border:1px solid rgba(212,168,83,.45);'
+        : 'color:#1e3320;border:1px solid #e5ddc8;background:#fff;')
+    + '">🌾 回 TADA 官網 ↗</a>';
+  document.body.appendChild(el);
+};
