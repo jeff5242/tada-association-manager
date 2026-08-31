@@ -294,6 +294,12 @@ const VOTE_BASE = 'https://tada-ai.org.tw/vote/';
 // TADA LINE 官方帳號「加好友」連結（基本 ID @tada-ai）
 const LINE_OA_ADD_URL = 'https://line.me/R/ti/p/@tada-ai';
 let election = null, current = null, state = 'idle';
+/* 掃描來源決定要不要再印一張報到單：
+     M: → LINE 電子會員證，會員手上沒有紙本 → 照常列印
+     P: → 預先列印的報到單，紙本已在會員手上 → 只完成報到，不重印
+   兩種 QR 內容都是「前綴＋會員編號」，其餘處理完全相同。
+   宣告需早於 toIdle()／printReceipt() 使用。 */
+let scanSrc = 'card';
 
 function renderOaQr(){ /* 使用官方 QR 圖片（assets/line/oa-qr.png），毋須動態產生 */ }
 
@@ -413,7 +419,9 @@ async function confirmCheckinPaper(){
     document.getElementById('pr-ic').style.display='none';
     document.getElementById('pr-qr-wrap').style.display='none';
     document.getElementById('pr-name').textContent = res.name+' 已領紙本票';
-    let tip = '請至圈選區以紙本圈選投票';
+    let tip = scanSrc==='slip'
+      ? '請持手上的預先列印報到單至圈選區領取紙本選票'
+      : '請至圈選區以紙本圈選投票';
     if(ballots>1) tip = '共 '+ballots+' 張（含代理票）· '+tip;
     if(res.attend_rep>0) tip += '（另代表 '+res.attend_rep+' 人出席）';
     document.getElementById('pr-tip').textContent = tip;
@@ -470,9 +478,13 @@ function printReceipt(res){
   else if(uuids.length>1){ headline=res.name+' 報到完成 · 共 '+uuids.length+' 張選票'; tip=NO_PRINT?'代理票請由工作人員協助列印':'請至出票口領取 '+uuids.length+' 張選票（含代理票）'; }
   else { headline=NO_PRINT?(res.name+' 報到完成'):(res.name+' 的選票列印中…'); tip=NO_PRINT?'請用您的 LINE 掃描上方 QR Code 進入投票（需本人 LINE 驗證）':'請至出票口領取您的選票，用您的 LINE 掃描選票 QR 即可投票'; }
   if(res.attend_rep>0 && !attendOnly) tip += '（另代表 '+res.attend_rep+' 人出席）';
+  if(scanSrc==='slip'){
+    headline = res.name+' 報到完成';
+    tip = '您手上的預先列印報到單即為憑證，請妥善保管並依單上桌號入座';
+  }
   document.getElementById('pr-name').textContent = headline;
   document.getElementById('pr-tip').textContent = tip;
-  document.getElementById('pr-ic').style.display = (NO_PRINT||attendOnly) ? 'none' : '';
+  document.getElementById('pr-ic').style.display = (NO_PRINT||attendOnly||scanSrc==='slip') ? 'none' : '';
 
   // 螢幕掃碼模式：僅單張時把 QR 放到螢幕上；多張或零張不適用
   const wrap = document.getElementById('pr-qr-wrap');
@@ -497,6 +509,8 @@ const PRINT_AGENT = 'http://127.0.0.1:8043/print';
 /* 一人一張小白單：姓名/大字會員編號/桌號/領取勾選清單/會員編號條碼。
    當天為「現場領實體票投票」→ 不印投票 QR，服務台刷條碼核發實體選票。 */
 async function agentPrint(res){
+  // 掃的是預先列印的報到單：紙本已在會員手上，只完成報到不重印，省紙也省等待
+  if(scanSrc==='slip'){ return; }
   try{
     let table='';
     try{
@@ -530,7 +544,7 @@ async function agentPrint(res){
   }catch(_){ /* 無代理或印表機離線：不影響報到 */ }
 }
 
-function toIdle(){ current=null; state='idle'; show('v-idle'); }
+function toIdle(){ current=null; scanSrc='card'; state='idle'; show('v-idle'); }
 
 // ── 硬體 QR Reader（HID 鍵盤）：快速輸入 + Enter ─────────────
 let scanBuf='', scanTimer=null;
@@ -541,10 +555,10 @@ document.addEventListener('keydown', e=>{
 });
 function handleScan(raw){
   const t=(raw||'').trim();
-  // 電子會員證 QR 格式為「M:會員編號」；也相容純編號或含編號的網址
   let no;
-  if(/^M:/i.test(t)) no=t.slice(2);
-  else { const m=t.match(/(\d{6,10})/); no=m?m[1]:t; }
+  if(/^P:/i.test(t)){ scanSrc='slip'; no=t.slice(2); }
+  else if(/^M:/i.test(t)){ scanSrc='card'; no=t.slice(2); }
+  else { scanSrc='card'; const m=t.match(/(\d{6,10})/); no=m?m[1]:t; }
   lookup(no);
 }
 
@@ -592,12 +606,12 @@ async function kpOk(){
   if(!kpVal) return;
 
   try{
-    if(kpMode==='no'){ closeKeypad(); lookup(kpVal); return; }
+    if(kpMode==='no'){ scanSrc='card'; closeKeypad(); lookup(kpVal); return; }
 
     if(kpMode==='mobile'){
       const res=await checkinRpc('member_by_mobile',{p_mobile:kpVal});
       if(!res.ok){ toast('查無此手機號碼的會員'); kpClear(); return; }
-      closeKeypad(); lookup(res.member_no); return;
+      scanSrc='card'; closeKeypad(); lookup(res.member_no); return;
     }
 
     // ── 統一編號 ──
@@ -614,7 +628,7 @@ async function kpOk(){
       const res=await checkinRpc('member_verify_by_tax',
         {p_tax_id:kpTax, p_idx:kpPickIdx, p_last3:kpVal});
       if(!res.ok){ toast('手機末 3 碼不符'); kpClear(); return; }
-      closeKeypad(); lookup(res.member_no); return;
+      scanSrc='card'; closeKeypad(); lookup(res.member_no); return;
     }
   }catch(e){
     toast(e.message==='NOT_INSTALLED'
