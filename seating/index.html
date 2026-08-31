@@ -73,7 +73,7 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
   border-radius:10px;padding:13px;text-align:center;font-family:var(--serif);font-size:16px;
   font-weight:700;letter-spacing:.5em;margin-bottom:6px}
 .tbox{background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:9px 8px;
-  text-align:center;cursor:pointer;transition:transform .1s,border-color .12s;min-height:76px;
+  text-align:center;cursor:pointer;transition:transform .1s,border-color .12s;min-height:92px;
   display:flex;flex-direction:column;justify-content:center;gap:2px}
 .tbox:hover{transform:translateY(-2px);border-color:var(--gold)}
 .tbox.theme{border-color:var(--gold);background:var(--gold-soft)}
@@ -84,6 +84,10 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 .tbox .bn{font-family:var(--serif);font-size:17px;font-weight:900;color:var(--green);line-height:1.1}
 .tbox .bl{font-size:10.5px;color:var(--gold);font-weight:700;line-height:1.35;overflow-wrap:anywhere}
 .tbox .bc{font-size:11px;color:var(--muted)}
+.tbox .bc.over{color:var(--over);font-weight:700}
+.tbox .bs{font-size:10px;color:var(--muted);opacity:.9;letter-spacing:.02em}
+.tbox .bv{font-size:10px;font-weight:700;color:#3E767C;letter-spacing:.02em}
+@media (prefers-color-scheme:dark){ .tbox .bv{color:#8FCBD1} }
 .tbox.hit{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
 .aisle{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);
   writing-mode:vertical-rl;letter-spacing:.3em}
@@ -197,10 +201,12 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
     <h1 class="t">第六屆會員大會 桌次表</h1>
     <p class="sub">2026 / 9 / 4（五）　臻愛婚宴會館 烏日高鐵店　｜　與後台即時同步</p>
     <div class="stats">
-      <div class="stat"><b id="s-people">—</b><span>出席人數</span></div>
+      <div class="stat"><b id="s-people">—</b><span>出席人數</span><small id="s-people-note" style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px;">＝需排椅子數</small></div>
+      <div class="stat" title="素食為另出套餐，不與桌菜共享，故不佔每桌 10 位的容量"><b id="s-veg">—</b><span>素食份數</span><small style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px;">另出套餐．不佔位</small></div>
       <div class="stat"><b id="s-tables">—</b><span>使用桌數</span></div>
       <div class="stat"><b id="s-checked">—</b><span>已報到</span></div>
-      <div class="stat" title="以 23 桌 × 每桌 10 位計；另有飯店預備桌 1 桌可再加 10 位"><b id="s-left">—</b><span>剩餘座位</span><small id="s-left-note" style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px;">＋預備桌 10 位</small></div>
+      <div class="stat" title="以現有訂桌 23 桌 × 每桌 10 位計；素食另出套餐不佔位，故已扣除"><b id="s-left">—</b><span>剩餘座位</span><small id="s-left-note" style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px;">23 桌 × 10 位</small></div>
+      <div class="stat" title="飯店另備 1 桌，不計入上方剩餘座位；臨時來賓請洽會館開桌"><b id="s-spare">10</b><span>飯店預備桌</span><small style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px;">1 桌．另計</small></div>
       <div class="rfr"><span id="s-time">載入中…</span><button onclick="load()">↻ 更新</button></div>
     </div>
   </header>
@@ -218,7 +224,8 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
       </ol>
       <div class="notes">
         <p>每桌以 10 人估算；標示 11 人以上者為滿桌加座，請預留椅位。</p>
-        <p>「剩餘座位」＝23 桌 × 10 位 − 目前已排人數；飯店另備預備桌 1 桌（可再容納 10 位），臨時來賓請洽會館加桌。</p>
+        <p>「剩餘座位」＝現有訂桌 23 桌 × 10 位 −（已排人數 − 素食份數）；素食為另出套餐、不佔桌菜位，故可多排椅子。飯店預備桌 1 桌（10 位）獨立計算，臨時來賓請洽會館開桌。</p>
+        <p>平面圖每桌標示「椅 N 張」＝該桌實際要擺的椅子數（含素食者）；「素食 N」為另出套餐份數；桌菜位超過 10 位才會標紅。</p>
         <p>名單均附職稱，接待與引導時請以職稱稱呼。</p>
         <p>素食為另出套餐、不佔共享桌菜位，故素食份數不計入桌容量。</p>
         <p>貴賓報到後名字右側會顯示「✓ 已報到」；未列名者請引導至服務台由工作人員現場登記。</p>
@@ -379,14 +386,18 @@ function render(rs,gs,ms,vm){
   document.getElementById('s-tables').textContent=Object.keys(by).length;
   document.getElementById('s-checked').textContent=P.filter(p=>p.ok).reduce((s,p)=>s+p.h,0);
   document.getElementById('qhint').textContent='共 '+total+' 人';
-  // 剩餘座位＝23 桌 × 每桌 10 位 − 已排人數；飯店另備 1 桌（10 位）
-  const CAP_TABLES=23, CAP_PER=10, SPARE=1;
-  const left=CAP_TABLES*CAP_PER-total;
+  // 剩餘座位＝現有訂桌 23 桌 × 10 位 −（已排人數 − 素食份數）；素食另出套餐不佔桌菜位
+  const CAP_TABLES=23, CAP_PER=10, SPARE_TABLES=1;
+  const totalVeg=P.reduce((s,p)=>s+p.veg,0);
+  document.getElementById('s-veg').textContent=totalVeg;
+  document.getElementById('s-people-note').textContent=`＝需排 ${total} 張椅子`;
+  const left=CAP_TABLES*CAP_PER-(total-totalVeg);
   const el=document.getElementById('s-left');
   el.textContent=left;
   el.style.color = left<0 ? 'var(--over)' : (left<=5 ? 'var(--gold)' : 'var(--green)');
   document.getElementById('s-left-note').textContent =
-    (left<0 ? `超出 ${-left} 位・` : '') + `＋預備桌 ${SPARE*CAP_PER} 位`;
+    left<0 ? `超出 ${-left} 位，請開預備桌` : `23 桌 × 10 位${totalVeg?`（素食 ${totalVeg} 不佔位）`:''}`;
+  document.getElementById('s-spare').textContent=SPARE_TABLES*CAP_PER;
 
   // 依桌位類型即時分區（類型來自後台，換桌後自動跟著走）
   const used=Object.keys(by).sort((a,b)=>tk(a)-tk(b));
@@ -411,7 +422,7 @@ function render(rs,gs,ms,vm){
     if(cards) html+=`<section class="zone"><h2 class="zh">${esc(zn)}</h2><div class="grid">${cards}</div></section>`;
   });
   document.getElementById('body').innerHTML=html;
-  renderFloor(by,heads);
+  renderFloor(by,heads,vegs);
   renderThemeRule();
   if(document.getElementById('q').value.trim()) filter();
 }
@@ -430,23 +441,28 @@ const FLOOR=[
 const SPARE={22:'工作人員桌',23:'飯店預備桌'};
 // 會員桌（平面圖以綠框標示）：理監事、團體會員、個人會員及會員友人桌
 const MEMBER=new Set([2,5,6,9,10]);
-function renderFloor(by,heads){
+function renderFloor(by,heads,vegs){
   const f=document.getElementById('floor');
   f.classList.toggle('editing', editMode);
   let html='<div class="stage">舞　台</div>';
   FLOOR.forEach(row=>{
     row.forEach(([no,col])=>{
-      const t='第'+no+'桌', ppl=by[t]||[], h=ppl.length?heads(t):0;
+      const t='第'+no+'桌', ppl=by[t]||[], h=ppl.length?heads(t):0, v=ppl.length?vegs(t):0;
+      const dish=h-v;                       // 佔桌菜位人數（素食另出套餐、不佔位）
       const lb=tLabel(t), ty=tType(t), role=SPARE[no]||'';
       const cls=['tbox'];
       if(ty && TYPE_CLASS[ty]) cls.push(TYPE_CLASS[ty]);
       if(!h) cls.push('spare');
       const sub = lb ? `<div class="bl">${esc(lb)}</div>`
                      : (role ? `<div class="bl" style="color:var(--muted);font-weight:500;">${role}</div>` : '');
-      html+=`<div class="${cls.join(' ')}" style="grid-column:${col}" onclick="onTableClick('${t}')" title="${esc(t)}${ty?'｜'+ty:''}">
+      const tip=h ? `${t}${ty?'｜'+ty:''}｜共 ${h} 人（椅 ${h} 張）${v?`，其中素食 ${v} 份另出套餐不佔桌菜位`:''}｜佔桌菜位 ${dish}/10`
+                  : `${t}${ty?'｜'+ty:''}｜空桌`;
+      html+=`<div class="${cls.join(' ')}" style="grid-column:${col}" onclick="onTableClick('${t}')" title="${esc(tip)}">
         <div class="bn">${no}</div>${sub}
         ${ty?`<div class="bt">${esc(ty)}</div>`:''}
-        <div class="bc">${h?h+' 人':'（空桌）'}</div></div>`;
+        <div class="bc${dish>10?' over':''}">${h?h+' 人':'（空桌）'}</div>
+        ${h?`<div class="bs">椅 ${h} 張</div>`:''}
+        ${v?`<div class="bv">素食 ${v}</div>`:''}</div>`;
     });
   });
   f.innerHTML=html;
