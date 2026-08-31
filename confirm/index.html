@@ -77,6 +77,12 @@ textarea{resize:vertical;min-height:56px;font-size:15px;}
       <div class="hint">查詢您目前登記的出席狀況與桌次。同行親友請輸入「主要報名人」的姓名。</div>
     </div>
     <button class="btn" id="btn-find" onclick="doSearch()">查詢我的出席資料</button>
+    <div id="no-hit" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line);text-align:center;">
+      <div class="hint" style="margin-bottom:10px;">還沒回覆過出席嗎？</div>
+      <a href="/rsvp/?new=1" style="display:inline-block;text-decoration:none;background:var(--green-deep);color:var(--gold-light);
+        font-size:15px;font-weight:700;padding:13px 26px;border-radius:8px;letter-spacing:.06em;">✍️ 填寫出席資料</a>
+      <div class="hint" style="margin-top:10px;">仍有疑問請洽秘書處 📞 0988-558246</div>
+    </div>
   </div>
 
   <!-- ② 多筆時選擇本人 -->
@@ -181,7 +187,11 @@ function only(id){
     document.getElementById(x).style.display = (x===id) ? (x==='s-detail'?'block':(x==='s-done'?'block':'block')) : 'none';
   });
 }
-function goSearch(){ showErr(''); row=null; unlocked=false; only('s-search'); document.getElementById('q').value=''; }
+function goSearch(){
+  showErr(''); row=null; unlocked=false; only('s-search');
+  document.getElementById('q').value='';
+  document.getElementById('no-hit').style.display='none';
+}
 
 async function doSearch(){
   const q = nameKey(document.getElementById('q').value);
@@ -194,9 +204,11 @@ async function doSearch(){
     let rows = await fetchBy(`display_name=eq.${encodeURIComponent(q)}`);
     if(!rows.length) rows = await fetchBy(`companions=ilike.*${encodeURIComponent(q)}*`);
     if(!rows.length){
-      showErr('查無「'+esc(q)+'」的出席登記。<br>請確認姓名是否與報名時相同；同行親友請改輸入主要報名人的姓名，或洽秘書處 0988-558246。');
+      showErr('查無「'+esc(q)+'」的出席登記。<br>請確認姓名是否與報名時相同；同行親友請改輸入主要報名人的姓名。');
+      document.getElementById('no-hit').style.display = '';
       return;
     }
+    document.getElementById('no-hit').style.display = 'none';
     if(rows.length === 1){ openDetail(rows[0]); return; }
     document.getElementById('pick-list').innerHTML = rows.map((r,i)=>
       `<button onclick="pick(${i})"><div class="p-n">${esc(r.display_name)}</div>
