@@ -1229,6 +1229,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   <div style="margin-top:24px;">
     <div class="section-title" style="font-size:15px;margin-bottom:10px;">🪑 尚未排桌 <span id="seat-un-count" style="font-size:12px;color:var(--gray);"></span></div>
     <div id="seating-unassigned" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+    <div id="seating-nomeal"></div>
     <div id="seating-pending"></div>
   </div>
 </div>
@@ -4562,7 +4563,7 @@ async function loadSeating(){
   try{
     const [gRes, mRes, roRes] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category,sort,status,title`, { headers: SB_HEADERS }),
-      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,title,note,companions,headcount,vegetarian,table_no`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,title,note,companions,headcount,vegetarian,table_no,meal`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps,title,company`, { headers: SB_HEADERS }),
     ]);
     await loadSeatCfg();
@@ -4653,7 +4654,8 @@ function seatOccupants(){
   seatGuests.filter(g => g.seat && !inRsvp.has(seatDeTitle(g.name)))
     .forEach(g=>list.push({ kind:'guest', id:g.id, name:g.name, title:g.title||'', org:g.org||g.category||'',
       sub:(g.title?g.title+'・':'')+(g.org||g.category||''), table:g.seat, size:(g.party_size||1), checked:g.checked_in, veg:0, grp:g.org||'', comp:'' }));
-  seatMembers.forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, title:m.title||'', org:m.org||'',
+  // meal='no'＝只出席論壇不入席，不佔桌位也不該出現在待排區（另列於下方提醒）
+  seatMembers.filter(m=>m.meal!=='no').forEach(m=>list.push({ kind:'member', id:m.user_id, name:m.display_name, title:m.title||'', org:m.org||'',
     sub:(m.title?m.title+'・':'')+(m.org||m.note||m.companions||''), table:m.table_no||'', size:(m.headcount||1), veg:(m.vegetarian||0), grp:readableGroup(m), comp:m.companions||'' }));
   return list;
 }
@@ -4800,6 +4802,20 @@ function renderSeating(){
   }).join('') : '<span style="color:var(--gray);font-size:12px;">全部已排桌 🎉</span>';
 
   renderPendingInvites();
+  renderNoMeal();
+}
+
+/* 只出席論壇、不參加晚宴者：不佔桌位，但名牌與報到仍要準備，所以要看得到 */
+function renderNoMeal(){
+  const box=document.getElementById('seating-nomeal'); if(!box) return;
+  const rows=seatMembers.filter(m=>m.meal==='no');
+  if(!rows.length){ box.innerHTML=''; return; }
+  box.innerHTML = `<div class="section-title" style="font-size:15px;margin:18px 0 10px;">🎤 只出席論壇・不入席
+      <span style="font-size:12px;color:var(--gray);">（${rows.length} 位・不佔桌位、不計餐數，名牌仍需製作）</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">`
+    + rows.map(m=>`<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(79,195,247,.08);border:1px solid rgba(79,195,247,.35);border-radius:99px;padding:5px 11px;font-size:12px;color:var(--white);">
+        🎤 ${escapeHtml(m.display_name)}<span style="font-size:10px;color:var(--gray);">${escapeHtml([m.title,m.org].filter(Boolean).join(' · '))}</span>
+      </span>`).join('') + '</div>';
 }
 
 // 邀請中・尚未回覆出席：依規則暫不排桌，但要看得到，才知道還在等誰
@@ -5329,7 +5345,7 @@ async function exportRsvpCSV() {
       csvTextCell(seqOf(r)), csvTextCell(gno), me.name, '本人', '',
       label, effOrg, r.title || me.title || gm.title || '', r.mobile || '',
       (r.user_id||'').startsWith('web-') ? '網頁自填' : 'LINE',
-      '出席', (r.headcount ?? 0), (r.vegetarian ?? 0),
+      r.meal==='no' ? '出席・不入席（僅論壇）' : '出席', (r.headcount ?? 0), (r.vegetarian ?? 0),
       r.note || '', r.table_no || '',
       r.created_at ? new Date(r.created_at).toLocaleString('zh-TW') : '',
       r.updated_at ? new Date(r.updated_at).toLocaleString('zh-TW') : '',
