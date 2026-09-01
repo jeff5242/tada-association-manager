@@ -38,6 +38,8 @@ textarea{resize:vertical;min-height:56px;font-size:15px;}
 .seat .s-no{font-family:'Noto Serif TC',serif;font-size:34px;font-weight:900;color:var(--gold-light);line-height:1.2;margin-top:4px;}
 .seat .s-nm{font-size:15px;font-weight:700;margin-top:10px;}
 .seat .s-org{font-size:12.5px;color:rgba(255,255,255,.62);margin-top:3px;line-height:1.7;}
+.seat .s-note-top{font-size:12px;color:rgba(255,255,255,.5);margin-top:6px;line-height:1.7;}
+.seat .s-nm{font-size:15px;font-weight:700;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12);}
 .kv{display:flex;gap:10px;font-size:13.5px;padding:9px 0;border-bottom:1px dashed var(--line);}
 .kv:last-child{border-bottom:none;}
 .kv b{color:var(--green-light);font-weight:500;width:76px;flex:none;}
@@ -96,7 +98,9 @@ textarea{resize:vertical;min-height:56px;font-size:15px;}
   <div id="s-detail" style="display:none;">
     <div class="seat">
       <div class="s-lb">您的桌次</div>
-      <div class="s-no" id="d-seat">—</div>
+      <!-- 桌次尚未定案，先不顯示實際桌號，避免會員記了之後又變動 -->
+      <div class="s-no">安排中</div>
+      <div class="s-note-top">確定後將於本頁更新，當日報到時也會由接待人員引導入席</div>
       <div class="s-nm" id="d-name"></div>
       <div class="s-org" id="d-org"></div>
     </div>
@@ -212,7 +216,7 @@ async function doSearch(){
     if(rows.length === 1){ openDetail(rows[0]); return; }
     document.getElementById('pick-list').innerHTML = rows.map((r,i)=>
       `<button onclick="pick(${i})"><div class="p-n">${esc(r.display_name)}</div>
-        <div class="p-s">${esc(r.title||'')}${r.title&&r.org?' · ':''}${esc(r.org||'')}<br>${esc(r.table_no||'桌次未定')}　${r.headcount||1} 位</div></button>`).join('');
+        <div class="p-s">${esc(r.title||'')}${r.title&&r.org?' · ':''}${esc(r.org||'')}<br>${r.headcount||1} 位</div></button>`).join('');
     window.__picks = rows;
     only('s-pick');
   }catch(e){ showErr('查詢失敗：'+e.message); }
@@ -227,7 +231,6 @@ function pick(i){ openDetail(window.__picks[i]); }
 
 function openDetail(r){
   row = r; unlocked = false;
-  document.getElementById('d-seat').textContent = (r.table_no||'').trim() || '安排中';
   document.getElementById('d-name').textContent = r.display_name || '';
   document.getElementById('d-org').textContent = [r.title, r.org].filter(Boolean).join(' · ');
   document.getElementById('d-att').textContent = r.attending ? '已確認出席' : '不克出席';
@@ -295,7 +298,7 @@ async function save(){
     document.getElementById('done-ic').textContent = attending ? '🎉' : '🙏';
     document.getElementById('done-msg').textContent = attending ? '出席資料已更新！' : '已為您取消出席登記';
     document.getElementById('done-sub').innerHTML = attending
-      ? `${esc(row.display_name)}　${head} 位${veg?`（素食 ${veg} 份）`:''}<br>桌次：${esc((row.table_no||'').trim()||'安排中')}<br><br>9/4（五）15:00 起報到，期待與您相見。`
+      ? `${esc(row.display_name)}　${head} 位${veg?`（素食 ${veg} 份）`:''}<br><br>9/4（五）15:00 起報到，期待與您相見。`
       : '感謝您的告知，我們會調整席次安排。<br>若之後行程有變，歡迎再回到本頁修改。';
     only('s-done');
     window.scrollTo({top:0,behavior:'smooth'});
