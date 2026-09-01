@@ -5297,7 +5297,9 @@ async function exportRsvpCSV() {
     .forEach((r, i) => numbered.set(r.user_id, i + 1));
   const list = allRsvp.filter(r => !r.hidden && r.attending).slice().sort(byReg);
   if (!list.length) { alert('尚無出席資料可匯出'); return; }
-  const seqOf = r => numbered.get(r.user_id) || '';
+  // 3 碼零填（001、042、238），排序與對號都不會亂
+  const pad3 = n => String(n).padStart(3, '0');
+  const seqOf = r => { const n = numbered.get(r.user_id); return n ? pad3(n) : ''; };
   // 貴賓名冊是「已整理過」的職稱／單位來源，同行者只有這裡查得到
   const gMap=new Map();
   try{
@@ -5324,7 +5326,7 @@ async function exportRsvpCSV() {
     const gm=gOf(me.name);
     const effOrg = r.org || me.org || gm.org || orgMap.get(me.name) || '';
     rows.push([
-      csvTextCell(String(seqOf(r))), csvTextCell(gno), me.name, '本人', '',
+      csvTextCell(seqOf(r)), csvTextCell(gno), me.name, '本人', '',
       label, effOrg, r.title || me.title || gm.title || '', r.mobile || '',
       (r.user_id||'').startsWith('web-') ? '網頁自填' : 'LINE',
       '出席', (r.headcount ?? 0), (r.vegetarian ?? 0),
