@@ -1108,6 +1108,15 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <button class="btn btn-gold btn-sm" style="display:none;" onclick="reseatAllMembers()" title="清掉所有會員桌，依目前『備註／單位』把全部出席會員重新排一次（貴賓桌不受影響）">♻️ 全部重排</button>
       <button class="btn btn-outline btn-sm" onclick="clearMemberSeats()" title="清除所有『會員桌』排位（不動貴賓桌與主桌）">🧹 清空會員桌</button>
       <button class="btn btn-outline btn-sm" onclick="openSeatExport()">⬇ 匯出桌次表…</button>
+      <label style="font-size:11px;color:var(--gray);display:inline-flex;align-items:center;gap:4px;">桌內排序
+        <select id="seat-sort" class="filter-select" style="padding:2px 4px;font-size:11px;width:118px;"
+                onchange="setSeatSort(this.value)" title="每一桌名單的排列方式（序號跟著重編）">
+          <option value="size">人數多→少</option>
+          <option value="name">姓名筆畫</option>
+          <option value="cat">身分（會員先）</option>
+          <option value="org">單位</option>
+          <option value="title">職稱</option>
+        </select></label>
       <span id="seating-status" style="font-size:11px;"></span>
     </div>
   </div>
@@ -4597,6 +4606,28 @@ function tableMainGroup(arr){
   return n>=2 ? best : '';
 }
 
+/* 桌內排序：只影響顯示順序與序號，不動資料。序號＝該桌名單的第幾列，
+   同行組視為一列（×N 標在姓名後），方便現場點名與核對人數。 */
+let seatSort='size';
+function setSeatSort(v){ seatSort=v||'size'; renderSeating(); }
+function seatCatOf(o){
+  if(seatIdentity(o.name).isMember) return '會員';
+  return seatType(o.table)==='貴賓' ? '貴賓' : '嘉賓';
+}
+function seatRowCmp(a,b){
+  const zh=(x,y)=>String(x||'').localeCompare(String(y||''),'zh-Hant');
+  switch(seatSort){
+    case 'name':  return zh(a.name,b.name);
+    case 'org':   return zh(a.org,b.org) || zh(a.name,b.name);
+    case 'title': return zh(a.title,b.title) || zh(a.name,b.name);
+    case 'cat': {
+      const R={'會員':0,'貴賓':1,'嘉賓':2};
+      return (R[seatCatOf(a)]??9)-(R[seatCatOf(b)]??9) || (b.size-a.size) || zh(a.name,b.name);
+    }
+    default:      return (b.size-a.size) || zh(a.name,b.name);   // 人數多→少
+  }
+}
+
 function renderSeating(){
   const occ=seatOccupants();
   const byTable=new Map(); EVENT_TABLES.forEach(t=>byTable.set(t,[]));
@@ -4631,7 +4662,8 @@ function renderSeating(){
     const vegTotal=arr.reduce((s,o)=>s+(o.veg||0),0);         // 該桌素食份數
     const capT=tableCapWithVeg(vegTotal);
     const over=head>capT;
-    const rows=arr.length? arr.map(o=>{
+    const sorted=arr.slice().sort(seatRowCmp);              // 不動原陣列，只排顯示用的副本
+    const rows=sorted.length? sorted.map((o,i)=>{
       const icon=seatIdentity(o.name).isMember?'👤':'🎩';   // 依會員名冊，非資料來源
       const sizeTag=o.size>1?` <span style="color:var(--gold);">×${o.size}</span>`:'';
       const vegTag=o.veg>0?` <span style="background:rgba(41,182,246,0.18);color:#4fc3f7;font-size:10px;border-radius:99px;padding:0 6px;">🥗 素${o.veg>1?'×'+o.veg:''}</span>`:'';
@@ -4643,6 +4675,7 @@ function renderSeating(){
       const CAT_COL = { '會員':'#66bb6a', '貴賓':'var(--gold-lt)', '嘉賓':'#8fa8bf' };
       const catCol = CAT_COL[cat];
       return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="flex:none;width:17px;text-align:right;font-size:10.5px;color:var(--gray);font-variant-numeric:tabular-nums;">${i+1}</span>
         <span style="font-size:12px;flex:none;">${icon}</span>
         <span style="flex:0 0 auto;font-size:12.5px;font-weight:700;color:var(--white);white-space:nowrap;">${escapeHtml(o.name)}${sizeTag}${vegTag}</span>
         <span style="flex:1;min-width:0;font-size:11px;color:var(--gray);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
@@ -4703,9 +4736,11 @@ function renderPendingInvites(){
 
 // 桌號對調：兩桌成員整批互換（會員 tada_rsvp.table_no ＋ 貴賓 tada_guests.seat）
 // 三段式（A→TMP、B→A、TMP→B）避免第一批改完被第二批再改回去
+// 桌名與類型跟著人走：整桌搬過去後，桌名留在原地就對不上了，所以一併交換。
 async function swapTables(a, b){
   if(!b || a===b) return;
-  if(!confirm(`將「${tableLabel(a)}」與「${tableLabel(b)}」兩桌的座位成員整桌對調？`)) return;
+  const nameOf=t=>(SEAT_CFG[t]&&SEAT_CFG[t].label)||'（無名稱）';
+  if(!confirm(`將「${tableLabel(a)}」與「${tableLabel(b)}」兩桌的座位成員整桌對調？\n桌名與類型會一併交換：\n　${tableLabel(a)}「${nameOf(a)}」⇄ ${tableLabel(b)}「${nameOf(b)}」`)) return;
   const TMP='__SWAP__';
   const pat=async(url,body)=>{
     const r=await fetch(`${SB_URL}/rest/v1/${url}`,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify(body)});
@@ -4721,9 +4756,24 @@ async function swapTables(a, b){
     await pat(`tada_rsvp?table_no=eq.${ea}&hidden=eq.false`,{table_no:TMP});
     await pat(`tada_rsvp?table_no=eq.${eb}&hidden=eq.false`,{table_no:a});
     await pat(`tada_rsvp?table_no=eq.${et}&hidden=eq.false`,{table_no:b});
+    await swapSeatCfg(a,b);          // 桌名／類型跟著整桌一起換
     await loadSeating();
-    st.style.color='#66bb6a'; st.textContent=`✓ 已對調 ${tableLabel(a)} ⇄ ${tableLabel(b)}`;
+    st.style.color='#66bb6a'; st.textContent=`✓ 已對調 ${tableLabel(a)} ⇄ ${tableLabel(b)}（含桌名）`;
   }catch(e){ alert('對調失敗：'+e.message); await loadSeating(); }
+}
+
+/* 交換兩桌的桌名與類型設定（tada_config.seating_tables）。
+   「從未設定過」也是一種狀態（平面圖會留白），所以用 delete 而不是塞空字串，
+   否則對調後原本留白的桌會變成「已設定為空白」，行為不一樣。 */
+async function swapSeatCfg(a,b){
+  const has=t=>Object.prototype.hasOwnProperty.call(SEAT_CFG,t);
+  const ha=has(a), hb=has(b);
+  if(!ha && !hb) return;                       // 兩邊都沒設定，不用動
+  const va=ha?JSON.parse(JSON.stringify(SEAT_CFG[a])):null;
+  const vb=hb?JSON.parse(JSON.stringify(SEAT_CFG[b])):null;
+  if(vb) SEAT_CFG[a]=vb; else delete SEAT_CFG[a];
+  if(va) SEAT_CFG[b]=va; else delete SEAT_CFG[b];
+  await saveSeatCfg();
 }
 
 // 用下拉改桌／移除（會員→table_no、貴賓→seat）
