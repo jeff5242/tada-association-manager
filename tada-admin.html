@@ -5119,8 +5119,13 @@ function doSeatExport(){
 /* 先把資料整理成表格（純值，未轉義），三種格式共用 */
 async function buildSeatRows(picked){
   await loadSeatCfg();          // 桌位名稱／類型以最新設定為準（與會場平面圖同一份設定）
+  await loadSeatOrder();        // 桌內順序照後台手動排的來，匯出才跟畫面一致
   const occ=seatOccupants().filter(o=>o.table && (!picked || picked.has(o.table)));
-  occ.sort((a,b)=>eventTableRank(a.table)-eventTableRank(b.table));
+  const manRank=x=>{ const l=SEAT_ORDER[x.table]||[]; const i=l.indexOf(occKey(x)); return i<0?9999:i; };
+  occ.sort((a,b)=> eventTableRank(a.table)-eventTableRank(b.table)
+                || manRank(a)-manRank(b)
+                || (b.size-a.size)
+                || String(a.name||'').localeCompare(String(b.name||''),'zh-Hant'));
   const head=['桌號','桌位名稱','類型','同行群組','姓名','身分','會員編號','會員狀態','單位/備註','素食','報到'];
   const body=[]; let gseq=0;
   occ.forEach(o=>{
