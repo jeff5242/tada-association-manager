@@ -5288,9 +5288,16 @@ async function exportRsvpCSV() {
   // 後補的出席者永遠接在最後面，既有序號不會因為有人改資料而重新洗牌。
   // （畫面上的清單仍照最近異動排序，方便會務人員看新異動，故此處用 slice 另排。）
   const regTime = r => new Date(r.created_at || r.updated_at || 0).getTime();
-  const list = allRsvp.filter(r => !r.hidden && r.attending).slice()
-    .sort((a, b) => regTime(a) - regTime(b) || String(a.user_id).localeCompare(String(b.user_id)));
+  const byReg = (a, b) => regTime(a) - regTime(b) || String(a.user_id).localeCompare(String(b.user_id));
+  // 號碼先發給「所有未隱藏的登記」（含不克出席者），再篩出席者匯出。
+  // 若只對出席者編號，有人改成不克出席時後面全部會往前挪一號；
+  // 先發號等於幫他保留號碼，別人的序號永遠不動。
+  const numbered = new Map();
+  allRsvp.filter(r => !r.hidden).slice().sort(byReg)
+    .forEach((r, i) => numbered.set(r.user_id, i + 1));
+  const list = allRsvp.filter(r => !r.hidden && r.attending).slice().sort(byReg);
   if (!list.length) { alert('尚無出席資料可匯出'); return; }
+  const seqOf = r => numbered.get(r.user_id) || '';
   // 貴賓名冊是「已整理過」的職稱／單位來源，同行者只有這裡查得到
   const gMap=new Map();
   try{
@@ -5310,15 +5317,14 @@ async function exportRsvpCSV() {
   }catch(e){ /* 取不到就照原樣匯出 */ }
   // 一人一列（比照會員名冊母號-N）：序號＝逐人流水號；組編號＝同組報名共用（本人=12、同行=12-1）
   const rows = [['序號','組編號','姓名','身分','主報名人','類別(AI判斷)','單位','職稱','手機','來源','出席','登記總人數','素食份數','備註','桌次','登記時間','回覆時間']];
-  let seq=0;
-  list.forEach((r, gi) => {
+  list.forEach((r) => {
     const label=classifyRsvp(r).label;
-    const gno=String(gi+1);
+    const gno=String(seqOf(r));          // 組編號跟著本人的固定序號走，同行者為 12-1、12-2
     const me=splitNameTitle(r.display_name);
     const gm=gOf(me.name);
     const effOrg = r.org || me.org || gm.org || orgMap.get(me.name) || '';
     rows.push([
-      ++seq, csvTextCell(gno), me.name, '本人', '',
+      csvTextCell(String(seqOf(r))), csvTextCell(gno), me.name, '本人', '',
       label, effOrg, r.title || me.title || gm.title || '', r.mobile || '',
       (r.user_id||'').startsWith('web-') ? '網頁自填' : 'LINE',
       '出席', (r.headcount ?? 0), (r.vegetarian ?? 0),
@@ -5330,15 +5336,16 @@ async function exportRsvpCSV() {
       const c=splitNameTitle(raw), cg=gOf(c.name);
       rows.push([
         // 同行友人一律視為貴賓（即使主報名人是會員）
-        ++seq, csvTextCell(`${gno}-${ci+1}`), c.name, '同行友人', me.name, '貴賓',
+        csvTextCell(`${gno}-${ci+1}`), csvTextCell(`${gno}-${ci+1}`), c.name, '同行友人', me.name, '貴賓',
         cg.org || c.org || effOrg, c.title || cg.title || '', '', '', '出席', '', '', '',
         r.table_no || '', '', '',
       ]);
     });
   });
   rows.push([]);
-  rows.push([`出席合計 ${seq} 人（本人 ${list.length} 組）`]);
-  rows.push(['※ 序號依登記時間由舊到新固定編號，後補的出席者接在最後面，既有序號不會變動。']);
+  rows.push([`出席合計 ${rows.length-2} 人（本人 ${list.length} 組）`]);
+  rows.push(['※ 序號依登記時間固定配發，含不克出席者一併保留號碼；']);
+  rows.push(['　 後補的出席者接在最後面，既有序號不會因為有人取消或改資料而變動。']);
   if(declined) rows.push([`※ 已排除不克出席 ${declined} 筆；姓名欄為純姓名，職稱另立一欄`]);
   const csv = '﻿' + rows.map(row => row.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
