@@ -1109,8 +1109,9 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <button class="btn btn-outline btn-sm" onclick="clearMemberSeats()" title="清除所有『會員桌』排位（不動貴賓桌與主桌）">🧹 清空會員桌</button>
       <button class="btn btn-outline btn-sm" onclick="openSeatExport()">⬇ 匯出桌次表…</button>
       <label style="font-size:11px;color:var(--gray);display:inline-flex;align-items:center;gap:4px;">桌內排序
-        <select id="seat-sort" class="filter-select" style="padding:2px 4px;font-size:11px;width:118px;"
+        <select id="seat-sort" class="filter-select" style="padding:2px 4px;font-size:11px;width:132px;"
                 onchange="setSeatSort(this.value)" title="每一桌名單的排列方式（序號跟著重編）">
+          <option value="manual">手動排序（可拖曳）</option>
           <option value="size">人數多→少</option>
           <option value="name">姓名筆畫</option>
           <option value="cat">身分（會員先）</option>
@@ -4472,6 +4473,64 @@ async function saveSeatCfg(){
     body:JSON.stringify({key:SEAT_CFG_KEY,value:JSON.stringify(SEAT_CFG)})});
   if(!r.ok) throw new Error(await r.text());
 }
+/* 桌內手動排序：每桌記一份「座位人 key 的順序」，存 tada_config.seating_order。
+   key = kind:id（member:user_id / guest:uuid），換桌後自動失效不影響別桌。
+   沒記錄到的人排在最後（照原本的人數多→少），所以新加入的人不會插隊。 */
+const SEAT_ORDER_KEY='seating_order';
+let SEAT_ORDER={};
+const occKey=o=>o.kind+':'+o.id;
+async function loadSeatOrder(){
+  try{ const r=await sbEl(`tada_config?key=eq.${SEAT_ORDER_KEY}&select=value`);
+       const d=r.ok?await r.json():[]; SEAT_ORDER=d.length?JSON.parse(d[0].value||'{}'):{}; }
+  catch(e){ SEAT_ORDER={}; }
+}
+async function saveSeatOrder(){
+  const r=await fetch(`${SB_URL}/rest/v1/tada_config`,{method:'POST',
+    headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({key:SEAT_ORDER_KEY,value:JSON.stringify(SEAT_ORDER)})});
+  if(!r.ok) throw new Error(await r.text());
+}
+/* 把某桌目前顯示的順序整份寫回，並立即重繪。move：以 key 為單位搬到 to 的位置。 */
+async function seatReorder(table, keys){
+  SEAT_ORDER[table]=keys;
+  renderSeating();                       // 先動畫面，儲存失敗再回捲
+  const st=document.getElementById('seating-status');
+  try{ await saveSeatOrder(); st.style.color='#66bb6a'; st.textContent='✓ 已儲存排序'; }
+  catch(e){ st.style.color='#ef5350'; st.textContent='排序儲存失敗：'+e.message; await loadSeatOrder(); renderSeating(); }
+}
+function seatCurrentKeys(table){
+  const arr=seatOccupants().filter(x=>x.table===table);
+  return arr.slice().sort(seatRowCmp).map(occKey);
+}
+async function moveSeatRow(table, key, dir){
+  const keys=seatCurrentKeys(table);
+  const i=keys.indexOf(key), j=i+dir;
+  if(i<0 || j<0 || j>=keys.length) return;
+  keys.splice(j,0,keys.splice(i,1)[0]);
+  await seatReorder(table, keys);
+}
+let seatDrag=null;                      // {table,key}
+function seatDragStart(ev, table, key){ seatDrag={table,key}; ev.dataTransfer.effectAllowed='move'; try{ev.dataTransfer.setData('text/plain',key);}catch(_){}}
+function seatDragOver(ev, table){ if(seatDrag && seatDrag.table===table){ ev.preventDefault(); ev.dataTransfer.dropEffect='move'; } }
+async function seatDrop(ev, table, targetKey){
+  if(!seatDrag || seatDrag.table!==table) return;
+  ev.preventDefault();
+  const from=seatDrag.key; seatDrag=null;
+  if(from===targetKey) return;
+  const keys=seatCurrentKeys(table);
+  const i=keys.indexOf(from); if(i<0) return;
+  keys.splice(i,1);
+  const t=keys.indexOf(targetKey);
+  keys.splice(t<0?keys.length:t,0,from);
+  await seatReorder(table, keys);
+}
+async function resetSeatOrder(table){
+  if(!confirm(`清除「${tableLabel(table)}」的手動排序，恢復自動排列？`)) return;
+  delete SEAT_ORDER[table];
+  renderSeating();
+  try{ await saveSeatOrder(); }catch(e){ alert('清除失敗：'+e.message); }
+}
+
 /* 編輯桌位主題（與平面圖同步）：正式對話框 */
 let seatEditing=null;
 function editSeatTable(t){
@@ -4507,6 +4566,7 @@ async function loadSeating(){
       fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps,title,company`, { headers: SB_HEADERS }),
     ]);
     await loadSeatCfg();
+    await loadSeatOrder();
     seatGuests  = gRes.ok ? await gRes.json() : [];
     seatMembers = mRes.ok ? await mRes.json() : [];
     buildMemberPool(roRes.ok ? await roRes.json() : []);
@@ -4608,7 +4668,7 @@ function tableMainGroup(arr){
 
 /* 桌內排序：只影響顯示順序與序號，不動資料。序號＝該桌名單的第幾列，
    同行組視為一列（×N 標在姓名後），方便現場點名與核對人數。 */
-let seatSort='size';
+let seatSort='manual';
 function setSeatSort(v){ seatSort=v||'size'; renderSeating(); }
 function seatCatOf(o){
   if(seatIdentity(o.name).isMember) return '會員';
@@ -4616,6 +4676,13 @@ function seatCatOf(o){
 }
 function seatRowCmp(a,b){
   const zh=(x,y)=>String(x||'').localeCompare(String(y||''),'zh-Hant');
+  if(seatSort==='manual'){
+    const list=SEAT_ORDER[a.table]||[];
+    const ia=list.indexOf(occKey(a)), ib=list.indexOf(occKey(b));
+    const ra=ia<0?9999:ia, rb=ib<0?9999:ib;
+    if(ra!==rb) return ra-rb;
+    return (b.size-a.size) || zh(a.name,b.name);   // 沒排過的照人數多→少墊底
+  }
   switch(seatSort){
     case 'name':  return zh(a.name,b.name);
     case 'org':   return zh(a.org,b.org) || zh(a.name,b.name);
@@ -4674,7 +4741,21 @@ function renderSeating(){
                 : (seatType(o.table)==='貴賓' ? '貴賓' : '嘉賓');
       const CAT_COL = { '會員':'#66bb6a', '貴賓':'var(--gold-lt)', '嘉賓':'#8fa8bf' };
       const catCol = CAT_COL[cat];
-      return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+      const man = seatSort==='manual';
+      const k = occKey(o);
+      // 手動排序時整列可拖曳，另備 ▲▼ 給不方便拖的人（觸控／筆電觸控板）
+      const dragAttr = man
+        ? ` draggable="true" ondragstart="seatDragStart(event,'${escapeHtml(t)}','${escapeHtml(k)}')"`
+          + ` ondragover="seatDragOver(event,'${escapeHtml(t)}')"`
+          + ` ondrop="seatDrop(event,'${escapeHtml(t)}','${escapeHtml(k)}')"` : '';
+      const arrows = man ? `<span style="flex:none;display:inline-flex;flex-direction:column;line-height:8px;margin-right:1px;">
+          <button onclick="moveSeatRow('${escapeHtml(t)}','${escapeHtml(k)}',-1)" title="上移"
+            style="background:none;border:none;color:${i===0?'rgba(255,255,255,.15)':'var(--gray)'};cursor:${i===0?'default':'pointer'};font-size:9px;padding:0;height:9px;">▲</button>
+          <button onclick="moveSeatRow('${escapeHtml(t)}','${escapeHtml(k)}',1)" title="下移"
+            style="background:none;border:none;color:${i===sorted.length-1?'rgba(255,255,255,.15)':'var(--gray)'};cursor:${i===sorted.length-1?'default':'pointer'};font-size:9px;padding:0;height:9px;">▼</button>
+        </span>` : '';
+      return `<div${dragAttr} style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);${man?'cursor:grab;':''}">
+        ${arrows}
         <span style="flex:none;width:17px;text-align:right;font-size:10.5px;color:var(--gray);font-variant-numeric:tabular-nums;">${i+1}</span>
         <span style="font-size:12px;flex:none;">${icon}</span>
         <span style="flex:0 0 auto;font-size:12.5px;font-weight:700;color:var(--white);white-space:nowrap;">${escapeHtml(o.name)}${sizeTag}${vegTag}</span>
@@ -4698,6 +4779,7 @@ function renderSeating(){
                + `<button class="btn btn-sm btn-outline" style="padding:0 6px;font-size:10px;line-height:18px;" onclick="editSeatTable('${escapeHtml(t)}')" title="修改桌次名稱與類型（與會場平面圖同步）">✎</button>`;})()}
         ${vegTotal>0?`<span style="font-size:10px;color:#4fc3f7;background:rgba(41,182,246,0.15);border-radius:99px;padding:1px 7px;">🥗 素食 ${vegTotal} 份</span>`:''}
         <span style="margin-left:auto;font-size:12px;color:${over?'#ef5350':'var(--gray)'};font-weight:700;">${head}/${capT}${vegTotal>0?`<span style="font-weight:400;color:var(--gray);font-size:10px;"> (10+${vegTotal}素)</span>`:''}</span>
+        ${seatSort==='manual'&&SEAT_ORDER[t]?`<button class="btn btn-sm btn-outline" style="padding:0 6px;font-size:10px;line-height:18px;" onclick="resetSeatOrder('${escapeHtml(t)}')" title="清除這一桌的手動排序，恢復自動排列">↺ 排序</button>`:''}
         <select onchange="swapTables('${escapeHtml(t)}',this.value);this.value='';" class="filter-select" style="padding:1px 2px;font-size:10px;width:92px;" title="與另一桌整桌對調成員"><option value="">⇄ 對調…</option>${orderTables.filter(x=>x!==t).map(x=>`<option value="${escapeHtml(x)}">${tableLabel(x)}</option>`).join('')}</select>
       </div>
       ${rows}
@@ -4757,6 +4839,10 @@ async function swapTables(a, b){
     await pat(`tada_rsvp?table_no=eq.${eb}&hidden=eq.false`,{table_no:a});
     await pat(`tada_rsvp?table_no=eq.${et}&hidden=eq.false`,{table_no:b});
     await swapSeatCfg(a,b);          // 桌名／類型跟著整桌一起換
+    const oa=SEAT_ORDER[a], ob=SEAT_ORDER[b];   // 手動排序也跟著人走
+    if(ob) SEAT_ORDER[a]=ob; else delete SEAT_ORDER[a];
+    if(oa) SEAT_ORDER[b]=oa; else delete SEAT_ORDER[b];
+    if(oa||ob) await saveSeatOrder();
     await loadSeating();
     st.style.color='#66bb6a'; st.textContent=`✓ 已對調 ${tableLabel(a)} ⇄ ${tableLabel(b)}（含桌名）`;
   }catch(e){ alert('對調失敗：'+e.message); await loadSeating(); }
