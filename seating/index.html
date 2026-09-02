@@ -452,8 +452,6 @@ const FLOOR=[
 const FLOOR_COLS=12;
 /* 桌位用途一律由「✎ 編輯桌位」設定（存 tada_config），程式不再寫死任何桌名，
    免得換桌後平面圖還掛著舊名字（例：工作人員桌從 22 換到 23）。 */
-// 會員桌（平面圖以綠框標示）：理監事、團體會員、個人會員及會員友人桌
-const MEMBER=new Set([2,5,6,9,10]);
 function renderFloor(by,heads,vegs){
   const f=document.getElementById('floor');
   f.classList.toggle('editing', editMode);
