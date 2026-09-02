@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>報到流程海報｜TADA 第六屆會員大會</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{ --green:#1e4d2b; --green-lt:#2d6a3f; --gold:#b8860b; --gold-lt:#d4a017; --ink:#1a1a1a; --paper:#fff; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#666;color:var(--ink)}
+.sheet{width:210mm;height:297mm;background:var(--paper);margin:10px auto;padding:14mm 14mm 12mm;
+  display:flex;flex-direction:column;page-break-after:always;position:relative;overflow:hidden}
+.sheet:last-child{page-break-after:auto}
+
+.hd{text-align:center;border-bottom:2.2mm solid var(--green);padding-bottom:5mm}
+.hd .org{font-size:14pt;font-weight:700;letter-spacing:.25em;color:var(--green)}
+.hd h1{font-size:34pt;font-weight:900;letter-spacing:.12em;margin-top:2mm}
+.hd .sub{font-size:13pt;color:#555;margin-top:1.5mm;letter-spacing:.08em}
+
+.step{display:flex;gap:7mm;align-items:stretch;margin-top:7mm}
+.stepno{flex:0 0 24mm;background:var(--green);color:#fff;border-radius:5mm;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
+.stepno b{font-size:30pt;font-weight:900;line-height:1}
+.stepno span{font-size:10pt;letter-spacing:.2em;margin-top:1mm}
+.stepbody{flex:1;display:flex;flex-direction:column;justify-content:center}
+.stepbody h2{font-size:21pt;font-weight:900;letter-spacing:.06em}
+.opts{display:flex;gap:5mm;margin-top:3.5mm}
+.opt{flex:1;border:1mm solid var(--green);border-radius:4mm;padding:4.5mm 5mm;background:#f4f8f4}
+.opt .t{font-size:15pt;font-weight:900;color:var(--green)}
+.opt p{font-size:11.5pt;line-height:1.5;margin-top:1.5mm}
+.items{display:flex;gap:5mm;margin-top:3.5mm}
+.item{flex:1;border:1mm solid var(--gold);border-radius:4mm;padding:4mm 2mm;text-align:center;background:#fdf8ec}
+.item .ic{font-size:26pt;line-height:1.2}
+.item .t{font-size:15pt;font-weight:900;margin-top:1mm}
+.item p{font-size:9.5pt;color:#555;margin-top:.5mm}
+.flowline{display:flex;align-items:center;gap:4mm;margin-top:3.5mm}
+.fbox{flex:1;border:1mm solid var(--green);border-radius:4mm;padding:5mm 3mm;text-align:center;
+  font-size:15pt;font-weight:900;background:#f4f8f4}
+.fbox small{display:block;font-size:9.5pt;font-weight:500;color:#555;margin-top:1mm}
+.farrow{font-size:20pt;font-weight:900;color:var(--gold);flex:0 0 auto}
+.arrow-dn{text-align:center;font-size:19pt;font-weight:900;color:var(--gold);margin-top:4.5mm;line-height:1}
+
+.warn{margin-top:auto;background:var(--gold);color:#fff;border-radius:4mm;text-align:center;padding:5mm}
+.warn b{font-size:21pt;font-weight:900;letter-spacing:.06em}
+.warn span{display:block;font-size:11pt;margin-top:1mm}
+.foot{text-align:center;font-size:9.5pt;color:#888;margin-top:4mm;letter-spacing:.1em}
+
+/* 貴賓頁 */
+.vip .hd{border-color:var(--gold)}
+.vip .hd h1{color:var(--ink)}
+.bigstep{margin-top:9mm;display:flex;gap:7mm;align-items:stretch}
+.bigstep .stepno{background:var(--gold)}
+.bigstep .stepbody h2{font-size:23pt}
+.bigstep .stepbody p{font-size:13pt;color:#444;margin-top:2mm;line-height:1.6}
+.welcome{margin-top:auto;text-align:center;padding:6mm 0 2mm}
+.welcome b{font-size:19pt;font-weight:900;color:var(--green);letter-spacing:.15em}
+
+@media print{
+  body{background:#fff}
+  .sheet{margin:0;box-shadow:none}
+  @page{size:A4 portrait;margin:0}
+}
+</style>
+</head>
+<body>
+
+<!-- 第 1 張：會員報到・領票・投票 -->
+<div class="sheet">
+  <div class="hd">
+    <div class="org">TADA 台灣科技農企業發展協會・第六屆會員大會</div>
+    <h1>會員報到流程</h1>
+    <div class="sub">2026/9/4（五）15:00 開始報到</div>
+  </div>
+
+  <div class="step">
+    <div class="stepno"><b>1</b><span>報　到</span></div>
+    <div class="stepbody">
+      <h2>完成報到（二擇一）</h2>
+      <div class="opts">
+        <div class="opt">
+          <div class="t">📱 有帶手機</div>
+          <p>開啟 LINE 官方帳號選單<br><b>「電子會員證」</b><br>出示報到 QR Code 掃描</p>
+        </div>
+        <div class="opt">
+          <div class="t">🙋 沒帶手機</div>
+          <p>向服務人員報<br><b>手機號碼 或 公司統編</b><br>由服務人員產生 QR Code 協助報到</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-dn">▼</div>
+
+  <div class="step">
+    <div class="stepno"><b>2</b><span>領　取</span></div>
+    <div class="stepbody">
+      <h2>依報到單勾選項目領取</h2>
+      <div class="items">
+        <div class="item"><div class="ic">🪪</div><div class="t">名　牌</div><p>每位出席者</p></div>
+        <div class="item"><div class="ic">🎁</div><div class="t">禮　物</div><p>每位會員</p></div>
+        <div class="item"><div class="ic">🗳</div><div class="t">選　票</div><p>具投票權會員<br>（含受託代領）</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-dn">▼</div>
+
+  <div class="step">
+    <div class="stepno"><b>3</b><span>投　票</span></div>
+    <div class="stepbody">
+      <h2>領完票，馬上投票</h2>
+      <div class="flowline">
+        <div class="fbox">圈選選票<small>依票面說明畫「○」</small></div>
+        <div class="farrow">▶</div>
+        <div class="fbox">投入票箱</div>
+        <div class="farrow">▶</div>
+        <div class="fbox" style="background:#f4f8f4;color:var(--green)">完成！</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="warn">
+    <b>⚠ 報到・領票・投票，請於 15:30 前完成</b>
+    <span>逾時將無法領票投票，敬請把握時間</span>
+  </div>
+  <div class="foot">如有任何問題，請洽現場服務人員</div>
+</div>
+
+<!-- 第 2 張：貴賓報到 -->
+<div class="sheet vip">
+  <div class="hd">
+    <div class="org">TADA 台灣科技農企業發展協會・第六屆會員大會</div>
+    <h1>貴賓報到</h1>
+    <div class="sub">歡迎蒞臨指導</div>
+  </div>
+
+  <div class="bigstep">
+    <div class="stepno"><b>1</b><span>貴賓桌</span></div>
+    <div class="stepbody">
+      <h2>請至旁邊「貴賓接待桌」</h2>
+      <p>由接待人員為您服務</p>
+    </div>
+  </div>
+
+  <div class="arrow-dn">▼</div>
+
+  <div class="bigstep">
+    <div class="stepno"><b>2</b><span>簽　到</span></div>
+    <div class="stepbody">
+      <h2>貴賓簽到本 簽名 ✍</h2>
+      <p>並歡迎留下您的祝福話語</p>
+    </div>
+  </div>
+
+  <div class="arrow-dn">▼</div>
+
+  <div class="bigstep">
+    <div class="stepno"><b>3</b><span>領　取</span></div>
+    <div class="stepbody">
+      <h2>領取 名牌 🪪・禮物 🎁</h2>
+      <p>接待人員將引導您入座</p>
+    </div>
+  </div>
+
+  <div class="welcome"><b>智耕傳承・農業新世代　敬祝 賓主盡歡</b></div>
+  <div class="foot">如有任何問題，請洽現場服務人員</div>
+</div>
+
+</body>
+</html>
