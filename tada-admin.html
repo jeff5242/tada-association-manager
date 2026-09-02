@@ -4313,7 +4313,7 @@ function rsvpSortVal(r, key){
   switch(key){
     case 'name':   return r.display_name || '';
     case 'source': return (r.user_id||'').startsWith('web-') ? 1 : 0;  // LINE 先、網頁後
-    case 'cat':    { const l = classifyRsvp(r).label; return l==='會員'?0 : l==='貴賓'?1 : 2; }
+    case 'cat':    { const l = classifyRsvp(r).label; return l==='可投票會員'?0 : (l==='第六屆會員'||l==='會員')?1 : l==='貴賓'?2 : 3; }
     case 'att':    return r.attending ? 1 : 0;
     case 'head':   return r.attending ? (r.headcount||0) : -1;
     case 'veg':    return r.attending ? (r.vegetarian||0) : -1;
@@ -4409,6 +4409,8 @@ async function setRsvpTable(uid, val){
 }
 let rsvpMemberIndex = new Map();  // 正規化姓名 -> 顯示名
 let rsvpGuestIndex  = new Map();
+let rsvpVoteIndex   = new Map();  // 正規化姓名 -> 會員編號（第六屆投票名冊 can_vote）
+let rsvpVoteReady   = false;      // 投票名冊載入失敗時退回單純「會員」標示
 let rsvpIndexReady  = false;
 
 // 名冊比對用：正規化姓名（去空白、全半形統一、小寫）
@@ -4422,12 +4424,14 @@ function rsvpDetitle(s){ return String(s||'').replace(RSVP_TITLE_RE,''); }
 // 建立會員名冊／貴賓名單姓名索引（含團體代表人）
 async function buildRsvpIndex(){
   try{
-    const [mRes, gRes] = await Promise.all([
+    const [mRes, gRes, vRes] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/tada_members?select=name,contact_name,reps,company`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_guests?select=name`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&can_vote=eq.true&select=name,member_no`, { headers: SB_HEADERS }),
     ]);
     const members = mRes.ok ? await mRes.json() : [];
     const guests  = gRes.ok ? await gRes.json() : [];
+    const voters  = vRes.ok ? await vRes.json() : [];
     const mi = new Map(), gi = new Map();
     const add = (map, raw) => { const k = rsvpKey(raw); if(k && k.length >= 2 && !map.has(k)) map.set(k, String(raw).trim()); };
     // 會員索引另存公司：key -> { name, company }
@@ -4449,7 +4453,10 @@ async function buildRsvpIndex(){
         if(core) add(gi, rsvpDetitle(core));        // 首段再去職稱
       });
     });
-    rsvpMemberIndex = mi; rsvpGuestIndex = gi; rsvpIndexReady = true;
+    const vi = new Map();
+    voters.forEach(v => { const k = rsvpKey(v.name); if(k && k.length >= 2 && !vi.has(k)) vi.set(k, v.member_no); });
+    rsvpMemberIndex = mi; rsvpGuestIndex = gi; rsvpVoteIndex = vi;
+    rsvpVoteReady = vRes.ok; rsvpIndexReady = true;
   }catch(e){ console.warn('建立名冊索引失敗', e); rsvpIndexReady = false; }
 }
 
@@ -4460,7 +4467,12 @@ function classifyRsvp(r){
   const candidates = new Set([ rsvpKey(name), ...cjkRuns(name).map(rsvpKey) ]);
   const hit = (map) => { for(const k of candidates){ if(k && map.has(k)) return map.get(k); } return null; };
   const m = hit(rsvpMemberIndex);
-  if(m) return { label:'會員', bg:'rgba(46,125,50,0.2)', fg:'#66bb6a', company:(m.company||''), title:'比對到會員名冊：'+m.name+(m.company?('｜'+m.company):'') };
+  const vNo = rsvpVoteReady ? hit(rsvpVoteIndex) : null;
+  // 在第六屆投票名冊（依第5屆有效名冊）→ 可投票會員：領選票＋禮物；其餘會員 → 第六屆會員：僅領禮物
+  if(vNo) return { label:'可投票會員', bg:'rgba(46,125,50,0.2)', fg:'#66bb6a', company:(m&&m.company)||'', title:'第六屆投票名冊在冊（'+vNo+'）：報到領選票，出席可領禮物' };
+  if(m) return rsvpVoteReady
+    ? { label:'第六屆會員', bg:'rgba(224,160,32,0.18)', fg:'#e0b458', company:(m.company||''), title:'會員（無第六屆投票權）：出席可領禮物。名冊：'+m.name+(m.company?('｜'+m.company):'') }
+    : { label:'會員', bg:'rgba(46,125,50,0.2)', fg:'#66bb6a', company:(m.company||''), title:'比對到會員名冊：'+m.name+(m.company?('｜'+m.company):'')+'（投票名冊載入失敗，未區分投票權）' };
   const g = hit(rsvpGuestIndex);
   if(g) return { label:'貴賓', bg:'rgba(41,182,246,0.15)', fg:'#4fc3f7', company:'', title:'比對到貴賓名單：'+g };
   return { label:'其他', bg:'rgba(158,158,158,0.15)', fg:'var(--gray)', company:'', title:'名冊中查無此姓名（可能是眷屬、臨時來賓或暱稱）' };
@@ -4558,7 +4570,7 @@ function renderRsvp() {
     const cat = classifyRsvp(r);
     const orgTitle = [r.org, r.title].filter(Boolean).map(escapeHtml).join('　');
     // 會員：加列名冊登記的公司（若與填寫的單位不同才特別標「名冊」）
-    const memberCo = (cat.label === '會員' && cat.company && rsvpKey(cat.company) !== rsvpKey(r.org || ''))
+    const memberCo = (/會員/.test(cat.label) && cat.company && rsvpKey(cat.company) !== rsvpKey(r.org || ''))
       ? `<div style="font-size:11px;color:#66bb6a;font-weight:400;">🏢 ${escapeHtml(cat.company)}<span style="color:var(--gray);">（名冊）</span></div>` : '';
     const sub = [orgTitle, r.mobile ? '📱 ' + escapeHtml(r.mobile) : '']
       .filter(Boolean).map(s => `<div style="font-size:11px;color:var(--gray);font-weight:400;">${s}</div>`).join('') + memberCo;
