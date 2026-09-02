@@ -1450,6 +1450,20 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- LINE 使用者 ↔ 會員 手動配對 -->
+<div id="lm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeLinkMember()">
+  <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:22px 24px;width:460px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column;">
+    <h3 style="color:var(--gold-lt);font-size:16px;margin-bottom:2px;">配對會員</h3>
+    <p style="font-size:12px;color:var(--gray);margin-bottom:12px;">LINE 使用者：<b id="lm-who" style="color:var(--white);"></b></p>
+    <input id="lm-q" class="search-input" placeholder="輸入姓名／編號／單位搜尋會員" oninput="renderLinkMember()" style="width:100%;margin-bottom:10px;">
+    <div id="lm-list" style="overflow:auto;flex:1;display:flex;flex-direction:column;gap:4px;min-height:120px;"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
+      <button class="btn btn-sm" id="lm-unlink" style="display:none;background:rgba(192,57,43,0.15);color:#ef5350;border:1px solid rgba(192,57,43,0.35);" onclick="unlinkMember()">解除配對</button>
+      <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="closeLinkMember()">關閉</button>
+    </div>
+  </div>
+</div>
+
 <!-- 會員報到列表：領取項目即時概況（名片/會員禮/選票/委託票，資料來源 /assist/ 勾記） -->
 <div id="ck-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeCheckList()">
   <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:20px 22px;width:1080px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;">
@@ -4435,10 +4449,62 @@ function renderLineUsers() {
       <td data-label="使用者"><div style="display:flex;align-items:center;gap:8px;">${pic}<span style="color:var(--white);">${name}</span></div></td>
       <td data-label="userId"><code onclick="copyUserId('${uid}')" title="點擊複製" style="font-size:10px;color:var(--gray);cursor:pointer;word-break:break-all;">${uid}</code></td>
       <td data-label="互動" style="font-size:12px;color:var(--gray);">${u.message_count ?? 0} 次</td>
-      <td data-label="會員" style="text-align:center;"><input type="checkbox" ${ckMember} onchange="toggleUserFlag('${uid}','is_member',this.checked,this)">${u.member_name?`<div onclick="gotoMemberDir('${escapeHtml(u.member_no||u.member_name)}')" title="點擊到會員名冊查看" style="cursor:pointer;font-size:11px;color:#66bb6a;font-weight:700;white-space:nowrap;text-decoration:underline dotted;">${escapeHtml(u.member_name)}<span style="color:var(--gray);font-weight:400;"> ${escapeHtml(u.member_no||'')}</span></div>`:''}</td>
+      <td data-label="會員" style="text-align:center;"><input type="checkbox" ${ckMember} onchange="toggleUserFlag('${uid}','is_member',this.checked,this)">${u.member_name
+        ?`<div style="white-space:nowrap;font-size:11px;"><span onclick="gotoMemberDir('${escapeHtml(u.member_no||u.member_name)}')" title="點擊到會員名冊查看" style="cursor:pointer;color:#66bb6a;font-weight:700;text-decoration:underline dotted;">${escapeHtml(u.member_name)}<span style="color:var(--gray);font-weight:400;"> ${escapeHtml(u.member_no||'')}</span></span> <span onclick="openLinkMember('${uid}')" title="重新配對" style="cursor:pointer;color:var(--gray);">✎</span></div>`
+        :`<div style="margin-top:3px;"><button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;" onclick="openLinkMember('${uid}')">🔗 配對會員</button></div>`}</td>
       <td data-label="管理人員" style="text-align:center;"><input type="checkbox" ${ckAdmin} onchange="toggleUserFlag('${uid}','is_admin',this.checked,this)"></td>
     </tr>`;
   }).join('');
+}
+
+/* 手動配對：知道這個 LINE 帳號是誰時，直接指定會員寫入 member_no/member_name */
+let lmTarget=null, lmMembers=null;
+async function openLinkMember(uid){
+  lmTarget=allLineUsers.find(u=>u.user_id===uid); if(!lmTarget) return;
+  document.getElementById('lm-who').textContent=lmTarget.display_name||uid;
+  document.getElementById('lm-unlink').style.display=lmTarget.member_name?'':'none';
+  document.getElementById('lm-q').value='';
+  if(!lmMembers){
+    const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,company,reps,hidden&order=member_no`,{headers:SB_HEADERS});
+    const rows=(r.ok?await r.json():[]).filter(m=>!m.hidden);
+    lmMembers=[];
+    rows.forEach(m=>{
+      lmMembers.push({no:m.member_no||'',name:m.name||'',org:m.company||'',tag:''});
+      (m.reps||[]).forEach(rp=>{ if(rp&&rp.name) lmMembers.push({no:m.member_no||'',name:rp.name,org:m.company||m.name||'',tag:'代表'}); });
+    });
+  }
+  renderLinkMember();
+  document.getElementById('lm-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('lm-q').focus(),60);
+}
+function closeLinkMember(){ document.getElementById('lm-modal').style.display='none'; lmTarget=null; }
+function renderLinkMember(){
+  const q=(document.getElementById('lm-q').value||'').trim().toLowerCase();
+  const box=document.getElementById('lm-list');
+  const hit=(lmMembers||[]).filter(m=>!q||((m.name+m.no+m.org).toLowerCase().includes(q))).slice(0,30);
+  box.innerHTML=hit.length?hit.map(m=>`<div onclick="linkMember('${escapeHtml(m.no)}','${escapeHtml(m.name)}')"
+      style="cursor:pointer;padding:8px 11px;border:1px solid var(--border);border-radius:8px;display:flex;gap:8px;align-items:center;">
+      <b style="color:var(--white);">${escapeHtml(m.name)}</b>${m.tag?`<span style="font-size:10px;color:var(--gold-lt);">${m.tag}</span>`:''}
+      <span style="font-size:11px;color:var(--gray);">${escapeHtml(m.no)}　${escapeHtml(m.org)}</span></div>`).join('')
+    :'<div style="text-align:center;color:var(--gray);padding:20px;font-size:12px;">查無會員，換個關鍵字</div>';
+}
+async function linkMember(no,name){
+  if(!lmTarget) return;
+  const r=await fetch(`${SB_URL}/rest/v1/tada_line_users?user_id=eq.${encodeURIComponent(lmTarget.user_id)}`,
+    {method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},
+     body:JSON.stringify({member_no:no,member_name:name,is_member:true})});
+  if(!r.ok){ alert('寫入失敗 HTTP '+r.status); return; }
+  lmTarget.member_no=no; lmTarget.member_name=name; lmTarget.is_member=true;
+  closeLinkMember(); renderLineUsers();
+}
+async function unlinkMember(){
+  if(!lmTarget || !confirm('解除「'+(lmTarget.display_name||'')+'」與會員 '+(lmTarget.member_name||'')+' 的配對？')) return;
+  const r=await fetch(`${SB_URL}/rest/v1/tada_line_users?user_id=eq.${encodeURIComponent(lmTarget.user_id)}`,
+    {method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},
+     body:JSON.stringify({member_no:null,member_name:null,is_member:false})});
+  if(!r.ok){ alert('寫入失敗 HTTP '+r.status); return; }
+  lmTarget.member_no=null; lmTarget.member_name=null; lmTarget.is_member=false;
+  closeLinkMember(); renderLineUsers();
 }
 
 // 點 LINE 使用者列上的會員名字 → 跳到會員名冊並以編號過濾
