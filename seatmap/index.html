@@ -80,6 +80,24 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--paper);color:var(--i
 .toast b{color:var(--gold-lt)}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .load{text-align:center;color:var(--muted);padding:60px 0}
+/* 列表檢視 */
+.lst{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lst th,.lst td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px;text-align:left;vertical-align:middle}
+.lst th{background:var(--green);color:var(--gold-lt);font-size:12px;font-weight:700;letter-spacing:.08em;white-space:nowrap}
+.lst tr:last-child td{border-bottom:none}
+.lst .no{font-family:'Noto Serif TC',serif;font-size:17px;font-weight:900;color:var(--green);white-space:nowrap}
+.lst .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;font-size:15px}
+.lst .done{color:var(--gold);font-weight:700}
+.lst .left{color:var(--muted)}
+.lst tr.allin{background:rgba(184,145,58,.08)}
+.lst tr.allin .left{color:var(--gold);font-weight:700}
+.lst tr.zero .num{color:var(--muted)}
+.lst tr.total{background:var(--paper);font-weight:700}
+.lst tr.total td{border-top:2px solid var(--gold)}
+.bar{width:120px;height:8px;border-radius:99px;background:#eee7d6;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold);border-radius:99px;transition:width .4s}
+.wl{font-size:12px;color:var(--muted);line-height:1.8;word-break:break-all}
+.wl b{color:var(--green);font-weight:500}
 @media(max-width:720px){ .wrap{padding:12px} .round{width:270px;height:270px} .plate{inset:78px} }
 </style>
 </head>
@@ -108,6 +126,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--paper);color:var(--i
 
   <div class="tools">
     <input id="q" placeholder="🔍 找人（顯示在哪一桌）" autocomplete="off" oninput="render()">
+    <button class="btn" id="b-view" onclick="toggleView()">☰ 列表檢視</button>
     <button class="btn" id="b-num" onclick="toggleNum()">顯示座號</button>
     <button class="btn" id="b-wait" onclick="toggleWait()">只看未報到</button>
     <button class="btn" onclick="load(true)">↻ 立即更新</button>
@@ -131,6 +150,7 @@ const ELECTION='66666666-6666-4666-8666-666666666666';
 const FLOOR=[[2,1,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],[16,17,18,19],[20,21,22,23]];
 
 let TCFG={}, ORDER={}, rows=[], lastIn=new Set(), showNum=false, waitOnly=false, timer=null;
+let listView=(localStorage.getItem('tada_seatmap_view')==='list');
 
 function tryPw(){
   if(document.getElementById('pw').value.trim()===PW){ localStorage.setItem(KEY,'1'); show(); }
@@ -178,6 +198,11 @@ async function load(manual){
   }catch(e){ document.getElementById('tick').textContent='更新失敗：'+e.message; }
 }
 
+function toggleView(){
+  listView=!listView;
+  localStorage.setItem('tada_seatmap_view', listView?'list':'map');
+  render();
+}
 function toggleNum(){ showNum=!showNum; document.getElementById('b-num').classList.toggle('on',showNum); render(); }
 function toggleWait(){ waitOnly=!waitOnly; document.getElementById('b-wait').classList.toggle('on',waitOnly); render(); }
 
@@ -192,6 +217,7 @@ function seatOrder(table, list){
 }
 
 function render(manual){
+  const listRender=listView;
   const q=cl(document.getElementById('q').value);
   const by={}; rows.forEach(r=>{ (by[r.table]=by[r.table]||[]).push(r); });
   const total=rows.length, inCnt=rows.filter(r=>r.inn).length;
@@ -212,6 +238,11 @@ function render(manual){
       box.appendChild(el); setTimeout(()=>el.remove(), 6000);
     });
   }
+
+  document.getElementById('b-view').textContent = listRender ? '⚉ 圖形檢視' : '☰ 列表檢視';
+  document.getElementById('b-num').style.display = listRender ? 'none' : '';
+  document.getElementById('body').className = listRender ? '' : 'grid';
+  if(listRender){ renderList(by, q, fresh); return; }
 
   const listed=new Set([].concat(...FLOOR));
   const extra=Object.keys(by).filter(t=>!listed.has(tnum(t))).sort((a,b)=>tnum(a)-tnum(b));
@@ -250,6 +281,45 @@ function render(manual){
     html+='</div>';
   });
   document.getElementById('body').innerHTML = html || '<div class="load" style="grid-column:1/-1;">目前沒有已排桌的資料</div>';
+}
+
+/* 列表檢視：一列一桌，看得到已到／應到／剩餘與未到者，適合報到台盯進度 */
+function renderList(by, q, fresh){
+  const listed=new Set([].concat(...FLOOR));
+  const extra=Object.keys(by).filter(t=>!listed.has(tnum(t))).sort((a,b)=>tnum(a)-tnum(b));
+  const seq=[].concat(...FLOOR).map(n=>'第'+n+'桌').filter(t=>by[t]).concat(extra);
+  let tin=0, tall=0;
+  const body=seq.map(t=>{
+    const list=seatOrder(t, by[t]);
+    const n=list.length, done=list.filter(r=>r.inn).length, left=n-done;
+    tin+=done; tall+=n;
+    const c=TCFG[t]||{}, lb=cl(c.label);
+    const waits=list.filter(r=>!r.inn);
+    const names=waits.map(r=>{
+      const hit=q && r.name.includes(q);
+      return `<b style="${hit?'background:#fff2b8;border-radius:3px;padding:0 2px;':''}">${esc(r.name)}</b>`;
+    }).join('、');
+    const pct=n?Math.round(done/n*100):0;
+    return `<tr class="${done===n?'allin':''}${done===0?' zero':''}">
+      <td class="no">${esc(t)}</td>
+      <td style="font-size:12.5px;color:var(--gold);">${esc(lb||'—')}</td>
+      <td class="num done">${done}</td>
+      <td class="num">${n}</td>
+      <td class="num left">${left||'—'}</td>
+      <td><div class="bar"><i style="width:${pct}%"></i></div></td>
+      <td class="wl">${left? names : '<span style="color:var(--gold);">✓ 全數到齊</span>'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('body').innerHTML = `
+    <table class="lst">
+      <thead><tr><th>桌號</th><th>主題</th><th>已到</th><th>應到</th><th>剩餘</th><th>報到進度</th><th>未到人員</th></tr></thead>
+      <tbody>${body}
+        <tr class="total"><td class="no">合計</td><td></td>
+          <td class="num done">${tin}</td><td class="num">${tall}</td><td class="num left">${tall-tin}</td>
+          <td><div class="bar"><i style="width:${tall?Math.round(tin/tall*100):0}%"></i></div></td>
+          <td class="wl">${tall-tin} 位尚未報到</td></tr>
+      </tbody>
+    </table>`;
 }
 
 document.getElementById('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') tryPw(); });
