@@ -1678,15 +1678,19 @@ async function loadMembers(){
   const status = document.getElementById('sb-status');
   if(status){ status.style.color='var(--gray)'; status.textContent='載入中…'; }
   try {
-    const base = 'id,member_no,member_type,name,company,company_status,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,addr_domicile,birthday,edu,expertise,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name,tax_id,id_number,line_user_id';
+    const base = 'id,member_no,member_type,name,company,company_status,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,addr_domicile,birthday,edu,expertise,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name,tax_id,id_number,line_user_id,hidden';
     // 先試帶 admin_enabled；欄位未建則退回不帶（名冊照常可用）
     let res = await fetch(`${SB_URL}/rest/v1/tada_members?select=${base},admin_enabled&order=member_no.asc.nullslast`, {headers: SB_HEADERS});
     if(res.ok){ adminColReady = true; }
     else { adminColReady = false; res = await fetch(`${SB_URL}/rest/v1/tada_members?select=${base}&order=member_no.asc.nullslast`, {headers: SB_HEADERS}); }
     if(!res.ok) throw new Error('HTTP '+res.status);
-    memberRows = await res.json();
+    // hidden 的是重複／已併入其他會籍的舊列，保留資料但不列入名冊與統計
+    const all = await res.json();
+    const hiddenN = all.filter(m=>m.hidden).length;
+    memberRows = all.filter(m=>!m.hidden);
     renderMemberDir();
-    if(status){ status.style.color='#66bb6a'; status.textContent=`✓ ${memberRows.length} 位`; }
+    if(status){ status.style.color='#66bb6a';
+      status.textContent=`✓ ${memberRows.length} 位`+(hiddenN?`（另有 ${hiddenN} 筆已隱藏）`:''); }
   } catch(e) {
     if(status){ status.style.color='#ef5350'; status.textContent='載入失敗：'+e.message; }
   }
