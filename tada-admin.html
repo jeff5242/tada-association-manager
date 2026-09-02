@@ -460,7 +460,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 
   <div class="toolbar">
-    <input class="search-input" type="text" placeholder="搜尋 會員編號、姓名、單位、電話、Email…" oninput="filterMemberDir(this.value)">
+    <input class="search-input" type="text" id="member-dir-search" placeholder="搜尋 會員編號、姓名、單位、電話、Email…" oninput="filterMemberDir(this.value)">
     <select class="filter-select" onchange="filterMemberType(this.value)">
       <option value="">全部類型</option>
       <option value="personal">個人會員</option>
@@ -4435,10 +4435,18 @@ function renderLineUsers() {
       <td data-label="使用者"><div style="display:flex;align-items:center;gap:8px;">${pic}<span style="color:var(--white);">${name}</span></div></td>
       <td data-label="userId"><code onclick="copyUserId('${uid}')" title="點擊複製" style="font-size:10px;color:var(--gray);cursor:pointer;word-break:break-all;">${uid}</code></td>
       <td data-label="互動" style="font-size:12px;color:var(--gray);">${u.message_count ?? 0} 次</td>
-      <td data-label="會員" style="text-align:center;"><input type="checkbox" ${ckMember} onchange="toggleUserFlag('${uid}','is_member',this.checked,this)">${u.member_name?`<div style="font-size:11px;color:#66bb6a;font-weight:700;white-space:nowrap;">${escapeHtml(u.member_name)}<span style="color:var(--gray);font-weight:400;"> ${escapeHtml(u.member_no||'')}</span></div>`:''}</td>
+      <td data-label="會員" style="text-align:center;"><input type="checkbox" ${ckMember} onchange="toggleUserFlag('${uid}','is_member',this.checked,this)">${u.member_name?`<div onclick="gotoMemberDir('${escapeHtml(u.member_no||u.member_name)}')" title="點擊到會員名冊查看" style="cursor:pointer;font-size:11px;color:#66bb6a;font-weight:700;white-space:nowrap;text-decoration:underline dotted;">${escapeHtml(u.member_name)}<span style="color:var(--gray);font-weight:400;"> ${escapeHtml(u.member_no||'')}</span></div>`:''}</td>
       <td data-label="管理人員" style="text-align:center;"><input type="checkbox" ${ckAdmin} onchange="toggleUserFlag('${uid}','is_admin',this.checked,this)"></td>
     </tr>`;
   }).join('');
+}
+
+// 點 LINE 使用者列上的會員名字 → 跳到會員名冊並以編號過濾
+function gotoMemberDir(q){
+  switchTab('members');
+  const go=()=>{ const inp=document.getElementById('member-dir-search');
+    if(inp){ inp.value=q; filterMemberDir(q); } };
+  go(); setTimeout(go, 900);   // 名冊若還在載入，載完再過濾一次
 }
 
 /* LINE 使用者 ↔ 會員比對：①電子會員證綁定（最可靠）②本名/代表名 出現在暱稱中。
