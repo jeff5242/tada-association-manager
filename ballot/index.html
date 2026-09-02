@@ -471,11 +471,11 @@ function build(preview){
   // A4 一頁可用高度有限：列數多時自動壓縮列高與姓名字級，確保不溢頁
   const totalRows=list.length+wn;
   // 尺寸以 headless Chrome 實測校準：在不壓到定位標記的前提下取最大值
-  const rh  = totalRows<=4 ? 16 : (totalRows<=8 ? 13 : (totalRows<=12 ? 10.5 : (totalRows<=15 ? 8.4 : 7.0)));
-  const fs  = Math.min(24, Math.round(rh*1.9));
-  const nfs = totalRows<=12 ? 15 : 13;
-  const bw  = 13;
-  const bh  = Math.max(5.5, rh-2);
+  const rh  = totalRows<=4 ? 22 : (totalRows<=8 ? 17 : (totalRows<=12 ? 11.6 : (totalRows<=15 ? 9.0 : 7.2)));
+  const fs  = Math.min(30, Math.round(rh*1.9));
+  const nfs = totalRows<=12 ? 16 : 13;
+  const bw  = totalRows<=8 ? 16 : 13;
+  const bh  = Math.max(5.5, rh-2.5);
   if(totalRows>20){ alert(`候選人 ${list.length} 位 + 自填 ${wn} 欄 = ${totalRows} 列，單頁放不下，請減少自填欄。`); return; }
 
   // 姓名兩端對齊：以最長姓名決定欄寬，短姓名首尾字仍對齊同一直線
