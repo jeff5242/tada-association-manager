@@ -154,6 +154,13 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
   display:flex;align-items:center;gap:13px}
 .zh::after{content:"";flex:1;height:1px;background:var(--line)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.bsec{margin-top:26px;padding-top:16px;border-top:1px solid rgba(255,255,255,.12)}
+.bsec .zh small{font-weight:400;font-size:12px;color:var(--muted)}
+.fwrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.fchip{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:5px 12px;font-size:12.5px}
+.fchip small{font-size:10px;color:var(--muted)}
+.f-forum{background:rgba(79,195,247,.08);border:1px solid rgba(79,195,247,.35)}
+.f-decl{background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.35)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:13px;overflow:hidden;
   display:flex;flex-direction:column;break-inside:avoid}
 .card.theme{border-color:var(--gold);box-shadow:inset 4px 0 0 var(--gold)}
@@ -336,21 +343,23 @@ const deTitle=n=>TITLES.reduce((t,x)=>t.split(x).join(''), String(n||'').replace
 
 async function load(){
   try{
-    const [r1,r2,r3,r4,r5]=await Promise.all([
+    const [r1,r2,r3,r4,r5,r6]=await Promise.all([
       fetch(`${SB}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=display_name,org,title,note,companions,headcount,vegetarian,table_no,meal&limit=500`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_guests?seat=not.is.null&select=name,org,title,seat,party_size,note,checked_in&limit=400`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_members?select=name,member_type,terms,reps,company&limit=1000`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${BALLOT}&select=name,is_checked_in&limit=400`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_config?key=eq.${CFG_KEY}&select=value`,{headers:H()}),
+      fetch(`${SB}/rest/v1/tada_rsvp?attending=eq.false&hidden=eq.false&select=display_name,org,title&order=updated_at.desc&limit=200`,{headers:H()}),
     ]);
     const rs=r1.ok?await r1.json():[], gs=r2.ok?await r2.json():[], ms=r3.ok?await r3.json():[], vm=r4.ok?await r4.json():[];
+    const ds=r6&&r6.ok?await r6.json():[];
     try{ const cf=r5&&r5.ok?await r5.json():[]; TCFG=cf.length?JSON.parse(cf[0].value||'{}'):{}; }catch(e){ TCFG={}; }
-    render(rs,gs,ms,vm);
+    render(rs,gs,ms,vm,ds);
     document.getElementById('s-time').textContent='更新於 '+new Date().toLocaleTimeString('zh-TW',{hour12:false});
   }catch(e){ document.getElementById('s-time').textContent='更新失敗，請檢查網路'; }
 }
 
-function render(rs,gs,ms,vm){
+function render(rs,gs,ms,vm,ds){
   const ind=new Set(), grp=new Set(), b5=new Set(), comp={};
   ms.forEach(m=>{
     const nm=(m.name||'').trim(), co=(m.company||m.name||'').trim();
@@ -364,7 +373,7 @@ function render(rs,gs,ms,vm){
   const P=[], forumOnly=[];
   rs.forEach(r=>{const n=(r.display_name||'').trim();
     // meal='no'＝只出席論壇不入席：不佔椅子、不佔桌，另行備註
-    if(r.meal==='no'){ forumOnly.push({n,h:r.headcount||1}); return; }
+    if(r.meal==='no'){ forumOnly.push({n,h:r.headcount||1,ti:clean(r.title),o:clean(r.org)||comp[n]||''}); return; }
     P.push({n,ti:clean(r.title),o:clean(r.org)||comp[n]||'',note:clean(r.note),cmp:clean(r.companions),
             h:r.headcount||1,veg:r.vegetarian||0,t:r.table_no||'未排'});});
   // 出席資料以 tada_rsvp 為準：兩張表都有的人只畫一次，否則同一人會出現在兩張桌卡
@@ -392,8 +401,6 @@ function render(rs,gs,ms,vm){
   const total=P.reduce((s,p)=>s+p.h,0);
   document.getElementById('s-people').textContent=total;
   const forumH=forumOnly.reduce((s2,p)=>s2+p.h,0);
-  document.getElementById('s-people-note').textContent = forumH
-    ? `＝椅子數（另 ${forumH} 位僅論壇不入席）` : '＝椅子數';
   document.getElementById('s-tables').textContent=Object.keys(by).filter(t=>t!=='未排').length;
   const ckd=P.filter(p=>p.ok).reduce((s,p)=>s+p.h,0);
   document.getElementById('s-checked').textContent=ckd;
@@ -403,7 +410,7 @@ function render(rs,gs,ms,vm){
   const CAP_TABLES=23, CAP_PER=10, SPARE_TABLES=1;
   const totalVeg=P.reduce((s,p)=>s+p.veg,0);
   document.getElementById('s-veg').textContent=totalVeg;
-  document.getElementById('s-people-note').textContent=`＝${total} 張椅子`;
+  document.getElementById('s-people-note').textContent=`＝${total} 張椅子`+(forumH?`・另 ${forumH} 位僅論壇`:'');
   const left=CAP_TABLES*CAP_PER-(total-totalVeg);
   const el=document.getElementById('s-left');
   el.textContent=left;
@@ -434,6 +441,16 @@ function render(rs,gs,ms,vm){
     }).join('');
     if(cards) html+=`<section class="zone"><h2 class="zh">${esc(zn)}</h2><div class="grid">${cards}</div></section>`;
   });
+  // 底部分類名單：與後台「桌次規劃」相同的統計說明方式
+  const fchip=(icon,n,sub,cls)=>`<span class="fchip ${cls}">${icon} ${esc(n)}${sub?`<small>${esc(sub)}</small>`:''}</span>`;
+  if(forumOnly.length){
+    html+=`<section class="bsec"><h2 class="zh">🎤 只出席論壇・不入席 <small>（${forumH} 位・不佔桌位、不計餐數，名牌仍需製作）</small></h2>
+      <div class="fwrap">${forumOnly.map(p=>fchip('🎤',p.n,[p.ti,p.o].filter(Boolean).join(' · '),'f-forum')).join('')}</div></section>`;
+  }
+  if(ds&&ds.length){
+    html+=`<section class="bsec"><h2 class="zh">✕ 回覆不克出席 <small>（${ds.length} 位・不排桌、不計人數）</small></h2>
+      <div class="fwrap">${ds.map(g=>fchip('✕',g.display_name,[clean(g.title),clean(g.org)].filter(Boolean).join(' · '),'f-decl')).join('')}</div></section>`;
+  }
   document.getElementById('body').innerHTML=html;
   renderFloor(by,heads,vegs);
   renderThemeRule();
