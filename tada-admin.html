@@ -4313,7 +4313,7 @@ function rsvpSortVal(r, key){
   switch(key){
     case 'name':   return r.display_name || '';
     case 'source': return (r.user_id||'').startsWith('web-') ? 1 : 0;  // LINE 先、網頁後
-    case 'cat':    { const l = classifyRsvp(r).label; return l==='可投票會員'?0 : (l==='第六屆會員'||l==='會員')?1 : l==='貴賓'?2 : 3; }
+    case 'cat':    { const l = classifyRsvp(r).label; return l==='會員'?0 : l==='第六屆會員'?1 : l==='貴賓'?2 : 3; }
     case 'att':    return r.attending ? 1 : 0;
     case 'head':   return r.attending ? (r.headcount||0) : -1;
     case 'veg':    return r.attending ? (r.vegetarian||0) : -1;
@@ -4469,7 +4469,7 @@ function classifyRsvp(r){
   const m = hit(rsvpMemberIndex);
   const vNo = rsvpVoteReady ? hit(rsvpVoteIndex) : null;
   // 在第六屆投票名冊（依第5屆有效名冊）→ 可投票會員：領選票＋禮物；其餘會員 → 第六屆會員：僅領禮物
-  if(vNo) return { label:'可投票會員', bg:'rgba(46,125,50,0.2)', fg:'#66bb6a', company:(m&&m.company)||'', title:'第六屆投票名冊在冊（'+vNo+'）：報到領選票，出席可領禮物' };
+  if(vNo) return { label:'會員', bg:'rgba(46,125,50,0.2)', fg:'#66bb6a', company:(m&&m.company)||'', title:'可投票會員｜第六屆投票名冊在冊（'+vNo+'）：報到領選票，出席可領禮物' };
   if(m) return rsvpVoteReady
     ? { label:'第六屆會員', bg:'rgba(224,160,32,0.18)', fg:'#e0b458', company:(m.company||''), title:'會員（無第六屆投票權）：出席可領禮物。名冊：'+m.name+(m.company?('｜'+m.company):'') }
     : { label:'會員', bg:'rgba(46,125,50,0.2)', fg:'#66bb6a', company:(m.company||''), title:'比對到會員名冊：'+m.name+(m.company?('｜'+m.company):'')+'（投票名冊載入失敗，未區分投票權）' };
