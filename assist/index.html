@@ -108,6 +108,11 @@ header .st{margin-left:auto;font-size:11.5px;color:var(--muted);text-align:right
 .pick.on .pk-lb{color:#9fd3aa}
 .pk-t{font-size:11.5px;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
 .pk-note{font-size:11.5px;color:var(--gold-lt);padding:8px 2px 8px;border-top:1px dashed var(--line)}
+
+/* 電子會員證綁定小抄 */
+.bindinfo{margin-top:12px;text-align:left;background:rgba(79,195,247,.06);border:1px solid rgba(79,195,247,.3);border-radius:12px;padding:11px 14px;font-size:12px;line-height:1.9;color:var(--muted)}
+.bindinfo b{color:var(--ink)}
+.bindinfo .t{color:#7ec3e8;font-weight:700;letter-spacing:.1em;font-size:11px;margin-bottom:2px}
 .done-mark{font-size:44px;margin-bottom:6px}
 </style>
 </head>
@@ -205,7 +210,7 @@ async function loadAll(){
   try{
     const BASE='member_no,name,rep,company,member_type,can_vote,is_checked_in';
     const [r2,r3]=await Promise.all([
-      fetch(`${SB}/rest/v1/tada_members?select=member_no,name,company,title,mobile,phone_office,contact_phone,member_type,status,reps,hidden`,{headers:SBH}),
+      fetch(`${SB}/rest/v1/tada_members?select=member_no,name,company,title,mobile,phone_office,contact_phone,member_type,status,reps,hidden,tax_id`,{headers:SBH}),
       fetch(`${SB}/rest/v1/tada_rsvp?select=display_name,table_no&hidden=is.false`,{headers:SBH}),
     ]);
     // checkin_source / pickup 欄位尚未建立時 PostgREST 會回 400，逐步退回
@@ -240,7 +245,7 @@ function buildPeople(){
              title:(idx>0?((m.reps||[])[idx-1]||{}).title:m.title)||'',
              isGroup:v.member_type==='group'||no.includes('-'),
              canVote:v.can_vote!==false, checked:!!v.is_checked_in,
-             pickup:v.pickup||{}, proxy:null,
+             pickup:v.pickup||{}, proxy:null, tax:(m.tax_id||'').trim(),
              source:v.checkin_source||'', table:tableOf.get(name)||'',
              key:(name+' '+org+' '+no+' '+digits(tel)).toLowerCase() };
   }).sort((a,b)=>a.no.localeCompare(b.no,'en',{numeric:true}));
@@ -288,6 +293,15 @@ function openDetail(no){
   window.scrollTo(0,0);
   if(p.proxy===null||p.proxy===undefined) loadProxy(p);   // 背景補查委託資料，回來後刷新領取清單
 }
+/* 會員問「電子會員證怎麼綁不了」時，服務人員照這張小抄唸給他填。
+   綁定比對吃「姓名＋公司或統編」，電話沒有用（電話只能在報到機查詢）。 */
+function bindInfoHTML(p){
+  return `<div class="bindinfo"><div class="t">📇 電子會員證綁定小抄（LINE →電子會員證）</div>
+    姓名請輸入：<b>${esc(p.name)}</b>（要跟名冊一字不差）<br>
+    ${p.org?`公司欄輸入：<b>${esc(p.org)}</b>`:''}${p.tax?`　或統編：<b>${esc(p.tax)}</b>`:''}
+    ${(!p.org&&!p.tax)?'<br>⚠ 名冊沒有公司與統編，若遇重名會綁不了，請回報秘書處':''}
+    <br><span style="opacity:.75">※ 電話不能用來綁定，只能在報到機查詢身分</span></div>`;
+}
 function detailBodyHTML(p){
   if(p.checked){
     const SRC={card:'LINE 電子會員證',slip:'預先列印報到單',staff:'服務人員產生',manual:'報到機手動輸入',unknown:'未記錄'};
@@ -296,12 +310,14 @@ function detailBodyHTML(p){
       <div class="howto">報到方式：${esc(SRC[p.source]||'未記錄')}<br>
         ${p.table?'座位：'+esc(p.table)+'<br>':''}如需重新列印入座單，請洽報到機服務人員。</div>
       <div id="picks-wrap">${picksHTML(p)}</div>
+      ${bindInfoHTML(p)}
       <div class="act"><button class="btn btn-out" onclick="closeDetail()">返回查詢</button></div>
       <div id="d-msg"></div>`;
   }
   return `<div class="qrbox"><div id="qr"></div></div>
     <div class="qrsrc">🧑‍💼 服務人員產生的報到碼</div>
     <div id="picks-wrap">${picksHTML(p)}</div>
+    ${bindInfoHTML(p)}
     <div class="howto">請將此畫面拿給<b>報到機</b>掃描，即完成報到並列印入座單。<br>
       螢幕亮度調到最亮會比較好掃。</div>
     <div class="act">
