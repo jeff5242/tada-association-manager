@@ -1254,6 +1254,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="section-title">💬 LINE 使用者名單</div>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
       <button class="btn btn-outline btn-sm" onclick="loadLineUsers()">↻ 重新載入</button>
+      <button class="btn btn-outline btn-sm" onclick="matchLineMembers()">🔗 比對會員</button>
       <span id="lu-sb-status" style="font-size:11px;"></span>
     </div>
   </div>
@@ -4434,10 +4435,51 @@ function renderLineUsers() {
       <td data-label="使用者"><div style="display:flex;align-items:center;gap:8px;">${pic}<span style="color:var(--white);">${name}</span></div></td>
       <td data-label="userId"><code onclick="copyUserId('${uid}')" title="點擊複製" style="font-size:10px;color:var(--gray);cursor:pointer;word-break:break-all;">${uid}</code></td>
       <td data-label="互動" style="font-size:12px;color:var(--gray);">${u.message_count ?? 0} 次</td>
-      <td data-label="會員" style="text-align:center;"><input type="checkbox" ${ckMember} onchange="toggleUserFlag('${uid}','is_member',this.checked,this)"></td>
+      <td data-label="會員" style="text-align:center;"><input type="checkbox" ${ckMember} onchange="toggleUserFlag('${uid}','is_member',this.checked,this)">${u.member_name?`<div style="font-size:11px;color:#66bb6a;font-weight:700;white-space:nowrap;">${escapeHtml(u.member_name)}<span style="color:var(--gray);font-weight:400;"> ${escapeHtml(u.member_no||'')}</span></div>`:''}</td>
       <td data-label="管理人員" style="text-align:center;"><input type="checkbox" ${ckAdmin} onchange="toggleUserFlag('${uid}','is_admin',this.checked,this)"></td>
     </tr>`;
   }).join('');
+}
+
+/* LINE 使用者 ↔ 會員比對：①電子會員證綁定（最可靠）②本名/代表名 出現在暱稱中。
+   比對到就把 member_no/member_name 寫進 tada_line_users——暱稱之後再改也認得出是誰。 */
+async function matchLineMembers(){
+  const st=document.getElementById('lu-sb-status');
+  if(!allLineUsers.length){ await loadLineUsers(); }
+  st.style.color='var(--gray)'; st.textContent='比對中…';
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,reps,line_user_id,hidden`,{headers:SB_HEADERS});
+    if(!r.ok) throw new Error('讀取會員名冊失敗');
+    const mems=(await r.json()).filter(m=>!m.hidden);
+    const byLine=new Map(); const names=[];
+    mems.forEach(m=>{
+      if(m.line_user_id) byLine.set(m.line_user_id,{no:m.member_no,name:m.name,how:'綁定'});
+      if(m.name&&m.name.length>=2) names.push({k:m.name,no:m.member_no,name:m.name});
+      (m.reps||[]).forEach(rp=>{ if(rp&&rp.name&&rp.name.length>=2) names.push({k:rp.name,no:m.member_no,name:rp.name}); });
+    });
+    names.sort((a,b)=>b.k.length-a.k.length);   // 長名字優先，避免二字名誤中
+    let hit=0,wrote=0;
+    for(const u of allLineUsers){
+      let who=byLine.get(u.user_id)||null;
+      if(!who){
+        const dn=String(u.display_name||'');
+        const found=names.find(n=>dn.includes(n.k));
+        if(found) who={no:found.no,name:found.name,how:'姓名比對'};
+      }
+      if(!who) continue;
+      hit++;
+      if(u.member_no!==who.no || u.member_name!==who.name || !u.is_member){
+        const w=await fetch(`${SB_URL}/rest/v1/tada_line_users?user_id=eq.${encodeURIComponent(u.user_id)}`,
+          {method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},
+           body:JSON.stringify({member_no:who.no,member_name:who.name,is_member:true})});
+        if(!w.ok) throw new Error('寫入失敗 HTTP '+w.status+'（member_no 欄位未建立？請先執行 tada_line_users_member.sql）');
+        u.member_no=who.no; u.member_name=who.name; u.is_member=true; wrote++;
+      }
+    }
+    renderLineUsers();
+    st.style.color='#66bb6a';
+    st.textContent=`✓ 比對完成：${hit}/${allLineUsers.length} 位對應到會員（本次記錄 ${wrote} 筆）`;
+  }catch(e){ st.style.color='#ef5350'; st.textContent='比對失敗：'+e.message; }
 }
 
 function copyUserId(uid) {
