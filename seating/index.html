@@ -394,7 +394,7 @@ function render(rs,gs,ms,vm){
   const forumH=forumOnly.reduce((s2,p)=>s2+p.h,0);
   document.getElementById('s-people-note').textContent = forumH
     ? `＝椅子數（另 ${forumH} 位僅論壇不入席）` : '＝椅子數';
-  document.getElementById('s-tables').textContent=Object.keys(by).length;
+  document.getElementById('s-tables').textContent=Object.keys(by).filter(t=>t!=='未排').length;
   const ckd=P.filter(p=>p.ok).reduce((s,p)=>s+p.h,0);
   document.getElementById('s-checked').textContent=ckd;
   document.getElementById('s-checked-note').textContent=total?`${Math.round(ckd/total*100)}%．共 ${total} 位`:'—';
