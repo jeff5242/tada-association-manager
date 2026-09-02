@@ -1158,6 +1158,14 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <input id="oc-title-in" autocomplete="off" placeholder="例如：董事長、總經理" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:15px;outline:none;margin-bottom:12px;">
       <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">單位</label>
       <input id="oc-org" autocomplete="off" placeholder="公司／機構名稱" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:15px;outline:none;margin-bottom:12px;">
+      <div id="oc-att-wrap">
+        <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">出席狀態</label>
+        <select id="oc-att" class="filter-select" style="width:100%;padding:11px 12px;font-size:15px;margin-bottom:12px;" onchange="occAttChange()">
+          <option value="yes">✓ 出席・入席用餐</option>
+          <option value="forum">🎤 出席・只出席論壇不入席（不佔桌、不計餐）</option>
+          <option value="no">✕ 不克出席</option>
+        </select>
+      </div>
       <label style="font-size:12px;color:var(--gold-lt);font-weight:700;display:block;margin-bottom:6px;">桌次</label>
       <select id="oc-table" class="filter-select" style="width:100%;padding:11px 12px;font-size:15px;margin-bottom:18px;"></select>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -1235,6 +1243,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="section-title" style="font-size:15px;margin-bottom:10px;">🪑 尚未排桌 <span id="seat-un-count" style="font-size:12px;color:var(--gray);"></span></div>
     <div id="seating-unassigned" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
     <div id="seating-nomeal"></div>
+    <div id="seating-declined"></div>
     <div id="seating-pending"></div>
   </div>
 </div>
@@ -4929,7 +4938,7 @@ async function submitRsvpProxy(){
 }
 
 // ══════════ 桌次規劃 ══════════
-let seatGuests = [], seatMembers = [];
+let seatGuests = [], seatMembers = [], seatDeclined = [];
 // 可排的桌號（非工作桌那一組；相容舊「會員桌」標籤）
 const MEMBER_TABLES = (EVENT_TABLE_GROUPS.find(g=>g.label==='桌次') || EVENT_TABLE_GROUPS.find(g=>g.label==='會員桌') || {tables:[]}).tables;
 
@@ -5036,15 +5045,17 @@ async function loadSeating(){
   const st=document.getElementById('seating-status');
   st.textContent='載入中…'; st.style.color='var(--gray)';
   try{
-    const [gRes, mRes, roRes] = await Promise.all([
+    const [gRes, mRes, roRes, dRes] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category,sort,status,title`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,title,note,companions,headcount,vegetarian,table_no,meal`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps,title,company`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.false&hidden=eq.false&select=user_id,display_name,org,title,note,table_no,meal&order=updated_at.desc`, { headers: SB_HEADERS }),
     ]);
     await loadSeatCfg();
     await loadSeatOrder();
     seatGuests  = gRes.ok ? await gRes.json() : [];
     seatMembers = mRes.ok ? await mRes.json() : [];
+    seatDeclined = dRes.ok ? await dRes.json() : [];
     buildMemberPool(roRes.ok ? await roRes.json() : []);
     renderSeating();
     st.style.color='#66bb6a'; st.textContent='✓ 已載入';
@@ -5286,10 +5297,24 @@ function renderNoMeal(){
   const rows=seatMembers.filter(m=>m.meal==='no');
   if(!rows.length){ box.innerHTML=''; return; }
   box.innerHTML = `<div class="section-title" style="font-size:15px;margin:18px 0 10px;">🎤 只出席論壇・不入席
-      <span style="font-size:12px;color:var(--gray);">（${rows.length} 位・不佔桌位、不計餐數，名牌仍需製作）</span></div>
+      <span style="font-size:12px;color:var(--gray);">（${rows.length} 位・不佔桌位、不計餐數，名牌仍需製作・點擊可修改）</span></div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;">`
-    + rows.map(m=>`<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(79,195,247,.08);border:1px solid rgba(79,195,247,.35);border-radius:99px;padding:5px 11px;font-size:12px;color:var(--white);">
+    + rows.map(m=>`<span onclick="openOccEdit('member','${escapeHtml(String(m.user_id))}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;background:rgba(79,195,247,.08);border:1px solid rgba(79,195,247,.35);border-radius:99px;padding:5px 11px;font-size:12px;color:var(--white);">
         🎤 ${escapeHtml(m.display_name)}<span style="font-size:10px;color:var(--gray);">${escapeHtml([m.title,m.org].filter(Boolean).join(' · '))}</span>
+      </span>`).join('') + '</div>';
+  renderDeclined();
+}
+
+/* 回覆不克出席者：不排桌，但要查得到、也能點開改回出席（現場常有人臨時改變主意） */
+function renderDeclined(){
+  const box=document.getElementById('seating-declined'); if(!box) return;
+  const rows=seatDeclined;
+  if(!rows.length){ box.innerHTML=''; return; }
+  box.innerHTML = `<div class="section-title" style="font-size:15px;margin:18px 0 10px;">✕ 回覆不克出席
+      <span style="font-size:12px;color:var(--gray);">（${rows.length} 位・點擊可查看／改回出席）</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">`
+    + rows.map(m=>`<span onclick="openOccEdit('member','${escapeHtml(String(m.user_id))}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.35);border-radius:99px;padding:5px 11px;font-size:12px;color:var(--white);">
+        ✕ ${escapeHtml(m.display_name)}<span style="font-size:10px;color:var(--gray);">${escapeHtml([m.title,m.org].filter(Boolean).join(' · '))}</span>
       </span>`).join('') + '</div>';
 }
 
@@ -5358,9 +5383,18 @@ async function swapSeatCfg(a,b){
    出席回報（tada_rsvp）與貴賓名冊（tada_guests）欄位名稱不同，在這裡對應。 */
 let occEditing=null, occMember=null;
 function openOccEdit(kind, id){
-  const o=seatOccupants().find(x=>x.kind===kind && String(x.id)===String(id));
+  let o=seatOccupants().find(x=>x.kind===kind && String(x.id)===String(id));
+  let rsvpRow=null;
+  if(kind==='member'){
+    rsvpRow=[...seatMembers, ...seatDeclined].find(x=>String(x.user_id)===String(id))||null;
+    // 僅論壇（meal='no'）與不克出席者不在座位清單，直接用 rsvp 列組出編輯資料
+    if(!o && rsvpRow) o={ kind:'member', id:rsvpRow.user_id, name:rsvpRow.display_name,
+      title:rsvpRow.title||'', org:rsvpRow.org||'', table:rsvpRow.table_no||'' };
+  }
   if(!o){ alert('找不到這筆資料，請重新載入。'); return; }
-  occEditing={kind, id};
+  const isDeclined = kind==='member' && seatDeclined.some(x=>String(x.user_id)===String(id));
+  const mealNow = rsvpRow ? rsvpRow.meal : null;
+  occEditing={kind, id, meal:mealNow};
   document.getElementById('oc-title').textContent='編輯　'+o.name;
   document.getElementById('oc-src').textContent = kind==='member'
     ? '資料來源：出席回報（tada_rsvp）' : '資料來源：貴賓名冊（tada_guests）';
@@ -5369,6 +5403,11 @@ function openOccEdit(kind, id){
   document.getElementById('oc-org').value=o.org||'';
   document.getElementById('oc-table').innerHTML=tableOptionsHtml(o.table);
   document.getElementById('oc-hide').style.display = kind==='member' ? '' : 'none';
+  document.getElementById('oc-att-wrap').style.display = kind==='member' ? '' : 'none';
+  if(kind==='member'){
+    document.getElementById('oc-att').value = isDeclined ? 'no' : (mealNow==='no' ? 'forum' : 'yes');
+    occAttChange();
+  } else { document.getElementById('oc-table').disabled=false; }
 
   // 名冊有這個人 → 顯示清冊資料，可雙向同步
   const id2=seatIdentity(o.name);
@@ -5434,6 +5473,13 @@ async function occPushMember(){
   }catch(e){ alert('同步失敗：'+e.message); }
 }
 
+// 僅論壇／不克出席都不佔桌位，桌次選單跟著鎖定
+function occAttChange(){
+  const v=document.getElementById('oc-att').value;
+  const sel=document.getElementById('oc-table');
+  sel.disabled = v!=='yes';
+  if(v!=='yes') sel.value='';
+}
 async function occSave(){
   if(!occEditing) return;
   const name=document.getElementById('oc-name').value.trim();
@@ -5448,6 +5494,13 @@ async function occSave(){
   const body = kind==='member'
     ? { display_name:name, title, org, table_no:table, updated_at:new Date().toISOString() }
     : { name, title, org, seat:table };
+  if(kind==='member'){
+    const att=document.getElementById('oc-att').value;
+    body.attending = att!=='no';
+    if(att==='forum'){ body.meal='no'; body.table_no=null; }
+    else if(att==='no'){ body.table_no=null; }
+    else if(occEditing.meal==='no'){ body.meal='yes'; }   // 從僅論壇改回入席，恢復計餐
+  }
   try{
     const res=await fetch(SB_URL+path,{method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify(body)});
     if(!res.ok) throw new Error(await res.text());
