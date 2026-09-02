@@ -439,6 +439,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <button class="btn btn-outline btn-sm" onclick="toggleRecon()">⇄ 勾稽出席資料</button>
       <button class="btn btn-outline btn-sm" onclick="exportMemberCSV()">匯出 CSV</button>
       <button class="btn btn-outline btn-sm" onclick="openPickupRoll()">🗳 匯出領票名冊</button>
+      <button class="btn btn-outline btn-sm" onclick="openCheckList()">🎁 會員報到列表</button>
       <button class="btn btn-gold btn-sm" onclick="openAddModal()">＋ 新增會員</button>
     </div>
   </div>
@@ -1422,6 +1423,38 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       </span>
     </div>
     <p id="pk-note" style="font-size:11px;color:var(--gray);margin-top:12px;line-height:1.7;"></p>
+  </div>
+</div>
+
+<!-- 會員報到列表：領取項目即時概況（名片/會員禮/選票/委託票，資料來源 /assist/ 勾記） -->
+<div id="ck-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeCheckList()">
+  <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:20px 22px;width:1080px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+      <h3 style="color:var(--gold-lt);font-size:17px;">會員報到列表</h3>
+      <span id="ck-stat" style="font-size:11.5px;color:var(--gray);"></span>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="loadCheckList()">↻ 重新整理</button>
+        <button class="btn btn-outline btn-sm" onclick="exportCheckListCSV()">匯出 CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="closeCheckList()">關閉</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+      <input id="ck-q" class="search-input" style="width:220px;" placeholder="搜尋姓名／編號／單位" oninput="renderCheckList()">
+      <select id="ck-filter" class="search-input" style="width:auto;" onchange="renderCheckList()">
+        <option value="">全部</option>
+        <option value="checked">已報到</option>
+        <option value="unchecked">未報到</option>
+        <option value="ballot-no">可領選票・未領</option>
+        <option value="gift-no">會員禮未領</option>
+      </select>
+      <span style="font-size:11px;color:var(--gray);">勾記來源：服務台 /assist/ 頁的領取清單，即時同步</span>
+    </div>
+    <div class="tbl-wrap" style="overflow:auto;flex:1;">
+      <table style="min-width:900px;">
+        <thead><tr><th>會員編號</th><th>姓名</th><th>單位</th><th>投票權</th><th>報到</th><th>名片</th><th>會員禮</th><th>選票</th><th>委託票</th></tr></thead>
+        <tbody id="ck-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray);padding:26px;">載入中…</td></tr></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -2632,6 +2665,86 @@ function openPickupRoll(){
   document.getElementById('pk-modal').style.display='flex';
 }
 function closePickupRoll(){ document.getElementById('pk-modal').style.display='none'; }
+
+/* ── 會員報到列表：領取項目即時概況 ──
+   名片/會員禮人人可領；選票＝can_vote；委託票僅顯示已勾記者（受託名單需逐人查委託，列表不即時算）。 */
+let ckRows=[];
+function openCheckList(){ document.getElementById('ck-modal').style.display='flex'; loadCheckList(); }
+function closeCheckList(){ document.getElementById('ck-modal').style.display='none'; }
+async function loadCheckList(){
+  const tb=document.getElementById('ck-tbody');
+  tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--gray);padding:26px;">載入中…</td></tr>';
+  const BASE='member_no,name,rep,company,member_type,can_vote,is_checked_in,check_in_time';
+  let rows=null, hasPickup=false;
+  for(const sel of [BASE+',checkin_source,pickup', BASE+',checkin_source', BASE]){
+    const r=await fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&select=${sel}&order=member_no.asc`,{headers:SB_HEADERS});
+    if(r.ok){ rows=await r.json(); hasPickup=sel.includes('pickup'); break; }
+  }
+  if(!rows){ tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:#ef5350;padding:26px;">載入失敗</td></tr>'; return; }
+  ckRows=rows.map(v=>({...v, pickup:v.pickup||{}, _hasPickup:hasPickup}));
+  renderCheckList();
+}
+function ckCell(t, na){
+  if(na) return '<td style="color:var(--gray);text-align:center;">—</td>';
+  return t
+    ? `<td style="text-align:center;"><span style="color:#66bb6a;font-weight:700;">✓ ${escapeHtml(t)}</span></td>`
+    : '<td style="text-align:center;color:var(--gray);opacity:.55;">未領</td>';
+}
+function renderCheckList(){
+  const q=(document.getElementById('ck-q').value||'').trim().toLowerCase();
+  const flt=document.getElementById('ck-filter').value;
+  const SRC={card:'電子證',slip:'小白單',staff:'服務台',manual:'手動',unknown:''};
+  let list=ckRows.filter(v=>{
+    if(q && !((v.rep||v.name||'')+(v.member_no||'')+(v.company||'')).toLowerCase().includes(q)) return false;
+    if(flt==='checked') return v.is_checked_in;
+    if(flt==='unchecked') return !v.is_checked_in;
+    if(flt==='ballot-no') return v.can_vote!==false && !v.pickup.ballot;
+    if(flt==='gift-no') return !v.pickup.gift;
+    return true;
+  });
+  const P=ckRows.filter(v=>v.pickup);
+  const stat=[
+    `共 ${ckRows.length} 人`,
+    `已報到 ${ckRows.filter(v=>v.is_checked_in).length}`,
+    `名片 ${P.filter(v=>v.pickup.card).length}`,
+    `會員禮 ${P.filter(v=>v.pickup.gift).length}`,
+    `選票 ${P.filter(v=>v.pickup.ballot).length}／可領 ${ckRows.filter(v=>v.can_vote!==false).length}`,
+    `委託票 ${P.filter(v=>v.pickup.proxy).length}`,
+  ].join('　·　');
+  document.getElementById('ck-stat').textContent=stat+(ckRows[0]&&!ckRows[0]._hasPickup?'　⚠ pickup 欄位未建立（請先跑 supabase/tada_pickup.sql）':'');
+  const tb=document.getElementById('ck-tbody');
+  if(!list.length){ tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--gray);padding:26px;">無符合資料</td></tr>'; return; }
+  tb.innerHTML=list.map(v=>{
+    const t=v.check_in_time?new Date(v.check_in_time).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'';
+    const ck=v.is_checked_in
+      ? `<span style="color:#66bb6a;font-weight:700;">✓ ${t}</span><span style="font-size:10px;color:var(--gray);"> ${SRC[v.checkin_source]||''}</span>`
+      : '<span style="color:var(--gray);opacity:.55;">未報到</span>';
+    const vote=v.can_vote!==false
+      ? '<span style="color:#66bb6a;">可投票</span>'
+      : '<span style="color:var(--gray);">無</span>';
+    return `<tr>
+      <td style="font-family:monospace;">${escapeHtml(v.member_no||'')}</td>
+      <td style="color:var(--white);font-weight:600;">${escapeHtml(v.rep||v.name||'')}</td>
+      <td style="font-size:12px;color:var(--gray);">${escapeHtml(v.company||'')}</td>
+      <td style="text-align:center;font-size:12px;">${vote}</td>
+      <td style="text-align:center;font-size:12px;white-space:nowrap;">${ck}</td>
+      ${ckCell(v.pickup.card)}${ckCell(v.pickup.gift)}${ckCell(v.pickup.ballot, v.can_vote===false)}${ckCell(v.pickup.proxy, !v.pickup.proxy)}
+    </tr>`;
+  }).join('');
+}
+function exportCheckListCSV(){
+  const SRC={card:'電子會員證',slip:'小白單',staff:'服務台',manual:'手動',unknown:'未記錄'};
+  const rows=[['會員編號','姓名','單位','投票權','已報到','報到時間','報到方式','名片','會員禮','選票','委託票']];
+  ckRows.forEach(v=>rows.push([v.member_no,v.rep||v.name||'',v.company||'',v.can_vote!==false?'可投票':'無',
+    v.is_checked_in?'是':'否', v.check_in_time?new Date(v.check_in_time).toLocaleString('zh-TW'):'',
+    SRC[v.checkin_source]||'', v.pickup.card||'', v.pickup.gift||'',
+    v.can_vote===false?'—':(v.pickup.ballot||''), v.pickup.proxy||'']));
+  const csv='\ufeff'+rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='TADA_會員報到領取列表_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
 
 /* 取投票名冊 → 拆成個人／團體兩份 */
 async function buildPickupRoll(scope){
