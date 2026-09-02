@@ -3642,10 +3642,7 @@ async function sendLineBroadcast(){
   const st=document.getElementById('lb-status');
   if(!text){ alert('請輸入訊息內容'); return; }
   if(!key){ alert('請輸入廣播金鑰'); return; }
-  if(!confirm('確定透過 LINE 官方帳號廣播給「所有好友」？發出後無法收回。
-
-──訊息預覽──
-'+text.slice(0,150)+(text.length>150?'…':''))) return;
+  if(!confirm('確定透過 LINE 官方帳號廣播給「所有好友」？發出後無法收回。\n\n──訊息預覽──\n'+text.slice(0,150)+(text.length>150?'…':''))) return;
   try{ localStorage.setItem('tadaBroadcastKey',key); }catch(_){}
   st.style.color='var(--gray)'; st.textContent='發送中…';
   try{
@@ -3659,8 +3656,7 @@ async function sendLineBroadcast(){
       try{ await fetch(`${SB_URL}/rest/v1/tada_mail_log`,{method:'POST',
         headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify({to_email:'LINE 官方帳號好友', name:'全體好友',
-          subject:'[LINE廣播] '+text.split('
-')[0].slice(0,80), category:'line_broadcast', status:'sent'})}); }catch(_){}
+          subject:'[LINE廣播] '+text.split('\n')[0].slice(0,80), category:'line_broadcast', status:'sent'})}); }catch(_){}
       renderMailLog();
     } else if(r.status===403){ st.style.color='#ef5350'; st.textContent='金鑰錯誤（403）'; }
     else { st.style.color='#ef5350'; st.textContent='失敗：'+(d.error||d.detail||('HTTP '+r.status)); }
