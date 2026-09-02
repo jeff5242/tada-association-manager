@@ -40,7 +40,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .cand .no{width:30px;text-align:right;color:var(--gold);font-weight:700;font-size:13px;flex:0 0 auto}
 .cand input{flex:1;min-width:0;padding:6px 9px;border-radius:6px;border:1px solid var(--green);background:var(--bg);color:var(--text);font-size:13px;font-family:var(--sans);outline:none}
 .cand input.nm{max-width:130px}
-.cand button{background:rgba(192,57,43,.12);color:var(--red);border:1px solid rgba(192,57,43,.3);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer}
+.cand button.del{background:rgba(192,57,43,.12);color:var(--red);border:1px solid rgba(192,57,43,.3);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer}
+.cand button.mv{background:rgba(196,146,42,.12);color:var(--gold);border:1px solid rgba(196,146,42,.35);border-radius:6px;width:26px;padding:4px 0;font-size:11px;cursor:pointer;flex:0 0 auto}
+.cand button.mv:disabled{opacity:.25;cursor:default}
+.cand .grip{cursor:grab;color:var(--muted);font-size:14px;flex:0 0 auto;user-select:none;padding:0 2px}
+.cand.drag-over{outline:2px dashed var(--gold);outline-offset:2px;border-radius:6px}
+.cand.dragging{opacity:.4}
+.dirty{color:var(--gold)}
 .hint{font-size:11.5px;color:var(--muted);line-height:1.8;margin-top:8px}
 .warn{background:rgba(196,146,42,.1);border-left:3px solid var(--gold);padding:10px 13px;border-radius:6px;font-size:12.5px;color:#d8cbaa;margin-top:10px}
 
@@ -175,10 +181,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
     <div class="row">
       <button class="btn btn-out" onclick="loadCands()">↻ 從系統載入</button>
       <button class="btn btn-out" onclick="addCand()">＋ 新增一位</button>
+      <button class="btn btn-gold" onclick="saveCands()">💾 儲存名單</button>
       <span id="cand-status" style="font-size:12px;color:var(--muted);align-self:center;"></span>
     </div>
     <div class="cand-list" id="cands"></div>
-    <div class="hint">順序即票面順序。姓名建議 2–4 字；公司留空則票面該欄不印。</div>
+    <div class="hint">
+      順序即票面順序：可用 <b>▲▼</b> 或直接<b>拖曳</b>整列調整，也可直接改姓名／公司。<br>
+      改完按「儲存名單」才會寫回系統（同步更新票面編號與開票順序）；只想試印可以不存。<br>
+      姓名建議 2–4 字；公司留空則票面該欄不印。
+    </div>
   </div>
 
   <div class="box">
@@ -209,13 +220,17 @@ const ORG_NAME='台灣科技農企業發展協會';
 /* 四種選票規格（依官方已用印選票）
    採不記名連記法：限圈選人數 = 應選名額；未達額仍為有效票，超額為無效票 */
 const BALLOT_SPEC = {
-  director:        { label:'理事',     seats:11, limit:11, alt:3, writein:3, serial:1   },
-  supervisor:      { label:'監事',     seats:3,  limit:3,  alt:1, writein:1, serial:301 },
-  executive:       { label:'常務理事', seats:3,  limit:3,  alt:0, writein:0, serial:601 },
-  exec_supervisor: { label:'常務監事', seats:1,  limit:1,  alt:0, writein:0, serial:801 },
+  // copies：預設列印份數。理事／監事由全體會員投票（含備用重領），
+  //         常務理事／常務監事僅由當選理事(11)／監事(3)互選，故只需該人數。
+  director:        { label:'理事',     seats:11, limit:11, alt:3, writein:3, serial:1,   copies:100 },
+  supervisor:      { label:'監事',     seats:3,  limit:3,  alt:1, writein:1, serial:301, copies:100 },
+  executive:       { label:'常務理事', seats:3,  limit:3,  alt:0, writein:0, serial:601, copies:11  },
+  exec_supervisor: { label:'常務監事', seats:1,  limit:1,  alt:0, writein:0, serial:801, copies:3   },
 };
 
-let cands=[];   // [{name, company}]
+let cands=[];        // [{id?, name, company}]，陣列順序即票面順序
+let loadedIds=[];    // 本次從系統載入的候選人 id，用來判斷哪些被刪除
+let dirty=false;     // 名單是否已被修改但尚未儲存
 
 /* ── 登入 ── */
 async function sha256(s){const d=new TextEncoder().encode(s);const h=await crypto.subtle.digest('SHA-256',d);
@@ -277,9 +292,11 @@ async function loadCands(){
   const st=document.getElementById('cand-status');
   st.textContent='載入中…';
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/tada_v_candidates?election_id=eq.${ELECTION_ID}&position=eq.${kind}&select=no,name,company&order=no.asc`,{headers:SB_H});
+    const r=await fetch(`${SB_URL}/rest/v1/tada_v_candidates?election_id=eq.${ELECTION_ID}&position=eq.${kind}&select=id,no,name,company&order=sort.asc,no.asc`,{headers:SB_H});
     const d=await r.json();
-    cands=d.map(x=>({name:x.name||'',company:x.company||''}));
+    cands=d.map(x=>({id:x.id,name:x.name||'',company:x.company||''}));
+    loadedIds=cands.map(c=>c.id);
+    dirty=false;
     st.textContent=`已載入 ${cands.length} 位`;
   }catch(e){ st.textContent='載入失敗：'+e.message; }
   renderCands();
@@ -313,13 +330,20 @@ async function loadSpecFromDB(){
     S.executive.limit=n(e.executive_pick,S.executive.seats);
   }catch(err){ /* 用 BALLOT_SPEC 的保底值 */ }
 }
+let lastKind='director';
 function onKindChange(){
-  const sp=BALLOT_SPEC[document.getElementById('kind').value]||BALLOT_SPEC.director;
+  const sel=document.getElementById('kind');
+  if(dirty && sel.value!==lastKind && !confirm('候選人名單有未儲存的修改，切換票種會捨棄。要繼續嗎？')){
+    sel.value=lastKind; return;
+  }
+  lastKind=sel.value; dirty=false;
+  const sp=BALLOT_SPEC[sel.value]||BALLOT_SPEC.director;
   document.getElementById('start').value   = sp.serial;
   document.getElementById('seats').value   = sp.seats;
   document.getElementById('limit').value   = sp.limit;
   document.getElementById('alt').value     = sp.alt;
   document.getElementById('writein').value = sp.writein;
+  document.getElementById('count').value   = sp.copies;
   updateSample(); loadCands();
 }
 function dateTag(){
@@ -335,15 +359,93 @@ function updateSample(){
 function renderCands(){
   const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   document.getElementById('cands').innerHTML=cands.map((c,i)=>`
-    <div class="cand">
+    <div class="cand" draggable="true" data-i="${i}"
+         ondragstart="candDragStart(event,${i})" ondragend="candDragEnd(event)"
+         ondragover="candDragOver(event,${i})" ondragleave="candDragLeave(event)"
+         ondrop="candDrop(event,${i})">
+      <span class="grip" title="拖曳調整順序">⠿</span>
       <span class="no">${i+1}.</span>
-      <input class="nm" value="${esc(c.name)}" placeholder="姓名" oninput="cands[${i}].name=this.value">
-      <input value="${esc(c.company)}" placeholder="公司／機構（可留空）" oninput="cands[${i}].company=this.value">
-      <button onclick="delCand(${i})">刪</button>
+      <button class="mv" title="上移" ${i===0?'disabled':''} onclick="moveCand(${i},-1)">▲</button>
+      <button class="mv" title="下移" ${i===cands.length-1?'disabled':''} onclick="moveCand(${i},1)">▼</button>
+      <input class="nm" value="${esc(c.name)}" placeholder="姓名" oninput="cands[${i}].name=this.value;markDirty()">
+      <input value="${esc(c.company)}" placeholder="公司／機構（可留空）" oninput="cands[${i}].company=this.value;markDirty()">
+      <button class="del" onclick="delCand(${i})">刪</button>
     </div>`).join('') || '<div class="hint">尚無候選人，請按「從系統載入」或「新增一位」。</div>';
 }
-function addCand(){ cands.push({name:'',company:''}); renderCands(); }
-function delCand(i){ cands.splice(i,1); renderCands(); }
+function markDirty(){
+  dirty=true;
+  const st=document.getElementById('cand-status');
+  if(st){ st.className='dirty'; st.textContent='已修改，尚未儲存'; }
+}
+function addCand(){ cands.push({name:'',company:''}); markDirty(); renderCands(); }
+function delCand(i){ cands.splice(i,1); markDirty(); renderCands(); }
+function moveCand(i,d){
+  const j=i+d; if(j<0||j>=cands.length) return;
+  cands.splice(j,0,cands.splice(i,1)[0]);
+  markDirty(); renderCands();
+}
+
+/* ── 拖曳排序 ── */
+let candDrag=null;
+function candDragStart(e,i){ candDrag=i; e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',String(i))}catch(_){} }
+function candDragEnd(e){ candDrag=null; e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.cand.drag-over').forEach(el=>el.classList.remove('drag-over')); }
+function candDragOver(e,i){ if(candDrag===null||candDrag===i) return;
+  e.preventDefault(); e.dataTransfer.dropEffect='move'; e.currentTarget.classList.add('drag-over'); }
+function candDragLeave(e){ e.currentTarget.classList.remove('drag-over'); }
+function candDrop(e,i){
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  if(candDrag===null||candDrag===i) return;
+  cands.splice(i,0,cands.splice(candDrag,1)[0]);
+  candDrag=null; markDirty(); renderCands();
+}
+
+/* ── 儲存名單回系統（tada_v_candidates）──
+   順序 = 陣列順序，同步寫入 sort 與票面編號 no，
+   後台開票與 /scan/ 判讀共用同一份順序。 */
+async function saveCands(){
+  const kind=document.getElementById('kind').value;
+  const st=document.getElementById('cand-status');
+  const list=cands.filter(c=>(c.name||'').trim());
+  if(!list.length){ alert('名單是空的，不儲存。'); return; }
+  const dup=list.map(c=>c.name.trim()).filter((n,i,a)=>a.indexOf(n)!==i);
+  if(dup.length && !confirm(`名單中有重複姓名：${[...new Set(dup)].join('、')}\n仍要儲存嗎？`)) return;
+
+  const keep=new Set(list.filter(c=>c.id).map(c=>c.id));
+  const gone=loadedIds.filter(id=>!keep.has(id));
+  if(gone.length && !confirm(`將從系統刪除 ${gone.length} 位候選人（本次載入後被移除的），確定？`)) return;
+
+  st.className=''; st.textContent='儲存中…';
+  const H={...SB_H,'Content-Type':'application/json'};
+  try{
+    for(let i=0;i<list.length;i++){
+      const c=list[i];
+      const body={name:c.name.trim(), company:(c.company||'').trim()||null, no:i+1, sort:i+1};
+      if(c.id){
+        const r=await fetch(`${SB_URL}/rest/v1/tada_v_candidates?id=eq.${c.id}`,
+          {method:'PATCH',headers:H,body:JSON.stringify(body)});
+        if(!r.ok) throw new Error(`更新 ${c.name} 失敗（${r.status}）`);
+      }else{
+        const r=await fetch(`${SB_URL}/rest/v1/tada_v_candidates`,
+          {method:'POST',headers:{...H,'Prefer':'return=representation'},
+           body:JSON.stringify({...body, election_id:ELECTION_ID, position:kind})});
+        if(!r.ok) throw new Error(`新增 ${c.name} 失敗（${r.status}）`);
+        const d=await r.json(); if(d && d[0]) c.id=d[0].id;
+      }
+    }
+    for(const id of gone){
+      const r=await fetch(`${SB_URL}/rest/v1/tada_v_candidates?id=eq.${id}`,{method:'DELETE',headers:H});
+      if(!r.ok) throw new Error(`刪除失敗（${r.status}）`);
+    }
+    cands=list; loadedIds=list.map(c=>c.id); dirty=false;
+    st.className=''; st.textContent=`已儲存 ${list.length} 位${gone.length?`，刪除 ${gone.length} 位`:''}`;
+    renderCands();
+  }catch(e){
+    st.className='dirty'; st.textContent='儲存失敗：'+e.message;
+    alert('儲存失敗：'+e.message);
+  }
+}
 
 /* ── 產生選票 ── */
 function build(preview){
