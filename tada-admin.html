@@ -720,7 +720,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 
     <div id="el-cat-roster" style="display:none;">
       <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:10px;">
-        貼上有效會員名冊，每行一位：<code style="color:var(--gold-lt);">會員編號,姓名</code>；團體會員可加代表：<code style="color:var(--gold-lt);">會員編號,團體名稱,代表姓名</code>。<br>
+        貼上本次可領票名冊（第5屆有效），每行一位：<code style="color:var(--gold-lt);">會員編號,姓名</code>；團體會員可加代表：<code style="color:var(--gold-lt);">會員編號,團體名稱,代表姓名</code>。<br>
         例如：<code style="color:var(--gray);">10001,王小明</code>　或　<code style="color:var(--gray);">20001,某某企業,林大華</code>（可一次貼多行；同編號會更新）
       </p>
       <textarea id="roster-input" style="width:100%;min-height:120px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px;font-family:monospace;font-size:13px;" placeholder="10001,王小明&#10;20001,某某企業,林大華"></textarea>
@@ -742,7 +742,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <!-- 選舉人名冊：可投票會員總表（工作人員標記／批次預報到列印／委託狀態） -->
     <div id="el-cat-voters" style="display:none;">
       <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:10px;">
-        所有「可投票」會員（依會員名冊的可投票勾選）。勾選後可<b style="color:var(--gold-lt);">批次報到並列印報到單</b>（走紙本領票流程，與現場掃碼等效）；
+        所有本次可領票會員（資格以「第5屆有效」名冊為準，非會員狀態；第六屆新入會者不列入）。勾選後可<b style="color:var(--gold-lt);">批次報到並列印報到單</b>（走紙本領票流程，與現場掃碼等效）；
         列印經雲端佇列送往報到機印表機（樹莓派需開機）。「工作人員」標記存於名冊，供快速全選。
       </p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
@@ -1399,7 +1399,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div style="font-size:12px;color:var(--gold-lt);font-weight:700;margin-bottom:6px;">收錄範圍</div>
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
       <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);cursor:pointer;">
-        <input type="radio" name="pk-scope" value="votable" checked> 僅具投票權者<span style="color:var(--gray);">（正式領票名冊）</span></label>
+        <input type="radio" name="pk-scope" value="votable" checked> 僅具投票權者<span style="color:var(--gray);">（正式領票名冊・第5屆有效）</span></label>
       <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);cursor:pointer;">
         <input type="radio" name="pk-scope" value="all"> 投票名冊全部<span style="color:var(--gray);">（不可投票者以灰字加註，供櫃台查詢）</span></label>
     </div>
@@ -2532,11 +2532,10 @@ async function exportMemberCSV(){
     }
   }catch(e){ /* 取不到就只出會員資料 */ }
 
-  // 具投票權的會員狀態。「待續約會員」經 2026/8/29 秘書長裁示納入，
-  // 故不再視為異常；一致性檢查僅比對「狀態」與「投票名冊」是否相符。
-  const VOTABLE=['有效會員','榮譽會員','永久會員','待續約會員'];
+  // 本次（第六屆改選）投票權一律以「第5屆有效」會員名冊為準，不由會員狀態推導：
+  // 第六屆新入會者雖為「有效會員」仍不得投票；第5屆有效但已退會者則改列「待續約會員」保留票權。
   const rows = [['會員編號','類型','姓名/團體','公司/服務機關','統一編號','會員狀態',
-                 '有投票權','可投票(秘書長勾選)','票數','團體代表','候選職位','一致性檢查',
+                 '在投票名冊','本次可領票(第5屆有效)','票數','團體代表','候選職位','一致性檢查',
                  '投票名冊代表','公司登記狀態','身分證字號','電話','Email','通訊地址','最後繳費','入會日','屆次職務','備註']];
   // 依會員狀態分群匯出：待續約 → 有效 → 榮譽 → 永久 → 退會 → 其他
   const STATUS_ORDER=['待續約會員','有效會員','榮譽會員','永久會員','退會會員'];
@@ -2560,10 +2559,10 @@ async function exportMemberCSV(){
     // 候選職位：本人或其代表任一人是候選人都列出
     const posSet=new Set([...(candMap.get(seatDeTitle(m.name))||[])]);
     (m.reps||[]).forEach(r=>{ (candMap.get(seatDeTitle(r&&r.name))||[]).forEach(x=>posSet.add(x)); });
-    const shouldVote=VOTABLE.includes(m.status||'');
+    // 可領票＝在投票名冊且該列 can_vote 為真；狀態只在「退會卻可領票」時提示補正
+    const canVote=inRoster && (v.can||0)>0;
     let chk='';
-    if(shouldVote && !inRoster)      chk='⚠ 狀態可投票，但不在投票名冊';
-    else if(!shouldVote && inRoster) chk='⚠ 在投票名冊，但狀態為「'+(m.status||'未填')+'」';
+    if(canVote && (m.status||'')==='退會會員') chk='⚠ 本次可領票，但狀態為退會會員（依裁示應改為待續約會員）';
     if(!m.member_no) chk=(chk?chk+'／':'')+'⚠ 缺會員編號';
     // 團體會員逐代表一列（母號-1/-2/-3），比照出席匯出的一人一列
     if(m.member_type==='group' && (m.reps||[]).some(rp=>rp&&rp.name)){
@@ -2573,8 +2572,7 @@ async function exportMemberCSV(){
         const rv=rosterRowMap.get(rno);
         const rIn=!!rv;
         let rChk='';
-        if(shouldVote && !rIn)      rChk='⚠ 狀態可投票，但此代表不在投票名冊';
-        else if(!shouldVote && rIn) rChk='⚠ 在投票名冊，但狀態為「'+(m.status||'未填')+'」';
+        if(rIn && rv.can_vote!==false && (m.status||'')==='退會會員') rChk='⚠ 本次可領票，但狀態為退會會員（依裁示應改為待續約會員）';
         rows.push([
           rno, '團體代表', rp.name, m.company||m.name||'', m.tax_id||m.cert_no||'', m.status||'',
           rIn?'是':'否', rIn?((rv.can_vote!==false)?'可':'否'):'', rIn?1:0,
@@ -2606,8 +2604,8 @@ async function exportMemberCSV(){
   rows.push([`會員總數 ${memberRows.length}`,`有效會員 ${cnt('有效會員')}`,`待續約 ${cnt('待續約會員')}`,
              `退會 ${cnt('退會會員')}`,`榮譽 ${cnt('榮譽會員')}`,`永久 ${cnt('永久會員')}`,
              `投票名冊 ${vmap.size} 位會員／${votes} 票`]);
-  rows.push(['※「有投票權」以 9/4 第六屆改選投票名冊為準；團體會員每位代表各一票']);
-  rows.push(['※ 一致性檢查有標記者，請確認應以會員狀態或投票名冊為準']);
+  rows.push(['※ 本次可領票資格以「第5屆有效」會員名冊為準，不以會員狀態認定；第六屆新入會者本次不得投票']);
+  rows.push(['※ 團體會員每位推派代表各一票；名譽（榮譽）會員無表決權']);
 
   const csv = rows.map(r=>r.map(c=>`"${String(c===null||c===undefined?'':c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a');
@@ -2803,11 +2801,13 @@ function pickupRollPrint(d, scope, cols){
     <div class="pk-foot">
       一、個人會員 <b>${d.persons.length}</b> 位；團體會員 <b>${d.groups.length}</b> 家、會員代表 <b>${nRep}</b> 位；
           合計應發選票 <b>${d.persons.length+nRep}</b> 份（理事票、監事票各一份）。<br>
-      二、依本會章程，團體會員推派之代表各具一表決權；名譽（榮譽）會員無表決權。<br>
-      三、線上報到已完成身分核驗，本冊僅供發票時勾記：核對會員編號與姓名無誤後，於「領票」欄打✓。<br>
-      四、受託人代領委託票者，請於該列打✓並加註「代 ○○○」，另附委託書備查。<br>
-      五、${scope==='all'?'灰字者為本次不具投票權之會員，僅供櫃台查詢，不得發票。':'本冊僅列具投票權者。'}<br>
-      六、列印時間：${e(new Date().toLocaleString('zh-TW'))}
+      二、<b>本次領票資格以「第5屆有效」會員名冊為準，非以現行會員狀態認定</b>：第五屆屆期內入會且會籍有效者始得領票；
+          第六屆（本屆）新入會之會員本次不具投票權，亦不得領票。<br>
+      三、依本會章程，團體會員推派之代表各具一表決權；名譽（榮譽）會員無表決權。<br>
+      四、線上報到已完成身分核驗，本冊僅供發票時勾記：核對會員編號與姓名無誤後，於「領票」欄打✓。<br>
+      五、受託人代領委託票者，請於該列打✓並加註「代 ○○○」，另附委託書備查。<br>
+      六、${scope==='all'?'灰字者為本次不具投票權之會員（含第六屆新入會者），僅供櫃台查詢，不得發票。':'本冊僅列本次具投票權者。'}<br>
+      七、列印時間：${e(new Date().toLocaleString('zh-TW'))}
     </div>
   </div>
   </body></html>`);
