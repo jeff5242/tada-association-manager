@@ -140,6 +140,18 @@ async function refreshStat(){
   }catch(e){}
 }
 
+/* 報到來源：本頁為工作人員手動輸入會員編號 → manual。
+   card=LINE電子會員證、slip=預先列印小白單、staff=服務人員手機(/assist/)產生。
+   欄位尚未建立時靜默略過，不影響報到。 */
+async function markCheckinSource(no){
+  if(!election||!no) return;
+  try{
+    await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_members?election_id=eq.${election.id}&member_no=eq.${encodeURIComponent(no)}`,
+      {method:'PATCH',headers:{...window.tadaSbHeaders(),'Content-Type':'application/json'},
+       body:JSON.stringify({checkin_source:'manual'})});
+  }catch(_){}
+}
+
 async function doCheckin(){
   const no = document.getElementById('in-no').value.trim();
   if(!no){ showErr('請輸入會員編號'); return; }
@@ -156,6 +168,7 @@ async function doCheckin(){
       showErr(map[res.error] || ('報到失敗：'+res.error));
       btn.disabled=false; btn.textContent='報到並核發選票'; return;
     }
+    markCheckinSource(no);
     showReceipt(res);
     refreshStat();
   }catch(e){

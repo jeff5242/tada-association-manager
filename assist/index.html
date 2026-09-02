@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#14251a">
+<title>服務台報到協助｜TADA 第六屆會員大會</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="../assets/liff-common.js"></script>
+<style>
+:root{
+  --bg:#101a13; --surface:#18261c; --surface2:#1f3124; --line:#2c4433;
+  --ink:#e8e6de; --muted:#94a898; --gold:#c4922a; --gold-lt:#e0b45a;
+  --green:#4f9a5e; --red:#c0392b; --sans:'Noto Sans TC',-apple-system,BlinkMacSystemFont,'PingFang TC',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;
+  min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+.wrap{max-width:520px;margin:0 auto;padding:16px 14px 40px}
+
+/* ── 登入 ── */
+#gate{max-width:400px;margin:16vh auto;padding:0 18px}
+#gate .box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px 22px}
+#gate h1{font-size:19px;font-weight:900;color:var(--gold-lt);margin-bottom:4px}
+#gate p{font-size:12.5px;color:var(--muted);margin-bottom:18px}
+#gate input{width:100%;background:var(--bg);border:1.5px solid var(--line);border-radius:10px;
+  padding:13px 14px;color:var(--ink);font-size:16px;font-family:var(--sans);outline:none}
+#gate input:focus{border-color:var(--gold)}
+#gate button{width:100%;margin-top:12px;background:var(--gold);color:#1a1a12;border:none;border-radius:10px;
+  padding:14px;font-size:16px;font-weight:700;font-family:var(--sans);cursor:pointer}
+#gate .err{color:#e77;font-size:13px;min-height:20px;margin-top:8px}
+
+/* ── 標題列 ── */
+header{display:flex;align-items:baseline;gap:8px;margin-bottom:14px}
+header h1{font-size:17px;font-weight:900;color:var(--gold-lt)}
+header .sub{font-size:11.5px;color:var(--muted)}
+header .st{margin-left:auto;font-size:11.5px;color:var(--muted);text-align:right}
+
+/* ── 搜尋 ── */
+.search{position:sticky;top:0;z-index:5;background:var(--bg);padding:6px 0 10px}
+.search input{width:100%;background:var(--surface2);border:1.5px solid var(--line);border-radius:12px;
+  padding:14px 16px;color:var(--ink);font-size:17px;font-family:var(--sans);outline:none}
+.search input:focus{border-color:var(--gold)}
+.search .tip{font-size:11.5px;color:var(--muted);margin-top:6px;padding:0 2px}
+
+/* ── 結果 ── */
+.list{display:flex;flex-direction:column;gap:8px}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+  display:flex;align-items:center;gap:10px;cursor:pointer}
+.row:active{background:var(--surface2)}
+.row .nm{font-size:17px;font-weight:700;color:#fff;letter-spacing:.04em;white-space:nowrap}
+.row .meta{font-size:11.5px;color:var(--muted);min-width:0;flex:1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .arw{color:var(--gold);font-size:18px;flex:0 0 auto}
+.badge{font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap;flex:0 0 auto}
+.b-done{background:rgba(79,154,94,.18);color:#7ec98d;border:1px solid rgba(79,154,94,.4)}
+.b-novote{background:rgba(192,57,43,.15);color:#e08a80;border:1px solid rgba(192,57,43,.35)}
+.b-grp{background:rgba(196,146,42,.14);color:var(--gold-lt);border:1px solid rgba(196,146,42,.3)}
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:36px 10px;line-height:2}
+
+/* ── QR 詳情 ── */
+#detail{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;display:none}
+#detail .inner{max-width:520px;margin:0 auto;padding:14px 16px 40px;text-align:center}
+#detail .back{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:14px;
+  background:none;border:none;font-family:var(--sans);padding:6px 2px;cursor:pointer;float:left}
+#detail .who{clear:both;padding-top:14px}
+#detail .who .nm{font-size:30px;font-weight:900;color:#fff;letter-spacing:.16em;padding-left:.16em}
+#detail .who .no{font-family:ui-monospace,Menlo,monospace;font-size:14px;color:var(--gold-lt);margin-top:2px}
+#detail .who .org{font-size:12.5px;color:var(--muted);margin-top:3px}
+#detail .tags{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.qrbox{background:#fff;border-radius:16px;padding:16px;display:inline-block;margin:16px auto 0;
+  box-shadow:0 0 0 3px var(--gold)}
+.qrbox #qr img,.qrbox #qr canvas{display:block}
+.qrsrc{margin-top:12px;display:inline-flex;align-items:center;gap:7px;
+  background:rgba(196,146,42,.14);border:1px solid var(--gold);border-radius:999px;
+  padding:7px 16px;font-size:13px;font-weight:700;color:var(--gold-lt)}
+#detail .howto{font-size:12.5px;color:var(--muted);margin-top:14px;line-height:1.9}
+#detail .act{margin-top:22px;display:flex;flex-direction:column;gap:10px}
+.btn{border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;
+  font-family:var(--sans);cursor:pointer}
+.btn-out{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.btn-go{background:var(--green);color:#fff}
+.btn-go:disabled{opacity:.4}
+#d-msg{font-size:13px;min-height:22px;margin-top:10px}
+.done-mark{font-size:44px;margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h1>服務台報到協助</h1>
+    <p>TADA 第六屆會員大會 · 2026/9/4<br>請輸入服務人員通關密碼</p>
+    <input id="pw" type="password" inputmode="text" autocomplete="off" placeholder="通關密碼">
+    <button onclick="tryLogin()">進入</button>
+    <div class="err" id="gate-err"></div>
+  </div>
+</div>
+
+<div class="wrap" id="app" style="display:none">
+  <header>
+    <h1>報到協助</h1><span class="sub">服務人員專用</span>
+    <span class="st" id="st">載入中…</span>
+  </header>
+
+  <div class="search">
+    <input id="q" type="search" inputmode="search" autocomplete="off"
+           placeholder="輸入姓名、手機或會員編號" oninput="renderList()">
+    <div class="tip">姓名可只打一個字；手機打末 3～4 碼即可</div>
+  </div>
+
+  <div class="list" id="list"></div>
+</div>
+
+<div id="detail">
+  <div class="inner">
+    <button class="back" onclick="closeDetail()">‹ 返回查詢</button>
+    <div class="who">
+      <div class="nm" id="d-name">—</div>
+      <div class="no" id="d-no"></div>
+      <div class="org" id="d-org"></div>
+      <div class="tags" id="d-tags"></div>
+    </div>
+    <div id="d-body">
+      <div class="qrbox"><div id="qr"></div></div>
+      <div class="qrsrc">🧑‍💼 服務人員產生的報到碼</div>
+      <div class="howto" id="d-howto"></div>
+      <div class="act">
+        <button class="btn btn-go" id="d-go" onclick="staffCheckin()">⚡ 直接完成報到</button>
+        <button class="btn btn-out" onclick="closeDetail()">返回查詢</button>
+      </div>
+      <div id="d-msg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB=window.TADA_SB_URL, SBH=window.tadaSbHeaders();
+const ELECTION_ID='66666666-6666-4666-8666-666666666666';
+const LOGIN_PW_HASH='ed6f1a565c864f401b0aba93e9623ea1f4616fe7ebd3f8774fa37dedef301aca'; // TADA1688
+const OK_KEY='tadaAssistOk';
+/* 報到碼前綴：M=LINE 電子會員證、P=會前預印小白單、S=服務人員手機產生。
+   報到機依前綴決定要不要補印入座單，並把來源寫進 tada_v_members.checkin_source。 */
+const QR_PREFIX='S:';
+
+let roster=[];      // tada_v_members（本屆）
+let members=new Map();  // member_no(母號) → tada_members
+let tableOf=new Map();  // 姓名 → 桌號
+let people=[];      // 查詢用的扁平人員清單
+let current=null;
+
+/* ── 登入 ── */
+async function sha256(s){const d=new TextEncoder().encode(s);
+  const h=await crypto.subtle.digest('SHA-256',d);
+  return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('');}
+async function tryLogin(){
+  const h=await sha256(document.getElementById('pw').value.trim().toLowerCase());
+  if(h!==LOGIN_PW_HASH){ document.getElementById('gate-err').textContent='密碼錯誤'; return; }
+  try{ sessionStorage.setItem(OK_KEY,'1'); }catch(_){}
+  unlock();
+}
+function unlock(){
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='block';
+  loadAll();
+  setTimeout(()=>document.getElementById('q').focus(),150);
+}
+document.getElementById('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') tryLogin(); });
+try{ if(sessionStorage.getItem(OK_KEY)==='1') unlock(); }catch(_){}
+
+/* ── 載入資料：一次抓完，之後查詢都在本機做（會場網路不穩也還能用）── */
+async function loadAll(){
+  const st=document.getElementById('st');
+  st.textContent='載入中…';
+  try{
+    const [r1,r2,r3]=await Promise.all([
+      fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${ELECTION_ID}`
+        +`&select=member_no,name,rep,company,member_type,can_vote,is_checked_in,checkin_source`,{headers:SBH}),
+      fetch(`${SB}/rest/v1/tada_members?select=member_no,name,company,title,mobile,phone_office,contact_phone,member_type,status,reps,hidden`,{headers:SBH}),
+      fetch(`${SB}/rest/v1/tada_rsvp?select=display_name,table_no&hidden=is.false`,{headers:SBH}),
+    ]);
+    // checkin_source 欄位尚未建立時 PostgREST 會回 400，退回不帶該欄
+    let rosterJson;
+    if(r1.ok){ rosterJson=await r1.json(); }
+    else{
+      const r1b=await fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${ELECTION_ID}`
+        +`&select=member_no,name,rep,company,member_type,can_vote,is_checked_in`,{headers:SBH});
+      rosterJson=r1b.ok?await r1b.json():[];
+    }
+    roster=rosterJson;
+    (r2.ok?await r2.json():[]).forEach(m=>{ if(m.member_no) members.set(String(m.member_no),m); });
+    (r3.ok?await r3.json():[]).forEach(x=>{ if(x.display_name&&x.table_no) tableOf.set(x.display_name.trim(),x.table_no); });
+    buildPeople();
+    st.textContent=`${people.length} 位可查`;
+  }catch(e){ st.textContent='載入失敗'; }
+  renderList();
+}
+
+const digits=s=>String(s||'').replace(/\D/g,'');
+function buildPeople(){
+  people=roster.map(v=>{
+    const no=String(v.member_no||'');
+    const base=no.split('-')[0];
+    const idx=no.includes('-')?parseInt(no.split('-')[1],10):0;
+    const m=members.get(base)||{};
+    const name=(v.rep||v.name||'').trim();
+    // 手機：個人取名冊本人的，團體代表取 reps[n].tel，取不到就退回母公司聯絡電話
+    let tel='';
+    if(idx>0){ const rp=(m.reps||[])[idx-1]; tel=(rp&&(rp.tel||rp.phone))||''; }
+    if(!tel) tel=m.mobile||m.contact_phone||m.phone_office||'';
+    const org=(v.company||m.company||m.name||'').trim();
+    return { no, base, name, tel, org,
+             title:(idx>0?((m.reps||[])[idx-1]||{}).title:m.title)||'',
+             isGroup:v.member_type==='group'||no.includes('-'),
+             canVote:v.can_vote!==false, checked:!!v.is_checked_in,
+             source:v.checkin_source||'', table:tableOf.get(name)||'',
+             key:(name+' '+org+' '+no+' '+digits(tel)).toLowerCase() };
+  }).sort((a,b)=>a.no.localeCompare(b.no,'en',{numeric:true}));
+}
+
+function renderList(){
+  const q=(document.getElementById('q').value||'').trim();
+  const box=document.getElementById('list');
+  if(!q){ box.innerHTML='<div class="empty">輸入姓名或手機號碼開始查詢<br>例如：王　或　0912　或　4829</div>'; return; }
+  const d=digits(q);
+  const hit=people.filter(p=> d.length>=3 ? digits(p.tel).includes(d)||p.no.includes(d)
+                                          : p.key.includes(q.toLowerCase()));
+  if(!hit.length){ box.innerHTML='<div class="empty">查無資料<br><span style="font-size:11.5px">這位可能不在具投票權的會員名冊中，請改用報到機或洽選務組</span></div>'; return; }
+  box.innerHTML=hit.slice(0,40).map(p=>{
+    const tags=[];
+    if(p.checked) tags.push('<span class="badge b-done">已報到</span>');
+    if(!p.canVote) tags.push('<span class="badge b-novote">無投票權</span>');
+    else if(p.isGroup) tags.push('<span class="badge b-grp">團體代表</span>');
+    const meta=[p.org,p.tel,p.table].filter(Boolean).join(' · ');
+    return `<div class="row" onclick="openDetail('${p.no}')">
+      <span class="nm">${esc(p.name)}</span>
+      <span class="meta">${esc(meta)}</span>${tags.join('')}
+      <span class="arw">›</span></div>`;
+  }).join('')+(hit.length>40?`<div class="empty">另有 ${hit.length-40} 筆，請輸入更完整的關鍵字</div>`:'');
+}
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ── QR 詳情 ── */
+function openDetail(no){
+  current=people.find(p=>p.no===no); if(!current) return;
+  const p=current;
+  document.getElementById('d-name').textContent=p.name;
+  document.getElementById('d-no').textContent='會員編號 '+p.no;
+  document.getElementById('d-org').textContent=[p.org,p.title].filter(Boolean).join('　');
+  const tags=[];
+  if(p.table) tags.push(`<span class="badge b-grp">${esc(p.table)}</span>`);
+  if(p.isGroup) tags.push('<span class="badge b-grp">團體代表</span>');
+  if(!p.canVote) tags.push('<span class="badge b-novote">無投票權・不發選票</span>');
+  if(p.checked) tags.push('<span class="badge b-done">已報到</span>');
+  document.getElementById('d-tags').innerHTML=tags.join('');
+  document.getElementById('d-msg').textContent='';
+  document.getElementById('d-body').innerHTML=detailBodyHTML(p);
+  if(!p.checked) drawQR(QR_PREFIX+p.no);
+  document.getElementById('detail').style.display='block';
+  window.scrollTo(0,0);
+}
+function detailBodyHTML(p){
+  if(p.checked){
+    const SRC={card:'LINE 電子會員證',slip:'預先列印報到單',staff:'服務人員產生',manual:'報到機手動輸入',unknown:'未記錄'};
+    return `<div style="margin-top:28px"><div class="done-mark">✅</div>
+      <div style="font-size:19px;font-weight:700;color:#7ec98d">已完成報到</div>
+      <div class="howto">報到方式：${esc(SRC[p.source]||'未記錄')}<br>
+        ${p.table?'座位：'+esc(p.table)+'<br>':''}如需重新列印入座單，請洽報到機服務人員。</div>
+      <div class="act"><button class="btn btn-out" onclick="closeDetail()">返回查詢</button></div>`;
+  }
+  return `<div class="qrbox"><div id="qr"></div></div>
+    <div class="qrsrc">🧑‍💼 服務人員產生的報到碼</div>
+    <div class="howto">請將此畫面拿給<b>報到機</b>掃描，即完成報到並列印入座單。<br>
+      螢幕亮度調到最亮會比較好掃。</div>
+    <div class="act">
+      <button class="btn btn-go" id="d-go" onclick="staffCheckin()">⚡ 直接完成報到（不列印入座單）</button>
+      <button class="btn btn-out" onclick="closeDetail()">返回查詢</button>
+    </div>
+    <div id="d-msg"></div>`;
+}
+function drawQR(text){
+  const el=document.getElementById('qr'); if(!el) return;
+  el.innerHTML='';
+  const size=Math.min(260,Math.floor(window.innerWidth*0.62));
+  new QRCode(el,{text,width:size,height:size,correctLevel:QRCode.CorrectLevel.M});
+}
+function closeDetail(){ document.getElementById('detail').style.display='none'; current=null; }
+
+/* ── 直接報到（報到機排隊時的備援）── */
+async function staffCheckin(){
+  if(!current) return;
+  const p=current, btn=document.getElementById('d-go'), msg=document.getElementById('d-msg');
+  if(!confirm(`確定直接為「${p.name}」完成報到？\n此方式不會列印入座單，選票仍需至服務台領取。`)) return;
+  btn.disabled=true; msg.style.color='var(--muted)'; msg.textContent='報到中…';
+  try{
+    const r=await fetch(`${SB}/rest/v1/rpc/vote_checkin`,{method:'POST',
+      headers:{...SBH,'Content-Type':'application/json'},
+      body:JSON.stringify({p_election:ELECTION_ID,p_member_no:p.no})});
+    const res=await r.json();
+    if(!res||!res.ok){
+      const e=res&&res.error;
+      msg.style.color='#e08a80';
+      msg.textContent = e==='already_checked_in' ? '此會員已完成報到'
+        : e==='delegated_away' ? '已委託他人出席，不重複報到'
+        : e==='not_open' ? '報到尚未開放'
+        : '報到失敗：'+(e||'未知錯誤');
+      btn.disabled=false; return;
+    }
+    await markSource(p.no);
+    p.checked=true; p.source='staff';
+    msg.style.color='#7ec98d'; msg.textContent='✅ 報到完成';
+    document.getElementById('d-body').innerHTML=detailBodyHTML(p);
+    renderList();
+  }catch(e){ msg.style.color='#e08a80'; msg.textContent='連線失敗，請重試'; btn.disabled=false; }
+}
+/* 報到來源：供事後統計「服務人員協助 / 小白單 / 電子會員證」的比例 */
+async function markSource(no){
+  try{
+    await fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${ELECTION_ID}&member_no=eq.${encodeURIComponent(no)}`,
+      {method:'PATCH',headers:{...SBH,'Content-Type':'application/json'},
+       body:JSON.stringify({checkin_source:'staff'})});
+  }catch(_){ /* 欄位未建立時略過，不影響報到 */ }
+}
+</script>
+</body>
+</html>

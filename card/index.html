@@ -401,7 +401,7 @@ async function scanDelegate(){
     if(!(window.liff && liff.scanCodeV2)){ alert('此環境不支援掃碼，請手動輸入會員編號。'); return; }
     const res = await liff.scanCodeV2();
     const raw = (res && res.value || '').trim();
-    const no = raw.replace(/^[MP]:/i,'').trim();      // 會員證 QR 為 M:會員編號；預先列印報到單為 P:會員編號
+    const no = raw.replace(/^[MPS]:/i,'').trim();     // M:=電子會員證、P:=預先列印報到單、S:=服務人員產生
     if(!/^\d+$/.test(no)){ alert('這不是有效的會員證 QR。'); return; }
     document.getElementById('px-dno').value = no;
     // 依編號帶出姓名

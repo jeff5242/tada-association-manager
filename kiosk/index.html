@@ -399,9 +399,21 @@ async function confirmCheckin(){
       else toast('報到失敗：'+res.error);
       return;
     }
+    markCheckinSource(current.member_no);
     printReceipt(res);
     refreshProg();
   }catch(e){ toast('報到失敗，請重試'); }
+}
+
+/* 報到來源：card=LINE電子會員證 / slip=預先列印小白單 / staff=服務人員手機產生 / manual=本機輸入。
+   RPC 簽章不動，報到成功後直接補寫欄位；欄位尚未建立時靜默略過，不影響報到。 */
+async function markCheckinSource(memberNo){
+  if(!election||!memberNo) return;
+  try{
+    await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_members?election_id=eq.${election.id}&member_no=eq.${encodeURIComponent(memberNo)}`,
+      {method:'PATCH',headers:{...window.tadaSbHeaders(),'Content-Type':'application/json'},
+       body:JSON.stringify({checkin_source:scanSrc})});
+  }catch(_){}
 }
 
 // 領紙本票：標記已報到（不發電子票），顯示應圈張數，開啟紙本選票列印
@@ -415,6 +427,7 @@ async function confirmCheckinPaper(){
       else toast('報到失敗：'+res.error);
       return;
     }
+    markCheckinSource(current.member_no);
     const ballots = res.ballots||1;
     document.getElementById('pr-ic').style.display='none';
     document.getElementById('pr-qr-wrap').style.display='none';
@@ -481,6 +494,8 @@ function printReceipt(res){
   if(scanSrc==='slip'){
     headline = res.name+' 報到完成';
     tip = '您手上的預先列印報到單即為憑證，請妥善保管並依單上桌號入座';
+  }else if(scanSrc==='staff'){
+    tip = '（服務人員協助報到）'+tip;
   }
   document.getElementById('pr-name').textContent = headline;
   document.getElementById('pr-tip').textContent = tip;
@@ -556,7 +571,9 @@ document.addEventListener('keydown', e=>{
 function handleScan(raw){
   const t=(raw||'').trim();
   let no;
+  // 前綴決定「怎麼報到的」：P=會前預印小白單、S=服務人員手機產生、M=LINE 電子會員證
   if(/^P:/i.test(t)){ scanSrc='slip'; no=t.slice(2); }
+  else if(/^S:/i.test(t)){ scanSrc='staff'; no=t.slice(2); }
   else if(/^M:/i.test(t)){ scanSrc='card'; no=t.slice(2); }
   else { scanSrc='card'; const m=t.match(/(\d{6,10})/); no=m?m[1]:t; }
   lookup(no);
@@ -606,12 +623,12 @@ async function kpOk(){
   if(!kpVal) return;
 
   try{
-    if(kpMode==='no'){ scanSrc='card'; closeKeypad(); lookup(kpVal); return; }
+    if(kpMode==='no'){ scanSrc='manual'; closeKeypad(); lookup(kpVal); return; }
 
     if(kpMode==='mobile'){
       const res=await checkinRpc('member_by_mobile',{p_mobile:kpVal});
       if(!res.ok){ toast('查無此手機號碼的會員'); kpClear(); return; }
-      scanSrc='card'; closeKeypad(); lookup(res.member_no); return;
+      scanSrc='manual'; closeKeypad(); lookup(res.member_no); return;
     }
 
     // ── 統一編號 ──
@@ -628,7 +645,7 @@ async function kpOk(){
       const res=await checkinRpc('member_verify_by_tax',
         {p_tax_id:kpTax, p_idx:kpPickIdx, p_last3:kpVal});
       if(!res.ok){ toast('手機末 3 碼不符'); kpClear(); return; }
-      scanSrc='card'; closeKeypad(); lookup(res.member_no); return;
+      scanSrc='manual'; closeKeypad(); lookup(res.member_no); return;
     }
   }catch(e){
     toast(e.message==='NOT_INSTALLED'
