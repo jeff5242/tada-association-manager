@@ -88,7 +88,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .c-row{display:flex;align-items:center;gap:5mm;height:var(--rh,12mm)}
 .c-box{width:var(--bw,12mm);height:var(--bh,9mm);border:0.6mm solid #000;background:#fff;flex:0 0 auto}
 .c-no{width:12mm;text-align:center;font-size:var(--nfs,13pt);font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;flex:0 0 auto}
-.c-name{font-size:var(--fs,15pt);font-weight:700;letter-spacing:.5em;flex:1;text-align:center;padding-right:.5em}
+.c-name{font-size:var(--fs,15pt);font-weight:700;flex:1;text-align:center}
+/* 姓名兩端對齊：字數不同也讓首尾字對齊同一直線（如「蘇鵬」對齊「林建智」） */
+.c-name .nmw{display:inline-flex;justify-content:space-between;width:var(--nw,4em)}
+.c-name .nmw i{font-style:normal}
 .c-org{font-size:9.5pt;color:#333;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .w-hd{margin-top:2mm;padding-top:2mm;border-top:0.3mm dashed #000;font-size:9pt;font-weight:700;letter-spacing:.05em}
 .w-hd span{font-weight:400;color:#333;letter-spacing:0}
@@ -377,6 +380,14 @@ function build(preview){
   const bh  = Math.max(5.5, rh-2);
   if(totalRows>20){ alert(`候選人 ${list.length} 位 + 自填 ${wn} 欄 = ${totalRows} 列，單頁放不下，請減少自填欄。`); return; }
 
+  // 姓名兩端對齊：以最長姓名決定欄寬，短姓名首尾字仍對齊同一直線
+  const nameChars = n => Array.from((n||'').trim());
+  const maxNameLen = Math.max(2, ...list.map(c=>nameChars(c.name).length));
+  const nw = (maxNameLen + (maxNameLen-1)*0.5).toFixed(2);
+  const nameHTML = n => { const ch=nameChars(n);
+    const style = ch.length<2 ? ' style="justify-content:center"' : '';
+    return `<span class="nmw"${style}>${ch.map(x=>`<i>${esc(x)}</i>`).join('')}</span>`; };
+
   const pages=[];
   for(let i=0;i<count;i++){
     const no=dtag+String(start+i).padStart(3,'0');
@@ -384,10 +395,10 @@ function build(preview){
       <div class="c-row">
         <span class="c-no">${idx+1}</span>
         <span class="c-box"></span>
-        <span class="c-name">${esc(c.name)}</span>
+        <span class="c-name">${nameHTML(c.name)}</span>
       </div>`).join('');
     pages.push(`
-    <div class="ballot" style="--rh:${rh}mm;--fs:${fs}pt;--bw:${bw}mm;--bh:${bh}mm;--nfs:${nfs}pt">
+    <div class="ballot" style="--rh:${rh}mm;--fs:${fs}pt;--bw:${bw}mm;--bh:${bh}mm;--nfs:${nfs}pt;--nw:${nw}em">
       <span class="fid tl"></span><span class="fid tr"></span>
       <span class="fid bl"></span><span class="fid br"></span>
       ${isTest?'<div class="wm">測試票 TEST</div><div class="wm-note">※ 本張為彩排測試票，不得作為正式選票使用 ※</div>':''}
