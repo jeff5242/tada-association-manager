@@ -70,6 +70,12 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--paper);color:var(--i
 .seat.in .dot{background:var(--in);border-color:var(--in)}
 .seat.in .nm{color:var(--green);font-weight:700}
 .seat.hit .nm{background:#fff2b8;border-radius:4px}
+/* 會員徽章：圓圈「會」，與嘉賓一眼區分（報到時會員要領選票）*/
+.mb{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;
+  border:1px solid var(--green-mid);color:var(--green-mid);background:#fff;font-size:10px;font-style:normal;
+  line-height:1;margin-left:3px;vertical-align:1px;font-weight:700}
+.seat.in .mb{border-color:var(--gold);color:var(--gold);background:#fff}
+.wl .mb{width:14px;height:14px;font-size:9px}
 .seat.fresh .dot{animation:pop 1.6s ease-out 3}
 @keyframes pop{0%{box-shadow:0 0 0 0 rgba(184,145,58,.6)}70%{box-shadow:0 0 0 12px rgba(184,145,58,0)}100%{box-shadow:0 0 0 0 rgba(184,145,58,0)}}
 .legend{display:flex;gap:16px;align-items:center;font-size:12px;color:var(--muted);margin:6px 0 16px}
@@ -89,6 +95,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--paper);color:var(--i
 .lst .num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;font-size:15px}
 .lst .done{color:var(--gold);font-weight:700}
 .lst .left{color:var(--muted)}
+.lst .veg{color:#3d8b5f;font-weight:700}
 .lst tr.allin{background:rgba(184,145,58,.08)}
 .lst tr.allin .left{color:var(--gold);font-weight:700}
 .lst tr.zero .num{color:var(--muted)}
@@ -130,11 +137,13 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--paper);color:var(--i
     <button class="btn" id="b-num" onclick="toggleNum()">顯示座號</button>
     <button class="btn" id="b-wait" onclick="toggleWait()">只看未報到</button>
     <button class="btn" onclick="load(true)">↻ 立即更新</button>
+    <button class="btn" onclick="exportXls()">⬇ 匯出 Excel</button>
     <span class="tick" id="tick">載入中…</span>
   </div>
   <div class="legend">
     <span><i></i>未報到</span>
     <span class="l-in"><i></i>已報到</span>
+    <span><i class="mb" style="margin:0 5px 0 0;">會</i>協會會員（報到需領選票）</span>
     <span>圓圈中央為桌號與報到人數</span>
   </div>
 
@@ -150,6 +159,7 @@ const ELECTION='66666666-6666-4666-8666-666666666666';
 const FLOOR=[[2,1,3],[4,5,6,7],[8,9,10,11],[12,13,14,15],[16,17,18,19],[20,21,22,23]];
 
 let TCFG={}, ORDER={}, rows=[], lastIn=new Set(), showNum=false, waitOnly=false, timer=null;
+let MEMBERS=new Set();          // 去職稱姓名（含團體代表），用來標「會」
 let listView=(localStorage.getItem('tada_seatmap_view')==='list');
 
 function tryPw(){
@@ -164,6 +174,13 @@ function show(){
 const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const cl=v=>String(v==null?'':v).trim();
 const tnum=t=>{const m=/\d+/.exec(t||'');return m?+m[0]:999;};
+/* 名冊常把職稱寫進姓名（「徐前院長源泰」），去掉才比對得到 */
+const TITLES=['理事長','董事長','總經理','執行長','副校長','校長','副司長','司長','副署長','署長',
+  '副院長','前院長','院長','教授','研究員','總監','副總','經理','主任','技正','技監','組長',
+  '分所長','副所長','所長','處長','鄉長','社長','顧問','博士','董事','前所長','老師'];
+const deTitle=n=>TITLES.reduce((t,x)=>t.split(x).join(''), String(n||'').replace(/\s+/g,''));
+const isMember=n=>MEMBERS.has(deTitle(n));
+const MB='<i class="mb">會</i>';
 
 async function j(path){
   const r=await fetch(`${SB}/rest/v1/${path}`,{headers:H()});
@@ -173,25 +190,32 @@ async function j(path){
 
 async function load(manual){
   try{
-    const [cfg, ord, rsvp, guests, vm] = await Promise.all([
+    const [cfg, ord, rsvp, guests, vm, mem] = await Promise.all([
       j('tada_config?key=eq.seating_tables&select=value'),
       j('tada_config?key=eq.seating_order&select=value'),
       // 只出席論壇不入席者（meal='no'）不佔座位，不畫進圓桌
-      j('tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,title,org,table_no,checked_in,meal,created_at'),
+      j('tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,title,org,table_no,checked_in,meal,vegetarian,created_at'),
       j('tada_guests?seat=not.is.null&select=id,name,title,org,seat,checked_in'),
       j(`tada_v_members?election_id=eq.${ELECTION}&select=name,is_checked_in`),
+      j('tada_members?select=name,status,reps&limit=1000'),
     ]);
     const parse=a=>{ if(!a.length) return {}; const v=a[0].value; return typeof v==='string'?JSON.parse(v||'{}'):(v||{}); };
     TCFG=parse(cfg); ORDER=parse(ord);
     // 會員從報到機（/kiosk/）報到，狀態在 tada_v_members，要一併併進來
+    // 會員判定以名冊為準（含團體會員的代表人）；退會者不算
+    MEMBERS=new Set();
+    mem.filter(m=>m.status!=='退會會員').forEach(m=>{
+      [m.name].concat((m.reps||[]).map(rp=>rp&&rp.name)).forEach(nm=>{ const k=deTitle(cl(nm)); if(k) MEMBERS.add(k); });
+    });
     const vin=new Set(vm.filter(x=>x.is_checked_in).map(x=>cl(x.name)));
     const inRsvp=new Set(rsvp.map(x=>cl(x.display_name)));
     rows = rsvp.filter(x=>cl(x.table_no) && x.meal!=='no')
       .map(x=>({ key:'member:'+x.user_id, name:cl(x.display_name), title:cl(x.title), org:cl(x.org),
-                 table:cl(x.table_no), inn:!!x.checked_in || vin.has(cl(x.display_name)), t:x.created_at||'' }))
+                 table:cl(x.table_no), inn:!!x.checked_in || vin.has(cl(x.display_name)),
+                 veg:(x.vegetarian||0)>0, t:x.created_at||'' }))
       .concat(guests.filter(g=>!inRsvp.has(cl(g.name)))
         .map(g=>({ key:'guest:'+g.id, name:cl(g.name), title:cl(g.title), org:cl(g.org),
-                   table:cl(g.seat), inn:!!g.checked_in, t:'' })));
+                   table:cl(g.seat), inn:!!g.checked_in, veg:false, t:'' })));
     render(manual);
     const d=new Date();
     document.getElementById('tick').textContent='更新於 '+d.toLocaleTimeString('zh-TW',{hour12:false})+'（每 10 秒自動更新）';
@@ -267,7 +291,7 @@ function render(manual){
       const x=Math.cos(ang)*R, y=Math.sin(ang)*R;
       const hit=q && r.name.includes(q);
       const cls=['seat', r.inn?'in':'', hit?'hit':'', fresh.has(r.key)?'fresh':''].filter(Boolean).join(' ');
-      const label=(showNum?`<span style="color:var(--gold);">${i+1}.</span>`:'')+esc(r.name);
+      const label=(showNum?`<span style="color:var(--gold);">${i+1}.</span>`:'')+esc(r.name)+(isMember(r.name)?MB:'');
       return `<div class="${cls}" style="transform:translate(${x.toFixed(1)}px,${y.toFixed(1)}px)"
         title="${esc([r.name,r.title,r.org].filter(Boolean).join('　'))}">
         <div class="dot">${r.inn?'✓':''}</div><div class="nm">${label}</div></div>`;
@@ -288,16 +312,17 @@ function renderList(by, q, fresh){
   const listed=new Set([].concat(...FLOOR));
   const extra=Object.keys(by).filter(t=>!listed.has(tnum(t))).sort((a,b)=>tnum(a)-tnum(b));
   const seq=[].concat(...FLOOR).map(n=>'第'+n+'桌').filter(t=>by[t]).concat(extra);
-  let tin=0, tall=0;
+  let tin=0, tall=0, tveg=0, tmeat=0;
   const body=seq.map(t=>{
     const list=seatOrder(t, by[t]);
     const n=list.length, done=list.filter(r=>r.inn).length, left=n-done;
-    tin+=done; tall+=n;
+    const veg=list.filter(r=>r.veg).length, meat=n-veg;
+    tin+=done; tall+=n; tveg+=veg; tmeat+=meat;
     const c=TCFG[t]||{}, lb=cl(c.label);
     const waits=list.filter(r=>!r.inn);
     const names=waits.map(r=>{
       const hit=q && r.name.includes(q);
-      return `<b style="${hit?'background:#fff2b8;border-radius:3px;padding:0 2px;':''}">${esc(r.name)}</b>`;
+      return `<b style="${hit?'background:#fff2b8;border-radius:3px;padding:0 2px;':''}">${esc(r.name)}${isMember(r.name)?MB:''}</b>`;
     }).join('、');
     const pct=n?Math.round(done/n*100):0;
     return `<tr class="${done===n?'allin':''}${done===0?' zero':''}">
@@ -306,20 +331,62 @@ function renderList(by, q, fresh){
       <td class="num done">${done}</td>
       <td class="num">${n}</td>
       <td class="num left">${left||'—'}</td>
+      <td class="num">${meat}</td>
+      <td class="num veg">${veg||'—'}</td>
       <td><div class="bar"><i style="width:${pct}%"></i></div></td>
       <td class="wl">${left? names : '<span style="color:var(--gold);">✓ 全數到齊</span>'}</td>
     </tr>`;
   }).join('');
   document.getElementById('body').innerHTML = `
     <table class="lst">
-      <thead><tr><th>桌號</th><th>主題</th><th>已到</th><th>應到</th><th>剩餘</th><th>報到進度</th><th>未到人員</th></tr></thead>
+      <thead><tr><th>桌號</th><th>主題</th><th>已到</th><th>應到</th><th>剩餘</th><th>葷食</th><th>素食</th><th>報到進度</th><th>未到人員</th></tr></thead>
       <tbody>${body}
         <tr class="total"><td class="no">合計</td><td></td>
           <td class="num done">${tin}</td><td class="num">${tall}</td><td class="num left">${tall-tin}</td>
+          <td class="num">${tmeat}</td><td class="num veg">${tveg}</td>
           <td><div class="bar"><i style="width:${tall?Math.round(tin/tall*100):0}%"></i></div></td>
           <td class="wl">${tall-tin} 位尚未報到</td></tr>
       </tbody>
     </table>`;
+}
+
+/* 匯出 Excel：一列一桌，前面是統計欄，後面每一格放一個人名（依座位順序）。
+   用帶 Office 標頭的 HTML 表格存成 .xls，不必外掛函式庫；
+   全欄位標記文字格式，「第13桌」不會被 Excel 當成日期。 */
+function exportXls(){
+  const by={}; rows.forEach(r=>{ (by[r.table]=by[r.table]||[]).push(r); });
+  const listed=new Set([].concat(...FLOOR));
+  const extra=Object.keys(by).filter(t=>!listed.has(tnum(t))).sort((a,b)=>tnum(a)-tnum(b));
+  const seq=[].concat(...FLOOR).map(n=>'第'+n+'桌').filter(t=>by[t]).concat(extra);
+  const maxN=Math.max(0,...seq.map(t=>by[t].length));
+  const td=v=>`<td style="mso-number-format:'\\@'">${esc(v==null?'':v)}</td>`;
+  const th=v=>`<th style="mso-number-format:'\\@'">${esc(v)}</th>`;
+  let tin=0,tall=0,tveg=0;
+  const body=seq.map(t=>{
+    const list=seatOrder(t, by[t]);
+    const n=list.length, done=list.filter(r=>r.inn).length, veg=list.filter(r=>r.veg).length;
+    tin+=done; tall+=n; tveg+=veg;
+    const c=TCFG[t]||{};
+    const cells=list.map(r=>td(r.name+(isMember(r.name)?'（會）':'')+(r.veg?'〔素〕':'')+(r.inn?' ✓':'')));
+    const pad=Array(Math.max(0,maxN-n)).fill('<td></td>');
+    return '<tr>'+[td(t),td(cl(c.label)),td(done),td(n),td(n-done),td(n-veg),td(veg)].join('')
+      + cells.join('') + pad.join('') + '</tr>';
+  }).join('');
+  const head='<tr>'+['桌號','主題','已到','應到','剩餘','葷食','素食'].map(th).join('')
+    + Array.from({length:maxN},(_,i)=>th(i+1)).join('') + '</tr>';
+  const total='<tr>'+[td('合計'),td(''),td(tin),td(tall),td(tall-tin),td(tall-tveg),td(tveg)].join('')
+    + Array(maxN).fill('<td></td>').join('') + '</tr>';
+  const stamp=new Date().toLocaleString('zh-TW',{hour12:false});
+  const html='<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">'
+    +'<style>table{border-collapse:collapse}th,td{border:1px solid #999;padding:4px 8px;font-size:12px;white-space:nowrap}'
+    +'th{background:#1e3320;color:#d4a853;font-weight:700}</style></head><body>'
+    +`<p>TADA 第六屆會員大會　座次現況　（匯出於 ${esc(stamp)}）</p>`
+    +`<table><thead>${head}</thead><tbody>${body}${total}</tbody></table>`
+    +'<p>（會）＝協會會員　〔素〕＝素食　✓＝已報到</p></body></html>';
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel;charset=utf-8;'}));
+  a.download=`TADA_座次現況_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xls`;
+  a.click();
 }
 
 document.getElementById('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') tryPw(); });
