@@ -93,6 +93,21 @@ header .st{margin-left:auto;font-size:11.5px;color:var(--muted);text-align:right
   box-shadow:0 8px 20px rgba(79,154,94,.28),inset 0 1px 0 rgba(255,255,255,.18)}
 .btn-go:disabled{opacity:.4}
 #d-msg{font-size:13px;min-height:22px;margin-top:10px}
+
+/* ── 領取清單 ── */
+.picks{margin-top:18px;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 14px 6px}
+.picks-h{font-size:11.5px;color:var(--muted);letter-spacing:.18em;display:flex;justify-content:space-between;align-items:center;padding-bottom:6px}
+.picks-h .st{letter-spacing:0;font-size:11px}
+.pick{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;border-top:1px solid var(--line);
+  padding:13px 2px;font-family:var(--sans);cursor:pointer;color:var(--ink)}
+.pick:disabled{opacity:.6}
+.pk-box{width:25px;height:25px;border:2px solid var(--muted);border-radius:7px;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:900;transition:background .12s}
+.pick.on .pk-box{background:var(--green);border-color:var(--green)}
+.pk-lb{flex:1;text-align:left;font-weight:700;font-size:15px}
+.pick.on .pk-lb{color:#9fd3aa}
+.pk-t{font-size:11.5px;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
+.pk-note{font-size:11.5px;color:var(--gold-lt);padding:8px 2px 8px;border-top:1px dashed var(--line)}
 .done-mark{font-size:44px;margin-bottom:6px}
 </style>
 </head>
@@ -162,6 +177,7 @@ let members=new Map();  // member_no(母號) → tada_members
 let tableOf=new Map();  // 姓名 → 桌號
 let people=[];      // 查詢用的扁平人員清單
 let current=null;
+let pickupColOk=false;   // tada_v_members.pickup 欄位是否已建立（未建立時勾選不落地）
 
 /* ── 登入 ── */
 async function sha256(s){const d=new TextEncoder().encode(s);
@@ -187,19 +203,16 @@ async function loadAll(){
   const st=document.getElementById('st');
   st.textContent='載入中…';
   try{
-    const [r1,r2,r3]=await Promise.all([
-      fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${ELECTION_ID}`
-        +`&select=member_no,name,rep,company,member_type,can_vote,is_checked_in,checkin_source`,{headers:SBH}),
+    const BASE='member_no,name,rep,company,member_type,can_vote,is_checked_in';
+    const [r2,r3]=await Promise.all([
       fetch(`${SB}/rest/v1/tada_members?select=member_no,name,company,title,mobile,phone_office,contact_phone,member_type,status,reps,hidden`,{headers:SBH}),
       fetch(`${SB}/rest/v1/tada_rsvp?select=display_name,table_no&hidden=is.false`,{headers:SBH}),
     ]);
-    // checkin_source 欄位尚未建立時 PostgREST 會回 400，退回不帶該欄
-    let rosterJson;
-    if(r1.ok){ rosterJson=await r1.json(); }
-    else{
-      const r1b=await fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${ELECTION_ID}`
-        +`&select=member_no,name,rep,company,member_type,can_vote,is_checked_in`,{headers:SBH});
-      rosterJson=r1b.ok?await r1b.json():[];
+    // checkin_source / pickup 欄位尚未建立時 PostgREST 會回 400，逐步退回
+    let rosterJson=[];
+    for(const sel of [BASE+',checkin_source,pickup', BASE+',checkin_source', BASE]){
+      const r=await fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${ELECTION_ID}&select=${sel}`,{headers:SBH});
+      if(r.ok){ rosterJson=await r.json(); pickupColOk=sel.includes('pickup'); break; }
     }
     roster=rosterJson;
     (r2.ok?await r2.json():[]).forEach(m=>{ if(m.member_no) members.set(String(m.member_no),m); });
@@ -227,6 +240,7 @@ function buildPeople(){
              title:(idx>0?((m.reps||[])[idx-1]||{}).title:m.title)||'',
              isGroup:v.member_type==='group'||no.includes('-'),
              canVote:v.can_vote!==false, checked:!!v.is_checked_in,
+             pickup:v.pickup||{}, proxy:null,
              source:v.checkin_source||'', table:tableOf.get(name)||'',
              key:(name+' '+org+' '+no+' '+digits(tel)).toLowerCase() };
   }).sort((a,b)=>a.no.localeCompare(b.no,'en',{numeric:true}));
@@ -272,6 +286,7 @@ function openDetail(no){
   if(!p.checked) drawQR(QR_PREFIX+p.no);
   document.getElementById('detail').style.display='block';
   window.scrollTo(0,0);
+  if(p.proxy===null||p.proxy===undefined) loadProxy(p);   // 背景補查委託資料，回來後刷新領取清單
 }
 function detailBodyHTML(p){
   if(p.checked){
@@ -280,10 +295,13 @@ function detailBodyHTML(p){
       <div style="font-size:19px;font-weight:700;color:#7ec98d">已完成報到</div>
       <div class="howto">報到方式：${esc(SRC[p.source]||'未記錄')}<br>
         ${p.table?'座位：'+esc(p.table)+'<br>':''}如需重新列印入座單，請洽報到機服務人員。</div>
-      <div class="act"><button class="btn btn-out" onclick="closeDetail()">返回查詢</button></div>`;
+      <div id="picks-wrap">${picksHTML(p)}</div>
+      <div class="act"><button class="btn btn-out" onclick="closeDetail()">返回查詢</button></div>
+      <div id="d-msg"></div>`;
   }
   return `<div class="qrbox"><div id="qr"></div></div>
     <div class="qrsrc">🧑‍💼 服務人員產生的報到碼</div>
+    <div id="picks-wrap">${picksHTML(p)}</div>
     <div class="howto">請將此畫面拿給<b>報到機</b>掃描，即完成報到並列印入座單。<br>
       螢幕亮度調到最亮會比較好掃。</div>
     <div class="act">
@@ -291,6 +309,70 @@ function detailBodyHTML(p){
       <button class="btn btn-out" onclick="closeDetail()">返回查詢</button>
     </div>
     <div id="d-msg"></div>`;
+}
+
+/* ── 領取清單：規則比照報到機小白單 ──
+   名片/會員禮人人有；選票＝有投票權且未把票委託出去；委託票＝受託投票者。 */
+function pickItems(p){
+  const items=[{k:'card',label:'名片'},{k:'gift',label:'會員禮'}];
+  const votedAway = p.proxy && p.proxy.delegated && p.proxy.proxy_vote;
+  if(p.canVote && !votedAway) items.push({k:'ballot',label:'選票'});
+  if(p.proxy && p.proxy.is_delegate_for && p.proxy.delegate_vote)
+    items.push({k:'proxy',label:'委託票（受 '+p.proxy.is_delegate_for+' 委託）'});
+  return items;
+}
+function pickNotes(p){
+  const n=[];
+  if(!p.canVote) n.push('※ 無第六屆投票權，不發選票，歡迎領取會員禮');
+  if(p.proxy && p.proxy.delegated && p.proxy.proxy_vote) n.push('※ 選票已委託 '+(p.proxy.delegate_name||'他人')+'，不發本人票');
+  if(p.proxyChecked===false) n.push('※ 委託資料查詢失敗，如有代領請洽選務組確認');
+  return n;
+}
+function picksHTML(p){
+  const rows=pickItems(p).map(i=>{
+    const t=(p.pickup||{})[i.k];
+    return `<button class="pick${t?' on':''}" id="pick-${i.k}" onclick="togglePick('${i.k}')">
+      <span class="pk-box">${t?'✓':''}</span><span class="pk-lb">${esc(i.label)}</span>
+      <span class="pk-t">${t?esc(t):''}</span></button>`;
+  }).join('');
+  const notes=pickNotes(p).map(x=>`<div class="pk-note">${esc(x)}</div>`).join('');
+  return `<div class="picks"><div class="picks-h"><span>領 取 項 目（點一下＝已領）</span><span class="st" id="pk-st">${pickupColOk?'':'⚠ 未連動'}</span></div>${rows}${notes}</div>`;
+}
+async function loadProxy(p){
+  try{
+    const r=await fetch(`${SB}/rest/v1/rpc/proxy_mine`,{method:'POST',
+      headers:{...SBH,'Content-Type':'application/json'},
+      body:JSON.stringify({p_election:ELECTION_ID,p_user_id:'',p_name:p.name,p_no:p.base||p.no})});
+    p.proxy=r.ok?await r.json():null;
+    p.proxyChecked=r.ok;
+  }catch(_){ p.proxy=null; p.proxyChecked=false; }
+  if(current===p){ const w=document.getElementById('picks-wrap'); if(w) w.innerHTML=picksHTML(p); }
+}
+let pickBusy=false;
+async function togglePick(k){
+  const p=current; if(!p||pickBusy) return;
+  const st=()=>document.getElementById('pk-st');
+  const now=new Date();
+  const stamp=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const had=!!(p.pickup||{})[k];
+  if(had && !confirm('取消這筆領取記錄？')) return;
+  pickBusy=true; if(st()) st().textContent='儲存中…';
+  try{
+    // 先讀最新值再合併，避免兩支手機互相蓋掉
+    const g=await fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${ELECTION_ID}&member_no=eq.${encodeURIComponent(p.no)}&select=pickup`,{headers:SBH});
+    if(!g.ok) throw new Error('read');
+    const cur=((await g.json())[0]||{}).pickup||{};
+    if(had) delete cur[k]; else cur[k]=stamp;
+    const w=await fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${ELECTION_ID}&member_no=eq.${encodeURIComponent(p.no)}`,
+      {method:'PATCH',headers:{...SBH,'Content-Type':'application/json'},body:JSON.stringify({pickup:cur})});
+    if(!w.ok) throw new Error('write');
+    p.pickup=cur;
+    if(st()) st().textContent='✓ 已儲存';
+  }catch(_){
+    if(st()){ st().textContent='⚠ 儲存失敗'; st().style.color='#e08a80'; }
+  }
+  pickBusy=false;
+  const wrap=document.getElementById('picks-wrap'); if(wrap){ const keep=st()?st().textContent:''; wrap.innerHTML=picksHTML(p); if(keep&&st()) st().textContent=keep; }
 }
 function drawQR(text){
   const el=document.getElementById('qr'); if(!el) return;
