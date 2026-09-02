@@ -1641,7 +1641,7 @@ async function loadMembers(){
   const status = document.getElementById('sb-status');
   if(status){ status.style.color='var(--gray)'; status.textContent='載入中…'; }
   try {
-    const base = 'id,member_no,member_type,name,company,company_status,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name,tax_id,id_number,line_user_id';
+    const base = 'id,member_no,member_type,name,company,company_status,gender,mobile,phone_office,email,contact_phone,contact_email,addr_mail,addr_domicile,birthday,edu,expertise,join_date,title,terms,note,status,last_paid,fee_note,reps,business,founded,member_count,cert_no,cert_org,contact_name,tax_id,id_number,line_user_id';
     // 先試帶 admin_enabled；欄位未建則退回不帶（名冊照常可用）
     let res = await fetch(`${SB_URL}/rest/v1/tada_members?select=${base},admin_enabled&order=member_no.asc.nullslast`, {headers: SB_HEADERS});
     if(res.ok){ adminColReady = true; }
@@ -3574,34 +3574,110 @@ const APP_EDIT_FIELDS = {
     ['ref1','推薦人1'], ['ref2','推薦人2'],
   ],
 };
-let editingAppId = null;
+/* 申請人已經是會員時，改編輯會員名冊的欄位（申請表停在當初填的內容，
+   入會後補的生日／身分證／地址／專長都只在名冊裡，用申請表編輯會把它們洗掉）*/
+const MEMBER_EDIT_FIELDS = {
+  personal: [
+    ['name','姓名'], ['gender','性別'], ['birthday','出生日期'], ['id_number','身分證字號'],
+    ['edu','學歷'], ['title','職稱'], ['expertise','專長'],
+    ['addr_domicile','戶籍地址'], ['addr_mail','通訊地址'],
+    ['phone_office','公司電話'], ['mobile','手機'], ['email','Email'],
+    ['company','公司名稱'], ['tax_id','統編'],
+  ],
+  group: [
+    ['name','團體名稱'], ['company','服務機關／團體'], ['tax_id','統編'],
+    ['addr_mail','地址'], ['phone_office','公司電話'], ['mobile','手機'],
+    ['email','Email'], ['contact_name','聯絡人'], ['contact_phone','聯絡人電話'], ['contact_email','聯絡人Email'],
+    ['founded','成立日期'], ['member_count','會員人數'], ['business','業務項目'],
+  ],
+};
+/* 名冊欄位 ← 申請表欄位。入會申請書填的個資（生日／身分證／戶籍地址／學歷／專長）
+   多半沒有帶進名冊，名冊那格是空的；空格就用申請表的值補上，
+   免得改用名冊編輯之後反而看不到這些資料。名冊有值時一律以名冊為準。 */
+const MEMBER_FROM_APP = {
+  name:'name', company:'org_name', tax_id:'license_no', mobile:'tel_mobile',
+  phone_office:'tel_office', email:'email', contact_email:'contact_email',
+  contact_phone:'contact_tel', addr_mail:'addr_mail', addr_domicile:'addr_domicile',
+  birthday:'birthday', id_number:'id_number', edu:'education', expertise:'expertise',
+  gender:'gender', title:'job', founded:'org_founded', member_count:'member_count',
+  business:'business_scope', contact_name:'ceo_name',
+};
+let editingAppId = null, editingAppMember = null;
 
-function openAppEdit(id) {
+/* 申請 → 會員名冊比對：先看轉換後的會員編號，再看統編，最後才比姓名 */
+function appMatchedMember(a){
+  const cl = v => String(v == null ? '' : v).trim();
+  const rows = (typeof memberRows !== 'undefined' && memberRows) ? memberRows : [];
+  if (!rows.length) return null;
+  const no = cl(a.converted_member_no);
+  if (no) { const hit = rows.find(m => cl(m.member_no) === no); if (hit) return hit; }
+  const tax = cl(a.license_no);
+  if (tax) { const hit = rows.find(m => cl(m.tax_id) === tax); if (hit) return hit; }
+  for (const nm of [a.name, a.org_name, a.rep_name, a.ceo_name]) {
+    const k = seatDeTitle(cl(nm)); if (!k) continue;
+    const hit = rows.find(m => seatDeTitle(cl(m.name)) === k
+      || (m.reps || []).some(r => r && seatDeTitle(cl(r.name)) === k));
+    if (hit) return hit;
+  }
+  return null;
+}
+
+async function openAppEdit(id) {
   const a = allApps.find(x => x.id === id);
   if (!a) return;
+  // 名冊還沒載過就先載（入會審核分頁可能是進站後第一個開的）
+  if (typeof memberRows === 'undefined' || !memberRows || !memberRows.length) {
+    try { if (typeof loadMembers === 'function') await loadMembers(); } catch (e) {}
+  }
   editingAppId = id;
-  const spec = APP_EDIT_FIELDS[a.type] || APP_EDIT_FIELDS.personal;
-  document.getElementById('app-edit-title').textContent =
-    '檢視／修改：' + (a.name || a.org_name || '申請');
   const esc = s => String(s == null ? '' : s).replace(/"/g, '&quot;');
-  const rows = spec.map(([k, label]) => `
+  const mm = appMatchedMember(a);
+  editingAppMember = mm;
+  const src = mm || a;
+  const spec = mm
+    ? (MEMBER_EDIT_FIELDS[mm.member_type === 'group' ? 'group' : 'personal'])
+    : (APP_EDIT_FIELDS[a.type] || APP_EDIT_FIELDS.personal);
+  document.getElementById('app-edit-title').textContent = mm
+    ? '編輯會員名冊：' + (mm.name || a.name || a.org_name || '')
+    : '檢視／修改：' + (a.name || a.org_name || '申請');
+  const banner = mm ? `
+    <div style="grid-column:1/-1;background:rgba(102,187,106,.1);border:1px solid rgba(102,187,106,.35);border-radius:8px;padding:11px 13px;margin-bottom:6px;font-size:12.5px;line-height:1.9;color:var(--ink);">
+      此申請人已是會員 <b style="color:var(--gold-lt);">${esc(mm.member_no)}</b>　狀態 ${esc(mm.status || '－')}
+      <br><span style="color:var(--gray);">以下編輯的是<b style="color:#66bb6a;">會員名冊</b>資料；申請表原始紀錄保留不動，作為入會存證。</span>
+      ${mm.member_type === 'group' ? '<br><span style="color:var(--gray);">團體代表請至「會員名冊 → 編輯」修改。</span>' : ''}
+      <span id="app-edit-borrow"></span>
+    </div>` : '';
+  const cl = v => String(v == null ? '' : v).trim();
+  let borrowed = 0;
+  const rows = banner + spec.map(([k, label]) => {
+    let val = cl(src[k]), from = '';
+    if (mm && !val) {                              // 名冊空白 → 用申請表的值補
+      const ak = MEMBER_FROM_APP[k];
+      if (ak && cl(a[ak])) { val = cl(a[ak]); from = 'app'; borrowed++; }
+    }
+    return `
     <div class="field" style="display:flex;flex-direction:column;gap:4px;">
-      <label style="font-size:11px;color:var(--gray);">${label}</label>
-      <input type="text" data-appfield="${k}" value="${esc(a[k])}"
-        style="background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:8px 10px;font-size:13px;font-family:'Noto Sans TC',sans-serif;outline:none;">
-    </div>`).join('');
+      <label style="font-size:11px;color:var(--gray);">${label}${from ? '　<span style="color:#4fc3f7;">← 申請表</span>' : ''}</label>
+      <input type="text" data-appfield="${k}" value="${esc(val)}"
+        style="background:var(--surface2);border:1px solid ${from ? 'rgba(79,195,247,.5)' : 'var(--border)'};color:var(--ink);padding:8px 10px;font-size:13px;font-family:'Noto Sans TC',sans-serif;outline:none;">
+    </div>`;
+  }).join('');
+  const noteKey = mm ? 'note' : 'admin_notes';
   const notes = `
     <div class="field" style="display:flex;flex-direction:column;gap:4px;">
-      <label style="font-size:11px;color:var(--gray);">秘書處備註</label>
-      <textarea data-appfield="admin_notes" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:8px 10px;font-size:13px;font-family:'Noto Sans TC',sans-serif;min-height:56px;resize:vertical;outline:none;">${esc(a.admin_notes)}</textarea>
+      <label style="font-size:11px;color:var(--gray);">${mm ? '名冊備註' : '秘書處備註'}</label>
+      <textarea data-appfield="${noteKey}" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:8px 10px;font-size:13px;font-family:'Noto Sans TC',sans-serif;min-height:56px;resize:vertical;outline:none;">${esc(src[noteKey])}</textarea>
     </div>`;
   document.getElementById('app-edit-fields').innerHTML = rows + notes;
+  const bel = document.getElementById('app-edit-borrow');
+  if (bel && borrowed) bel.innerHTML =
+    `<br><span style="color:#4fc3f7;">有 ${borrowed} 個欄位名冊是空的，已帶入申請表的值（標示 ← 申請表），按儲存就會寫進名冊。</span>`;
   document.getElementById('app-edit-modal').style.display = 'flex';
 }
 
 function closeAppEdit() {
   document.getElementById('app-edit-modal').style.display = 'none';
-  editingAppId = null;
+  editingAppId = null; editingAppMember = null;
 }
 
 async function saveAppEdit() {
@@ -3614,9 +3690,19 @@ async function saveAppEdit() {
     payload[el.dataset.appfield] = v === '' ? null : v;
   });
   try {
-    await patchApp(editingAppId, payload);
-    closeAppEdit();
-    await loadApplications();
+    if (editingAppMember) {
+      // 已是會員 → 寫回名冊，不動申請表（保留入會當下的存證）
+      const res = await fetch(`${SB_URL}/rest/v1/tada_members?member_no=eq.${encodeURIComponent(editingAppMember.member_no)}`,
+        { method:'PATCH', headers:{ ...SB_HEADERS, 'Prefer':'return=minimal' }, body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + await res.text());
+      closeAppEdit();
+      if (typeof loadMembers === 'function') await loadMembers();
+      await loadApplications();
+    } else {
+      await patchApp(editingAppId, payload);
+      closeAppEdit();
+      await loadApplications();
+    }
   } catch (e) {
     alert('儲存失敗：' + e.message);
   }
