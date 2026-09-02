@@ -1173,7 +1173,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:24px 26px;width:560px;max-width:94vw;">
       <h3 style="color:var(--gold-lt);font-size:17px;margin-bottom:4px;">匯出領票名冊</h3>
       <p style="font-size:12px;color:var(--gray);margin-bottom:16px;">
-        現場發選票時簽名用。個人會員一人一列、團體會員每位代表各一列（各一票），格式比照 112 年第五屆。</p>
+        現場發選票時勾記用（線上報到已取代簽名）。個人會員一人一列、團體會員每位代表各一列（各一票），格式比照 112 年第五屆。</p>
 
       <div style="font-size:12px;color:var(--gold-lt);font-weight:700;margin-bottom:6px;">收錄範圍</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
@@ -2729,11 +2729,12 @@ function pickupRollPrint(d, scope, cols){
         const gap=ci?'<td class="gap"></td>':'';
         if(!it) return gap+'<td class="no"></td><td class="nm"></td><td class="sg"></td>';
         const off=it.can?'':' off';
-        return gap+`<td class="no${off}">${e(it.no)}</td><td class="nm${off}">${e(it.name)}</td><td class="sg"></td>`;
+        return gap+`<td class="no${off}">${e(it.no)}</td><td class="nm${off}">${e(it.name)}</td>`
+          +`<td class="sg">${it.can?'<span class="bx"></span>':''}</td>`;
       }).join('')+'</tr>';
     });
     const hdr='<tr class="hd">'+Array.from({length:cols},(_,ci)=>
-      (ci?'<td class="gap"></td>':'')+'<th>會員編號</th><th>會員姓名</th><th>簽名</th>').join('')+'</tr>';
+      (ci?'<td class="gap"></td>':'')+'<th>會員編號</th><th>會員姓名</th><th>領票<br>打✓</th>').join('')+'</tr>';
     html+=`<div class="pk-page">${head('個人會員領票名冊'+(pPages.length>1?`（${pi+1}／${pPages.length}）`:''))}
       <table class="pk-t">${hdr}${body}</table></div>`;
   });
@@ -2750,11 +2751,12 @@ function pickupRollPrint(d, scope, cols){
         if(!it) return gap+'<td class="no"></td><td class="nm gname"></td><td class="sg"></td>';
         const off=it.can?'':' off';
         return gap+`<td class="no${off}">${e(it.no)}</td>`
-          +`<td class="nm gname${off}">${e(it.org)}／<b>${e(it.name)}</b></td><td class="sg"></td>`;
+          +`<td class="nm gname${off}">${e(it.org)}／<b>${e(it.name)}</b></td>`
+          +`<td class="sg">${it.can?'<span class="bx"></span>':''}</td>`;
       }).join('')+'</tr>';
     });
     const hdr='<tr class="hd">'+Array.from({length:gCols},(_,ci)=>
-      (ci?'<td class="gap"></td>':'')+'<th>會員編號</th><th>團體名稱／會員代表</th><th>簽名</th>').join('')+'</tr>';
+      (ci?'<td class="gap"></td>':'')+'<th>會員編號</th><th>團體名稱／會員代表</th><th>領票<br>打✓</th>').join('')+'</tr>';
     html+=`<div class="pk-page">${head('團體會員領票名冊'+(gPages.length>1?`（${pi+1}／${gPages.length}）`:''))}
       <table class="pk-t">${hdr}${body}</table></div>`;
   });
@@ -2782,7 +2784,8 @@ function pickupRollPrint(d, scope, cols){
   .pk-t td.gname{font-size:9pt;font-weight:400;letter-spacing:0;text-align:left;padding:0 1.5mm;line-height:1.35}
   .pk-t td.gname b{font-weight:700}
   .pk-t td.off{color:#999}
-  .pk-t td.sg{width:26mm}
+  .pk-t td.sg{width:15mm}
+  .pk-t td.sg .bx{display:inline-block;width:5.5mm;height:5.5mm;border:0.35mm solid #000;vertical-align:-1mm}
   .pk-foot{font-size:9pt;margin-top:3mm;line-height:1.7}
   </style></head><body>${html}
   <div class="pk-page" style="page-break-after:auto">
@@ -2791,8 +2794,8 @@ function pickupRollPrint(d, scope, cols){
       一、個人會員 <b>${d.persons.length}</b> 位；團體會員 <b>${d.groups.length}</b> 家、會員代表 <b>${nRep}</b> 位；
           合計應發選票 <b>${d.persons.length+nRep}</b> 份（理事票、監事票各一份）。<br>
       二、依本會章程，團體會員推派之代表各具一表決權；名譽（榮譽）會員無表決權。<br>
-      三、領票時請核對會員編號與姓名，並由本人（或持委託書之受託人）親自簽名，簽名欄不得代簽。<br>
-      四、受託人領取委託票者，請於其姓名列加註「代 ○○○」並另附委託書。<br>
+      三、線上報到已完成身分核驗，本冊僅供發票時勾記：核對會員編號與姓名無誤後，於「領票」欄打✓。<br>
+      四、受託人代領委託票者，請於該列打✓並加註「代 ○○○」，另附委託書備查。<br>
       五、${scope==='all'?'灰字者為本次不具投票權之會員，僅供櫃台查詢，不得發票。':'本冊僅列具投票權者。'}<br>
       六、列印時間：${e(new Date().toLocaleString('zh-TW'))}
     </div>
@@ -2803,7 +2806,7 @@ function pickupRollPrint(d, scope, cols){
 }
 
 function pickupRollXls(d, scope){
-  const rows=[['會員編號','類型','團體名稱','姓名／會員代表','投票權','簽名']];
+  const rows=[['會員編號','類型','團體名稱','姓名／會員代表','投票權','領票確認']];
   d.persons.forEach(p=>rows.push([p.no,'個人會員','',p.name,p.can?'可':'不可','']));
   d.groups.forEach(g=>g.reps.forEach((rp,i)=>
     rows.push([rp.no,'團體代表',g.org,rp.name,rp.can?'可':'不可',''])));
