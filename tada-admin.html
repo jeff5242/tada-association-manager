@@ -1170,42 +1170,6 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     </div>
   </div>
 
-  <!-- 匯出領票名冊：比照 112 年第五屆格式（個人／團體分冊、簽名欄） -->
-  <div id="pk-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closePickupRoll()">
-    <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:24px 26px;width:560px;max-width:94vw;">
-      <h3 style="color:var(--gold-lt);font-size:17px;margin-bottom:4px;">匯出領票名冊</h3>
-      <p style="font-size:12px;color:var(--gray);margin-bottom:16px;">
-        現場發選票時勾記用（線上報到已取代簽名）。個人會員一人一列、團體會員每位代表各一列（各一票），格式比照 112 年第五屆。</p>
-
-      <div style="font-size:12px;color:var(--gold-lt);font-weight:700;margin-bottom:6px;">收錄範圍</div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
-        <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);cursor:pointer;">
-          <input type="radio" name="pk-scope" value="votable" checked> 僅具投票權者<span style="color:var(--gray);">（正式領票名冊）</span></label>
-        <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);cursor:pointer;">
-          <input type="radio" name="pk-scope" value="all"> 投票名冊全部<span style="color:var(--gray);">（不可投票者以灰字加註，供櫃台查詢）</span></label>
-      </div>
-
-      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px;">
-        <span style="font-size:12px;color:var(--gold-lt);font-weight:700;">個人會員欄組數</span>
-        <select id="pk-cols" class="filter-select" style="width:90px;">
-          <option value="3">3 組</option><option value="4">4 組</option><option value="5" selected>5 組</option>
-        </select>
-        <span style="font-size:11px;color:var(--gray);">欄組愈多、頁數愈少，簽名格也愈窄</span>
-      </div>
-
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span style="font-size:12px;color:var(--gold-lt);font-weight:700;">格式</span>
-        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);cursor:pointer;"><input type="radio" name="pk-fmt" value="pdf" checked> 列印／PDF</label>
-        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);cursor:pointer;"><input type="radio" name="pk-fmt" value="excel"> Excel</label>
-        <span style="margin-left:auto;display:flex;gap:8px;">
-          <button class="btn btn-outline btn-sm" onclick="closePickupRoll()">取消</button>
-          <button class="btn btn-gold btn-sm" onclick="doPickupRoll()">⬇ 匯出</button>
-        </span>
-      </div>
-      <p id="pk-note" style="font-size:11px;color:var(--gray);margin-top:12px;line-height:1.7;"></p>
-    </div>
-  </div>
-
   <!-- 匯出桌次表：先選要匯出哪幾桌 -->
   <div id="sx-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSeatExport()">
     <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:24px 26px;width:560px;max-width:94vw;max-height:88vh;display:flex;flex-direction:column;">
@@ -1421,6 +1385,42 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div id="mc-summary" style="font-size:12px;color:var(--gray);margin-bottom:10px;"></div>
     <div class="tbl-wrap"><table><thead><tr><th>時間</th><th>類別</th><th>收件人</th><th>主旨</th><th>狀態</th></tr></thead>
       <tbody id="mc-log-tbody"><tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">載入中…</td></tr></tbody></table></div>
+  </div>
+</div>
+
+<!-- 匯出領票名冊：比照 112 年第五屆格式（個人／團體分冊、簽名欄） -->
+<div id="pk-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closePickupRoll()">
+  <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:24px 26px;width:560px;max-width:94vw;">
+    <h3 style="color:var(--gold-lt);font-size:17px;margin-bottom:4px;">匯出領票名冊</h3>
+    <p style="font-size:12px;color:var(--gray);margin-bottom:16px;">
+      現場發選票時勾記用（線上報到已取代簽名）。個人會員一人一列、團體會員每位代表各一列（各一票），格式比照 112 年第五屆。</p>
+
+    <div style="font-size:12px;color:var(--gold-lt);font-weight:700;margin-bottom:6px;">收錄範圍</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+      <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);cursor:pointer;">
+        <input type="radio" name="pk-scope" value="votable" checked> 僅具投票權者<span style="color:var(--gray);">（正式領票名冊）</span></label>
+      <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);cursor:pointer;">
+        <input type="radio" name="pk-scope" value="all"> 投票名冊全部<span style="color:var(--gray);">（不可投票者以灰字加註，供櫃台查詢）</span></label>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px;">
+      <span style="font-size:12px;color:var(--gold-lt);font-weight:700;">個人會員欄組數</span>
+      <select id="pk-cols" class="filter-select" style="width:90px;">
+        <option value="3">3 組</option><option value="4">4 組</option><option value="5" selected>5 組</option>
+      </select>
+      <span style="font-size:11px;color:var(--gray);">欄組愈多、頁數愈少，簽名格也愈窄</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--gold-lt);font-weight:700;">格式</span>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);cursor:pointer;"><input type="radio" name="pk-fmt" value="pdf" checked> 列印／PDF</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);cursor:pointer;"><input type="radio" name="pk-fmt" value="excel"> Excel</label>
+      <span style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="closePickupRoll()">取消</button>
+        <button class="btn btn-gold btn-sm" onclick="doPickupRoll()">⬇ 匯出</button>
+      </span>
+    </div>
+    <p id="pk-note" style="font-size:11px;color:var(--gray);margin-top:12px;line-height:1.7;"></p>
   </div>
 </div>
 
