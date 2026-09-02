@@ -66,23 +66,31 @@ header .st{margin-left:auto;font-size:11.5px;color:var(--muted);text-align:right
 #detail .inner{max-width:520px;margin:0 auto;padding:14px 16px 40px;text-align:center}
 #detail .back{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:14px;
   background:none;border:none;font-family:var(--sans);padding:6px 2px;cursor:pointer;float:left}
-#detail .who{clear:both;padding-top:14px}
-#detail .who .nm{font-size:30px;font-weight:900;color:#fff;letter-spacing:.16em;padding-left:.16em}
-#detail .who .no{font-family:ui-monospace,Menlo,monospace;font-size:14px;color:var(--gold-lt);margin-top:2px}
+#detail .card{clear:both;margin-top:16px;background:linear-gradient(180deg,var(--surface2),var(--surface));
+  border:1px solid var(--line);border-radius:22px;padding:26px 18px 22px;
+  box-shadow:0 14px 40px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05)}
+#detail .who .cap{font-size:10.5px;letter-spacing:.34em;color:var(--muted);text-indent:.34em;margin-bottom:8px}
+#detail .who .nm{font-size:32px;font-weight:900;color:#fff;letter-spacing:.16em;padding-left:.16em;line-height:1.25}
+#detail .who .no{font-family:ui-monospace,Menlo,monospace;font-size:14px;color:var(--gold-lt);margin-top:4px;letter-spacing:.08em}
 #detail .who .org{font-size:12.5px;color:var(--muted);margin-top:3px}
 #detail .tags{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px}
-.qrbox{background:#fff;border-radius:16px;padding:16px;display:inline-block;margin:16px auto 0;
-  box-shadow:0 0 0 3px var(--gold)}
-.qrbox #qr img,.qrbox #qr canvas{display:block}
-.qrsrc{margin-top:12px;display:inline-flex;align-items:center;gap:7px;
+#detail .who::after{content:'';display:block;width:44px;height:2px;margin:16px auto 0;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);border-radius:2px}
+.qrbox{background:#fff;border-radius:20px;padding:15px;display:block;width:fit-content;margin:18px auto 0;
+  box-shadow:0 0 0 3px var(--gold),0 0 0 7px rgba(196,146,42,.18),0 12px 30px rgba(0,0,0,.45)}
+.qrbox #qr img,.qrbox #qr canvas{display:block;border-radius:6px}
+.qrsrc{margin:16px auto 0;display:flex;width:fit-content;align-items:center;gap:7px;
   background:rgba(196,146,42,.14);border:1px solid var(--gold);border-radius:999px;
-  padding:7px 16px;font-size:13px;font-weight:700;color:var(--gold-lt)}
-#detail .howto{font-size:12.5px;color:var(--muted);margin-top:14px;line-height:1.9}
+  padding:7px 18px;font-size:13px;font-weight:700;color:var(--gold-lt);white-space:nowrap}
+#detail .howto{font-size:12.5px;color:var(--muted);margin-top:16px;line-height:1.9}
+#detail .howto b{color:var(--ink)}
 #detail .act{margin-top:22px;display:flex;flex-direction:column;gap:10px}
-.btn{border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;
-  font-family:var(--sans);cursor:pointer}
+.btn{border:none;border-radius:13px;padding:15px;font-size:15px;font-weight:700;
+  font-family:var(--sans);cursor:pointer;transition:transform .06s}
+.btn:active{transform:scale(.975)}
 .btn-out{background:transparent;color:var(--muted);border:1px solid var(--line)}
-.btn-go{background:var(--green);color:#fff}
+.btn-go{background:linear-gradient(180deg,#57a768,#44854f);color:#fff;
+  box-shadow:0 8px 20px rgba(79,154,94,.28),inset 0 1px 0 rgba(255,255,255,.18)}
 .btn-go:disabled{opacity:.4}
 #d-msg{font-size:13px;min-height:22px;margin-top:10px}
 .done-mark{font-size:44px;margin-bottom:6px}
@@ -118,7 +126,9 @@ header .st{margin-left:auto;font-size:11.5px;color:var(--muted);text-align:right
 <div id="detail">
   <div class="inner">
     <button class="back" onclick="closeDetail()">‹ 返回查詢</button>
+    <div class="card">
     <div class="who">
+      <div class="cap">TADA 第六屆會員大會・報到碼</div>
       <div class="nm" id="d-name">—</div>
       <div class="no" id="d-no"></div>
       <div class="org" id="d-org"></div>
@@ -133,6 +143,7 @@ header .st{margin-left:auto;font-size:11.5px;color:var(--muted);text-align:right
         <button class="btn btn-out" onclick="closeDetail()">返回查詢</button>
       </div>
       <div id="d-msg"></div>
+    </div>
     </div>
   </div>
 </div>
