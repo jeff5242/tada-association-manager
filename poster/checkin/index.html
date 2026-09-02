@@ -19,7 +19,7 @@ body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#666;color:v
 .hd .sub{font-size:13pt;color:#555;margin-top:1.5mm;letter-spacing:.08em}
 
 .step{display:flex;gap:7mm;align-items:stretch;margin-top:7mm}
-.stepno{flex:0 0 24mm;background:var(--green);color:#fff;border-radius:5mm;
+.stepno{flex:0 0 24mm;height:34mm;align-self:center;background:var(--green);color:#fff;border-radius:5mm;
   display:flex;flex-direction:column;align-items:center;justify-content:center}
 .stepno b{font-size:30pt;font-weight:900;line-height:1}
 .stepno span{font-size:10pt;letter-spacing:.2em;margin-top:1mm}
@@ -41,6 +41,7 @@ body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#666;color:v
 .farrow{font-size:20pt;font-weight:900;color:var(--gold);flex:0 0 auto}
 .arrow-dn{text-align:center;font-size:19pt;font-weight:900;color:var(--gold);margin-top:4.5mm;line-height:1}
 
+.step.last{margin-bottom:8mm}
 .warn{margin-top:auto;background:var(--gold);color:#fff;border-radius:4mm;text-align:center;padding:5mm}
 .warn b{font-size:21pt;font-weight:900;letter-spacing:.06em}
 .warn span{display:block;font-size:11pt;margin-top:1mm}
@@ -50,7 +51,7 @@ body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#666;color:v
 .vip .hd{border-color:var(--gold)}
 .vip .hd h1{color:var(--ink)}
 .bigstep{margin-top:9mm;display:flex;gap:7mm;align-items:stretch}
-.bigstep .stepno{background:var(--gold)}
+.bigstep .stepno{background:var(--gold);height:30mm}
 .bigstep .stepbody h2{font-size:23pt}
 .bigstep .stepbody p{font-size:13pt;color:#444;margin-top:2mm;line-height:1.6}
 .welcome{margin-top:auto;text-align:center;padding:6mm 0 2mm}
@@ -84,7 +85,7 @@ body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#666;color:v
         </div>
         <div class="opt">
           <div class="t">🙋 沒帶手機</div>
-          <p>向服務人員報<br><b>手機號碼 或 公司統編</b><br>由服務人員產生 QR Code 協助報到</p>
+          <p>向服務人員報<br><b>手機號碼 或 公司統編</b><br>由服務人員產生 QR Code<br>協助完成報到</p>
         </div>
       </div>
     </div>
@@ -106,7 +107,7 @@ body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#666;color:v
 
   <div class="arrow-dn">▼</div>
 
-  <div class="step">
+  <div class="step last">
     <div class="stepno"><b>3</b><span>投　票</span></div>
     <div class="stepbody">
       <h2>領完票，馬上投票</h2>
