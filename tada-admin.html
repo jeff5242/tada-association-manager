@@ -436,6 +436,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       <span id="sb-status" style="font-size:11px;align-self:center;"></span>
       <button class="btn btn-outline btn-sm" onclick="toggleRecon()">⇄ 勾稽出席資料</button>
       <button class="btn btn-outline btn-sm" onclick="exportMemberCSV()">匯出 CSV</button>
+      <button class="btn btn-outline btn-sm" onclick="openPickupRoll()">🗳 匯出領票名冊</button>
       <button class="btn btn-gold btn-sm" onclick="openAddModal()">＋ 新增會員</button>
     </div>
   </div>
@@ -1164,6 +1165,42 @@ tr:hover td{background:rgba(74,124,89,0.06);}
       </div>
       <p style="font-size:11px;color:var(--gray);margin-top:12px;line-height:1.7;">
         隱藏＝不列入出席人數與桌次規劃，可到「出席統計」勾「顯示已隱藏」還原。</p>
+    </div>
+  </div>
+
+  <!-- 匯出領票名冊：比照 112 年第五屆格式（個人／團體分冊、簽名欄） -->
+  <div id="pk-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closePickupRoll()">
+    <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:24px 26px;width:560px;max-width:94vw;">
+      <h3 style="color:var(--gold-lt);font-size:17px;margin-bottom:4px;">匯出領票名冊</h3>
+      <p style="font-size:12px;color:var(--gray);margin-bottom:16px;">
+        現場發選票時簽名用。個人會員一人一列、團體會員每位代表各一列（各一票），格式比照 112 年第五屆。</p>
+
+      <div style="font-size:12px;color:var(--gold-lt);font-weight:700;margin-bottom:6px;">收錄範圍</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+        <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);cursor:pointer;">
+          <input type="radio" name="pk-scope" value="votable" checked> 僅具投票權者<span style="color:var(--gray);">（正式領票名冊）</span></label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink);cursor:pointer;">
+          <input type="radio" name="pk-scope" value="all"> 投票名冊全部<span style="color:var(--gray);">（不可投票者以灰字加註，供櫃台查詢）</span></label>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px;">
+        <span style="font-size:12px;color:var(--gold-lt);font-weight:700;">個人會員欄組數</span>
+        <select id="pk-cols" class="filter-select" style="width:90px;">
+          <option value="3">3 組</option><option value="4">4 組</option><option value="5" selected>5 組</option>
+        </select>
+        <span style="font-size:11px;color:var(--gray);">欄組愈多、頁數愈少，簽名格也愈窄</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--gold-lt);font-weight:700;">格式</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);cursor:pointer;"><input type="radio" name="pk-fmt" value="pdf" checked> 列印／PDF</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);cursor:pointer;"><input type="radio" name="pk-fmt" value="excel"> Excel</label>
+        <span style="margin-left:auto;display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="closePickupRoll()">取消</button>
+          <button class="btn btn-gold btn-sm" onclick="doPickupRoll()">⬇ 匯出</button>
+        </span>
+      </div>
+      <p id="pk-note" style="font-size:11px;color:var(--gray);margin-top:12px;line-height:1.7;"></p>
     </div>
   </div>
 
@@ -2570,6 +2607,220 @@ async function exportMemberCSV(){
   a.href='data:text/csv;charset=utf-8,\ufeff'+encodeURIComponent(csv);
   a.download='TADA_會員名冊_'+todayTag()+'.csv';
   a.click();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   領票名冊（比照 112 年第五屆「會員選票領票名冊」格式）
+   資料以投票名冊 tada_v_members 為準：個人會員一列一票，
+   團體會員每位代表各一列各一票（編號為 母號-1 / -2 / -3）。
+   ══════════════════════════════════════════════════════════════ */
+const PK_MEETING = {
+  org:'台灣科技農企業發展協會',
+  title:'第六屆理監事選舉',
+  time:'一、時間：115年09月04日(五)',
+  place:'二、地點：臻愛婚宴會館 烏日高鐵店',
+};
+const PK_ROWS_PER_PAGE = 24;   // A4 直式一頁可容納的簽名列數
+
+function openPickupRoll(){
+  document.getElementById('pk-note').textContent='';
+  document.getElementById('pk-modal').style.display='flex';
+}
+function closePickupRoll(){ document.getElementById('pk-modal').style.display='none'; }
+
+/* 取投票名冊 → 拆成個人／團體兩份 */
+async function buildPickupRoll(scope){
+  const r=await fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}`
+    +`&select=member_no,name,member_type,rep,company,can_vote&order=member_no.asc`,{headers:SB_HEADERS});
+  if(!r.ok) throw new Error('讀取投票名冊失敗（'+r.status+'）');
+  let list=await r.json();
+  if(scope!=='all') list=list.filter(v=>v.can_vote!==false);
+
+  // 會員名冊補齊團體名稱（投票名冊的 company 可能沒填）
+  const byNo=new Map();
+  (memberRows||[]).forEach(m=>{ if(m.member_no) byNo.set(String(m.member_no),m); });
+
+  const persons=[], groups=new Map();
+  list.forEach(v=>{
+    const no=String(v.member_no||'').trim();
+    const base=no.split('-')[0];
+    const isGroup = v.member_type==='group' || no.includes('-');
+    if(isGroup){
+      const m=byNo.get(base);
+      const org=(v.company||(m&&(m.company||m.name))||'').trim()||'（未填團體名稱）';
+      if(!groups.has(base)) groups.set(base,{no:base, org, reps:[]});
+      groups.get(base).reps.push({no, name:(v.rep||v.name||'').trim(), can:v.can_vote!==false});
+    }else{
+      persons.push({no, name:(v.name||'').trim(), can:v.can_vote!==false});
+    }
+  });
+  const numOf=x=>parseInt(String(x).replace(/\D/g,''),10)||0;
+  persons.sort((a,b)=>numOf(a.no)-numOf(b.no));
+  const grpList=[...groups.values()].sort((a,b)=>numOf(a.no)-numOf(b.no));
+  grpList.forEach(g=>g.reps.sort((a,b)=>numOf(a.no)-numOf(b.no)));
+  return {persons, groups:grpList};
+}
+
+/* 直欄優先分頁：先填滿第一欄再換下一欄，與 112 年名冊的閱讀順序一致 */
+function pkPaginate(items, cols, rowsPerPage){
+  const per=cols*rowsPerPage, pages=[];
+  for(let i=0;i<items.length;i+=per){
+    const chunk=items.slice(i,i+per);
+    const rows=Math.min(rowsPerPage, Math.ceil(chunk.length/cols));
+    const grid=Array.from({length:rows},()=>Array(cols).fill(null));
+    chunk.forEach((it,k)=>{ grid[k%rows][Math.floor(k/rows)]=it; });
+    pages.push(grid);
+  }
+  return pages.length?pages:[[]];
+}
+
+/* 團體：同一團體的代表不拆到兩欄，先算出「一欄要放幾列」再切 */
+function pkGroupItems(groups, cols, rowsPerPage){
+  const items=[];
+  groups.forEach(g=>{
+    g.reps.forEach((rp,i)=>{
+      items.push({no:i===0?g.no:'', org:g.org, name:rp.name, can:rp.can, head:i===0, span:g.reps.length});
+    });
+  });
+  // 讓整組落在同一欄：不夠放就先補空列到欄尾（代表人數超過一欄者不補，直接接續）
+  const out=[];
+  for(let i=0;i<items.length;){
+    const g=items[i].span;
+    const used=out.length%rowsPerPage;
+    if(used && g<=rowsPerPage && used+g>rowsPerPage){
+      while(out.length%rowsPerPage) out.push(null);
+      continue;
+    }
+    for(let k=0;k<g;k++) out.push(items[i+k]);
+    i+=g;
+  }
+  return out;
+}
+
+function doPickupRoll(){
+  const scope=(document.querySelector('input[name="pk-scope"]:checked')||{}).value||'votable';
+  const fmt=(document.querySelector('input[name="pk-fmt"]:checked')||{}).value||'pdf';
+  const cols=parseInt(document.getElementById('pk-cols').value,10)||5;
+  const note=document.getElementById('pk-note');
+  note.textContent='整理中…';
+  buildPickupRoll(scope).then(d=>{
+    const nGrpRep=d.groups.reduce((s,g)=>s+g.reps.length,0);
+    if(!d.persons.length && !nGrpRep){ note.textContent='投票名冊沒有符合條件的資料。'; return; }
+    if(fmt==='excel') pickupRollXls(d, scope);
+    else pickupRollPrint(d, scope, cols);
+    note.textContent=`個人 ${d.persons.length} 位、團體 ${d.groups.length} 家／代表 ${nGrpRep} 位，合計 ${d.persons.length+nGrpRep} 票。`;
+    closePickupRoll();
+  }).catch(e=>{ note.textContent='匯出失敗：'+e.message; });
+}
+
+function pickupRollPrint(d, scope, cols){
+  const e=v=>escapeHtml(String(v==null?'':v));
+  const M=PK_MEETING;
+  const head=(sub)=>`<div class="pk-h"><div class="t1">${e(M.org)} ${e(M.title)}</div>
+      <div class="t2">${e(sub)}</div><div class="t3">${e(M.time)}</div><div class="t3">${e(M.place)}</div></div>`;
+
+  let html='';
+  // ── 個人會員 ──
+  const pPages=pkPaginate(d.persons, cols, PK_ROWS_PER_PAGE);
+  pPages.forEach((grid,pi)=>{
+    let body='';
+    grid.forEach(row=>{
+      body+='<tr>'+row.map((it,ci)=>{
+        const gap=ci?'<td class="gap"></td>':'';
+        if(!it) return gap+'<td class="no"></td><td class="nm"></td><td class="sg"></td>';
+        const off=it.can?'':' off';
+        return gap+`<td class="no${off}">${e(it.no)}</td><td class="nm${off}">${e(it.name)}</td><td class="sg"></td>`;
+      }).join('')+'</tr>';
+    });
+    const hdr='<tr class="hd">'+Array.from({length:cols},(_,ci)=>
+      (ci?'<td class="gap"></td>':'')+'<th>會員編號</th><th>會員姓名</th><th>簽名</th>').join('')+'</tr>';
+    html+=`<div class="pk-page">${head('個人會員領票名冊'+(pPages.length>1?`（${pi+1}／${pPages.length}）`:''))}
+      <table class="pk-t">${hdr}${body}</table></div>`;
+  });
+
+  // ── 團體會員 ──
+  const gCols=Math.min(2,cols);
+  const gItems=pkGroupItems(d.groups, gCols, PK_ROWS_PER_PAGE);
+  const gPages=pkPaginate(gItems, gCols, PK_ROWS_PER_PAGE);
+  if(gItems.filter(Boolean).length) gPages.forEach((grid,pi)=>{
+    let body='';
+    grid.forEach(row=>{
+      body+='<tr>'+row.map((it,ci)=>{
+        const gap=ci?'<td class="gap"></td>':'';
+        if(!it) return gap+'<td class="no"></td><td class="nm gname"></td><td class="sg"></td>';
+        const off=it.can?'':' off';
+        return gap+`<td class="no${off}">${e(it.no)}</td>`
+          +`<td class="nm gname${off}">${e(it.org)}／<b>${e(it.name)}</b></td><td class="sg"></td>`;
+      }).join('')+'</tr>';
+    });
+    const hdr='<tr class="hd">'+Array.from({length:gCols},(_,ci)=>
+      (ci?'<td class="gap"></td>':'')+'<th>會員編號</th><th>團體名稱／會員代表</th><th>簽名</th>').join('')+'</tr>';
+    html+=`<div class="pk-page">${head('團體會員領票名冊'+(gPages.length>1?`（${pi+1}／${gPages.length}）`:''))}
+      <table class="pk-t">${hdr}${body}</table></div>`;
+  });
+
+  const nRep=d.groups.reduce((s,g)=>s+g.reps.length,0);
+  const w=window.open('','_blank');
+  if(!w){ alert('瀏覽器阻擋了列印視窗，請允許彈出視窗後再試一次。'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="utf-8">
+  <title>TADA 第六屆選舉 領票名冊</title><style>
+  @page{size:A4 portrait;margin:12mm 10mm}
+  body{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#000;margin:0}
+  .pk-page{page-break-after:always;break-after:page}
+  .pk-page:last-child{page-break-after:auto;break-after:auto}
+  .pk-h{text-align:center;margin-bottom:6mm}
+  .pk-h .t1{font-size:15pt;font-weight:700;letter-spacing:.06em}
+  .pk-h .t2{font-size:13pt;font-weight:700;margin-top:1.5mm}
+  .pk-h .t3{font-size:10.5pt;text-align:left;margin-top:2mm;letter-spacing:.02em}
+  .pk-t{width:100%;border-collapse:collapse;table-layout:fixed}
+  .pk-t th{border:0.35mm solid #000;font-size:9.5pt;font-weight:700;padding:1.4mm 1mm;text-align:center;background:#eee}
+  .pk-t td{border:0.35mm solid #000;font-size:11pt;padding:0;height:8.4mm;text-align:center}
+  .pk-t td.gap{border:0;width:3mm}
+  .pk-t th.gapx{border:0}
+  .pk-t td.no{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10pt;letter-spacing:.02em}
+  .pk-t td.nm{font-weight:700;letter-spacing:.12em}
+  .pk-t td.gname{font-size:9pt;font-weight:400;letter-spacing:0;text-align:left;padding:0 1.5mm;line-height:1.35}
+  .pk-t td.gname b{font-weight:700}
+  .pk-t td.off{color:#999}
+  .pk-t td.sg{width:26mm}
+  .pk-foot{font-size:9pt;margin-top:3mm;line-height:1.7}
+  </style></head><body>${html}
+  <div class="pk-page" style="page-break-after:auto">
+    ${head('領票統計與領票須知')}
+    <div class="pk-foot">
+      一、個人會員 <b>${d.persons.length}</b> 位；團體會員 <b>${d.groups.length}</b> 家、會員代表 <b>${nRep}</b> 位；
+          合計應發選票 <b>${d.persons.length+nRep}</b> 份（理事票、監事票各一份）。<br>
+      二、依本會章程，團體會員推派之代表各具一表決權；名譽（榮譽）會員無表決權。<br>
+      三、領票時請核對會員編號與姓名，並由本人（或持委託書之受託人）親自簽名，簽名欄不得代簽。<br>
+      四、受託人領取委託票者，請於其姓名列加註「代 ○○○」並另附委託書。<br>
+      五、${scope==='all'?'灰字者為本次不具投票權之會員，僅供櫃台查詢，不得發票。':'本冊僅列具投票權者。'}<br>
+      六、列印時間：${e(new Date().toLocaleString('zh-TW'))}
+    </div>
+  </div>
+  </body></html>`);
+  w.document.close();
+  setTimeout(()=>{ try{ w.focus(); w.print(); }catch(err){} }, 500);
+}
+
+function pickupRollXls(d, scope){
+  const rows=[['會員編號','類型','團體名稱','姓名／會員代表','投票權','簽名']];
+  d.persons.forEach(p=>rows.push([p.no,'個人會員','',p.name,p.can?'可':'不可','']));
+  d.groups.forEach(g=>g.reps.forEach((rp,i)=>
+    rows.push([rp.no,'團體代表',g.org,rp.name,rp.can?'可':'不可',''])));
+  const nRep=d.groups.reduce((s,g)=>s+g.reps.length,0);
+  rows.push([]);
+  rows.push([`個人 ${d.persons.length} 位`,`團體 ${d.groups.length} 家`,`代表 ${nRep} 位`,
+             `合計 ${d.persons.length+nRep} 票`, scope==='all'?'（含不具投票權者）':'（僅具投票權者）','']);
+  const e=v=>escapeHtml(String(v==null?'':v));
+  const html='<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">'
+    +'<style>table{border-collapse:collapse}td,th{border:1px solid #999;padding:4px 8px;font-size:12px}'
+    +'th{background:#1e3320;color:#d4a853;font-weight:700}</style></head><body>'
+    +`<h3>${e(PK_MEETING.org)} ${e(PK_MEETING.title)}　會員選票領票名冊</h3>`
+    +`<div>${e(PK_MEETING.time)}　${e(PK_MEETING.place)}</div><br>`
+    +'<table><thead><tr>'+rows[0].map(h=>'<th>'+e(h)+'</th>').join('')+'</tr></thead><tbody>'
+    +rows.slice(1).map(r=>'<tr>'+r.map(c=>`<td style="mso-number-format:'\\@'">${e(c)}</td>`).join('')+'</tr>').join('')
+    +'</tbody></table></body></html>';
+  dlBlob('\ufeff'+html,'application/vnd.ms-excel;charset=utf-8;','TADA_第六屆_領票名冊_'+todayTag()+'.xls');
 }
 
 function switchSubTab(id){
