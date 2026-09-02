@@ -2775,13 +2775,16 @@ function pickupRollPrint(d, scope, cols){
   <title>TADA 第六屆選舉 領票名冊</title><style>
   @page{size:A4 portrait;margin:12mm 10mm}
   body{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#000;margin:0}
-  .pk-page{page-break-after:always;break-after:page}
+  .pk-page{page-break-after:always;break-after:page;padding-right:0.8mm}
   .pk-page:last-child{page-break-after:auto;break-after:auto}
   .pk-h{text-align:center;margin-bottom:6mm}
   .pk-h .t1{font-size:15pt;font-weight:700;letter-spacing:.06em}
   .pk-h .t2{font-size:13pt;font-weight:700;margin-top:1.5mm}
   .pk-h .t3{font-size:10.5pt;text-align:left;margin-top:2mm;letter-spacing:.02em}
-  .pk-t{width:100%;border-collapse:collapse;table-layout:fixed}
+  /* border-collapse 的外框只有半條線落在表格邊界，列印時常被頁緣裁掉。
+     明確補上表格外框，並讓表格離右緣留 0.8mm，右邊那條線才印得出來。 */
+  .pk-t{width:100%;border-collapse:collapse;table-layout:fixed;border:0.35mm solid #000}
+  .pk-t tr>*:last-child{border-right:0.35mm solid #000}
   .pk-t th{border:0.35mm solid #000;font-size:9.5pt;font-weight:700;padding:1.4mm 1mm;text-align:center;background:#eee}
   .pk-t td{border:0.35mm solid #000;font-size:11pt;padding:0;height:8.4mm;text-align:center}
   .pk-t td.gap{border:0;width:3mm}
