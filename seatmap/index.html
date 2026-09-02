@@ -41,7 +41,14 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--paper);color:var(--i
 .btn.on{background:var(--green);color:var(--gold-lt);border-color:var(--green)}
 .tick{margin-left:auto;font-size:12px;color:var(--muted)}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+.grid{display:flex;flex-direction:column;gap:18px}
+.stage{background:linear-gradient(180deg,#2d5235,#1e3320);color:#f0e6cd;text-align:center;
+  font-family:'Noto Serif TC',serif;font-size:17px;letter-spacing:.6em;text-indent:.6em;
+  padding:11px;border-radius:10px;margin-bottom:4px}
+/* 一列就是飯店的一排桌子；12 格切分，3 桌一排各佔 4 格、4 桌一排各佔 3 格 */
+.frow{display:grid;grid-template-columns:repeat(12,1fr);gap:18px;align-items:start}
+@media(max-width:1180px){ .frow{grid-template-columns:repeat(6,1fr)} .frow>.tcard{grid-column:auto/span 3!important} }
+@media(max-width:720px){ .frow{grid-template-columns:1fr} .frow>.tcard{grid-column:1/-1!important} }
 .tcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 12px 10px;position:relative}
 .tcard.full{border-color:var(--gold)}
 .thd{display:flex;align-items:baseline;gap:8px;padding:0 4px 8px}
@@ -208,10 +215,16 @@ function render(manual){
 
   const listed=new Set([].concat(...FLOOR));
   const extra=Object.keys(by).filter(t=>!listed.has(tnum(t))).sort((a,b)=>tnum(a)-tnum(b));
-  const seq=[].concat(...FLOOR).map(n=>'第'+n+'桌').concat(extra);
+  // 依飯店實際排法逐列呈現：第一列 2-1-3（主桌置中），之後每列 4 桌
+  const layout=FLOOR.map(r=>r.map(n=>'第'+n+'桌').filter(t=>by[t]))
+                    .filter(r=>r.length)
+                    .concat(extra.length?[extra]:[]);
 
-  let html='';
-  seq.forEach(t=>{
+  let html='<div class="stage">舞　台</div>';
+  layout.forEach(row=>{
+    const span=Math.max(1,Math.floor(12/row.length));
+    html+='<div class="frow">';
+    row.forEach((t,ci)=>{
     const list=by[t]; if(!list) return;
     const ordered=seatOrder(t, list);
     const n=ordered.length, R=118;
@@ -228,11 +241,13 @@ function render(manual){
         title="${esc([r.name,r.title,r.org].filter(Boolean).join('　'))}">
         <div class="dot">${r.inn?'✓':''}</div><div class="nm">${label}</div></div>`;
     }).join('');
-    html+=`<div class="tcard${done===n?' full':''}" id="tc-${tnum(t)}">
+    html+=`<div class="tcard${done===n?' full':''}" id="tc-${tnum(t)}" style="grid-column:${ci*span+1} / span ${span}">
       <div class="thd"><span class="tno">${esc(t)}</span>${lb?`<span class="tlb">${esc(lb)}</span>`:''}
         <span class="tcnt"><b>${done}</b>/${n}</span></div>
       <div class="round"><div class="plate"><div class="pn">${tnum(t)}</div><div class="pc">${done}/${n} 已報到</div></div>${seats}</div>
     </div>`;
+    });
+    html+='</div>';
   });
   document.getElementById('body').innerHTML = html || '<div class="load" style="grid-column:1/-1;">目前沒有已排桌的資料</div>';
 }
