@@ -209,6 +209,10 @@ header .prog.on .l{color:var(--gold-lt)}
   <input id="ag-org" class="add-in" placeholder="公司／機關名稱">
   <label class="add-lb">類別</label>
   <div class="add-cats" id="ag-cats"></div>
+  <label class="add-lb">入座桌號（可先不選，之後由人員安排）</label>
+  <select id="ag-seat" class="add-in" style="appearance:auto;">
+    <option value="">－ 待排座位 －</option>
+  </select>
   <div class="add-btns">
     <button class="add-cancel" onclick="closeAddGuest()">取消</button>
     <button class="add-ok" onclick="submitAddGuest()">✓ 完成報到</button>
@@ -498,6 +502,12 @@ function openAddGuest(){
 }
 function pickAgCat(c){ agCat=c; document.getElementById('ag-cats').innerHTML=CATS.map(x=>`<button class="ag-cat ${x===agCat?'on':''}" onclick="pickAgCat('${x}')">${x}</button>`).join(''); }
 function closeAddGuest(){ document.getElementById('addModal').classList.remove('show'); }
+// 桌號選項：第1~25桌＋工作桌（跟桌次規劃同一套編號）
+(function(){
+  const sel=document.getElementById('ag-seat'); if(!sel) return;
+  for(let i=1;i<=25;i++){ const o=document.createElement('option'); o.value=`第${i}桌`; o.textContent=`第${i}桌`; sel.appendChild(o); }
+  const w=document.createElement('option'); w.value='工作桌'; w.textContent='工作桌'; sel.appendChild(w);
+})();
 async function submitAddGuest(){
   const name=document.getElementById('ag-name').value.trim();
   const org=document.getElementById('ag-org').value.trim();
@@ -507,6 +517,16 @@ async function submitAddGuest(){
   try{
     const res=await rpc('guest_add',{p_name:name,p_org:org,p_category:agCat});
     if(res.ok){
+      // 有選桌號就直接回壓到貴賓名冊（座位圖、桌次表下次更新就看得到）
+      const seat=document.getElementById('ag-seat').value||'';
+      if(seat){
+        try{
+          await fetch(`${SB}/rest/v1/tada_guests?id=eq.${encodeURIComponent(res.id)}`,
+            {method:'PATCH',headers:{...H(),'Content-Type':'application/json',Prefer:'return=minimal'},
+             body:JSON.stringify({seat})});
+          res.seat=seat;
+        }catch(_){}
+      }
       guests.push({id:res.id,name:res.name,org:res.org,unit:res.org,category:res.category,seat:res.seat,checked_in:true});
       closeAddGuest(); renderCats(); renderUnits(); renderList(); renderProg(); showWelcome(res, res.id);
     } else err.textContent='新增失敗：'+(res.error||'未知');
