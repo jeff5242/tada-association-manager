@@ -135,12 +135,20 @@ function renderStats(p){
 }
 
 const OUTCOME_COLOR={ elected:GOLD, reserve:GREEN, tiebreak:TIE, not_elected:GREY };
+// 公司名縮短：去掉常見組織字尾，過長再截斷（手機標籤空間有限）
+function shortCompany(name){
+  if(!name) return '';
+  let t = name.replace(/(股份有限公司|有限公司|企業股份|企業社|合作社|股份|公司)$/,'')
+              .replace(/^(保證責任|財團法人|社團法人)/,'');
+  if(t.length > 9) t = t.slice(0,8) + '…';
+  return t;
+}
 function renderChart(chart, arr, seats, reserve){
   // 依得票排序（高→低）。同票時僅為畫面排列，不代表名次先後——
   // 誰當選由 status 決定，跨越分界的同票組會標成 tiebreak 待抽籤。
   arr = arr.slice().sort((a,b)=> b.votes - a.votes || (a.no||0)-(b.no||0));
-  const names = arr.map(c=> c.name + (c.company? '　'+c.company : '')
-                            + (c.status==='tiebreak' ? '　⚠同票待抽籤' : ''));
+  const narrow = window.innerWidth < 600;
+  const names = arr.map(c=> c.name + (c.status==='tiebreak' ? '⚠' : ''));
   const data = arr.map((c,i)=>{
     let color;
     if(c.status) color = OUTCOME_COLOR[c.status] || GREY;
@@ -151,14 +159,32 @@ function renderChart(chart, arr, seats, reserve){
     }
     return { value: c.votes, itemStyle:{ color, borderRadius:[0,6,6,0] } };
   });
+  // 列數多時拉高圖表，讓兩行標籤不擠
+  const el = chart.getDom();
+  const wantH = Math.max(300, arr.length * (narrow ? 44 : 36) + 20);
+  if(el.clientHeight !== wantH){ el.style.height = wantH + 'px'; chart.resize(); }
   // 橫向長條，最高票在最上方 → yAxis 反轉
   chart.setOption({
-    grid:{ left:8, right:70, top:6, bottom:6, containLabel:true },
-    xAxis:{ type:'value', axisLabel:{color:'#7fae86'}, splitLine:{lineStyle:{color:'rgba(255,255,255,.06)'}} },
+    grid:{ left:8, right:narrow?44:70, top:6, bottom:6, containLabel:true },
+    xAxis:{ type:'value', minInterval:1,
+            axisLabel:{color:'#7fae86'}, splitLine:{lineStyle:{color:'rgba(255,255,255,.06)'}} },
     yAxis:{ type:'category', inverse:true, data:names,
-            axisLabel:{color:'#f8f4ea',fontSize:15,fontWeight:700}, axisLine:{show:false}, axisTick:{show:false} },
+      axisLabel:{
+        color:'#f8f4ea', fontSize:narrow?13:15, fontWeight:700,
+        formatter:(val, idx)=>{
+          const c = arr[idx] || {};
+          const comp = shortCompany(c.company);
+          const tie = c.status==='tiebreak' ? '⚠' : '';
+          return comp ? `{n|${c.name}${tie}}\n{co|${comp}}` : `{n|${c.name}${tie}}`;
+        },
+        rich:{
+          n:{ color:'#f8f4ea', fontSize:narrow?13:15, fontWeight:700, align:'right', lineHeight:narrow?17:20 },
+          co:{ color:'#9db8a1', fontSize:narrow?10:12, align:'right', lineHeight:narrow?13:16 }
+        }
+      },
+      axisLine:{show:false}, axisTick:{show:false} },
     series:[{ type:'bar', data, barMaxWidth:26,
-      label:{ show:true, position:'right', color:'#d4a853', fontWeight:900, fontSize:16, formatter:'{c}' },
+      label:{ show:true, position:'right', color:'#d4a853', fontWeight:900, fontSize:narrow?14:16, formatter:'{c}' },
       animationDuration:500 }]
   });
 }
