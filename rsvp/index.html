@@ -157,6 +157,12 @@ textarea{resize:vertical;min-height:60px;}
         <textarea id="note" placeholder="想告訴協會的話…"></textarea>
       </div>
 
+      <div id="closed-note" style="background:rgba(196,146,42,.12);border:1.5px solid rgba(196,146,42,.5);border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.8;margin-bottom:12px;">
+        📌 <b>線上報名已截止</b>（大會 9/4 即將舉行）。<br>
+        如需<b>新增出席或增加人數</b>，請直接聯絡秘書處安排：<br>
+        📞 <a href="tel:0988558246" style="color:inherit;font-weight:700;">0988-558246</a>　💬 官方 LINE @tada-ai<br>
+        <span style="opacity:.8;">已報名者當天請直接前往會場報到。</span>
+      </div>
       <button class="submit" id="submit-btn" onclick="submitRsvp()">送出回覆</button>
     </div>
   </div>
@@ -322,7 +328,12 @@ async function init(){
   document.getElementById('form-view').style.display = 'block';
 }
 
+const RSVP_CLOSED = true;   // 2026-09-03 停止線上報名（要重開改 false）
 async function submitRsvp(){
+  if(RSVP_CLOSED){
+    showErr('線上報名已截止。如需新增出席或變更，請聯絡秘書處 0988-558246，我們會為您安排。');
+    return;
+  }
   const name = document.getElementById('rsvp-name').value.trim();
   if(!name){ showErr('請輸入姓名'); return; }
   const orgV = document.getElementById('rsvp-org').value.trim();
