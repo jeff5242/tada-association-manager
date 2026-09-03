@@ -722,7 +722,7 @@ async function refreshStatus(){
   // 機台本身的網路資訊：問本機列印代理（只有在樹莓派上開才有；一般電腦看不到屬正常）
   let agent=null;
   try{
-    const ac=new AbortController(); setTimeout(()=>ac.abort(),1500);
+    const ac=new AbortController(); setTimeout(()=>ac.abort(),4000);
     const ar=await fetch('http://127.0.0.1:8043/status',{signal:ac.signal});
     if(ar.ok) agent=await ar.json();
   }catch(_){}

@@ -349,9 +349,18 @@ class Handler(BaseHTTPRequestHandler):
             ok, info = send_to_printer(star_raster(img))
             self._json(200 if ok else 502, {"ok": ok, "info": info})
         elif self.path.startswith("/status"):
-            ip = find_printer_ip()
-            self._json(200, {"ok": True, **net_info(), "printer_ip": ip,
-                             "reachable": bool(ip and printer_reachable(ip))})
+            # 只讀 conf、不觸發整網段掃描（掃描最長近 40 秒，狀態面板等不了）
+            conf_ip = None
+            try:
+                with open(CONF_PATH) as fh:
+                    for line in fh:
+                        if line.startswith("PRINTER_IP="):
+                            conf_ip = line.split("=", 1)[1].strip()
+            except OSError:
+                pass
+            # 快速單次探測：狀態面板要秒回，離線時不重試
+            self._json(200, {"ok": True, **net_info(), "printer_ip": conf_ip,
+                             "reachable": bool(conf_ip and printer_reachable(conf_ip, timeout=0.7, retries=1))})
         else:
             self._json(404, {"ok": False, "error": "not_found"})
 
