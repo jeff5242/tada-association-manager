@@ -84,13 +84,14 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 .tbox.staff{background:var(--green-soft)}
 .tbox.member{border-color:var(--green);background:var(--green-soft);box-shadow:inset 0 0 0 1px var(--green)}
 .tbox.member .bl{color:var(--green)}
-.tbox .bn{font-family:var(--serif);font-size:17px;font-weight:900;color:var(--green);line-height:1.1}
-.tbox .bl{font-size:10.5px;color:var(--gold);font-weight:700;line-height:1.35;overflow-wrap:anywhere;
+.tbox .bn{font-family:var(--serif);font-size:34px;font-weight:900;color:var(--green);line-height:1.1}
+.tbox .bl{font-size:21px;color:var(--gold);font-weight:700;line-height:1.35;overflow-wrap:anywhere;
   min-height:2.7em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.tbox .bc{font-size:11px;color:var(--muted)}
+.tbox .bc{font-size:22px;color:var(--muted)}
+.tbox .bc.full{color:#4E9E5C;font-weight:700}
 .tbox .bc.over{color:var(--over);font-weight:700}
-.tbox .bs{font-size:10px;color:var(--muted);opacity:.9;letter-spacing:.02em}
-.tbox .bv{font-size:10px;font-weight:700;color:#3E767C;letter-spacing:.02em}
+.tbox .bs{font-size:20px;color:var(--muted);opacity:.9;letter-spacing:.02em}
+.tbox .bv{font-size:20px;font-weight:700;color:#3E767C;letter-spacing:.02em}
 .tbox .ghost{visibility:hidden}
 @media (prefers-color-scheme:dark){ .tbox .bv{color:#8FCBD1} }
 .tbox.hit{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
@@ -107,7 +108,7 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
 .tbox.t-group .bl{color:#3E767C}
 .tbox.t-vip{border-color:#9A7B4F;background:rgba(154,123,79,.12)}
 .tbox.t-vip .bl{color:#8A6C42}
-.tbox .bt{font-size:9.5px;letter-spacing:.08em;opacity:.75;margin-top:1px}
+.tbox .bt{font-size:19px;letter-spacing:.08em;opacity:.75;margin-top:1px}
 @media (prefers-color-scheme:dark){
   .tbox.t-member{border-color:#7FB07E;background:rgba(127,176,126,.16)} .tbox.t-member .bl{color:#9BC79A}
   .tbox.t-group{border-color:#6FB2B9;background:rgba(111,178,185,.16)} .tbox.t-group .bl{color:#8FCBD1}
@@ -494,7 +495,7 @@ function renderFloor(by,heads,vegs){
       html+=`<div class="${cls.join(' ')}" style="grid-column:${col}" onclick="onTableClick('${t}')" title="${esc(tip)}">
         <div class="bn">${no}</div>${sub}
         <div class="bt${ty?'':' ghost'}">${esc(ty||'—')}</div>
-        <div class="bc${dish>10?' over':''}">${h?h+' 人':'（空桌）'}</div>
+        <div class="bc${dish>10?' over':(dish===10?' full':'')}">${h?h+' 人':'（空桌）'}</div>
         <div class="bs${h?'':' ghost'}">椅 ${h} 張</div>
         <div class="bv${v?'':' ghost'}">素食 ${v}</div></div>`;
     });
