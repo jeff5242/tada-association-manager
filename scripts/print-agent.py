@@ -7,6 +7,8 @@
 
 端點：
   GET  /health   服務與印表機連線狀態
+  GET  /status   機台網路資訊（hostname / IP / Wi-Fi SSID / 印表機）
+  POST /quit     關閉 kiosk Chromium 回到桌面（回應後延遲執行）
   GET  /test     列印測試單
   POST /print    {"name","member_no","table_no","qr","title","footer"} → 列印
   POST /preview  同 /print 參數，只產生 /tmp/slip-preview.png 不送印（除錯用）
@@ -17,6 +19,7 @@
 import json
 import os
 import socket
+import subprocess
 import threading
 import time
 import urllib.request
@@ -302,6 +305,25 @@ def send_to_printer(payload, retries=4):
     return False, f"{ip}: {last_err}"
 
 
+def net_info():
+    """機台網路現況：kiosk 狀態面板顯示用。指令抓不到就留空，不擋回應。"""
+    info = {"hostname": socket.gethostname(), "ips": [], "ssid": ""}
+    try:
+        out = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=3).stdout
+        info["ips"] = [ip for ip in out.split() if not ip.startswith("10.42.0.")] or out.split()
+    except Exception:
+        pass
+    for cmd in (["iwgetid", "-r"], ["/usr/sbin/iwgetid", "-r"]):
+        try:
+            ssid = subprocess.run(cmd, capture_output=True, text=True, timeout=3).stdout.strip()
+            if ssid:
+                info["ssid"] = ssid
+                break
+        except Exception:
+            continue
+    return info
+
+
 class Handler(BaseHTTPRequestHandler):
     def _json(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -326,6 +348,10 @@ class Handler(BaseHTTPRequestHandler):
                                "footer": "TADA 報到列印測試"})
             ok, info = send_to_printer(star_raster(img))
             self._json(200 if ok else 502, {"ok": ok, "info": info})
+        elif self.path.startswith("/status"):
+            ip = find_printer_ip()
+            self._json(200, {"ok": True, **net_info(), "printer_ip": ip,
+                             "reachable": bool(ip and printer_reachable(ip))})
         else:
             self._json(404, {"ok": False, "error": "not_found"})
 
@@ -344,6 +370,10 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path.startswith("/print"):
             ok, info = send_to_printer(star_raster(render_slip(data)))
             self._json(200 if ok else 502, {"ok": ok, "info": info})
+        elif self.path.startswith("/quit"):
+            # 關閉 kiosk 瀏覽器回 labwc 桌面；先回應再殺，避免請求方連線被砍斷
+            self._json(200, {"ok": True, "info": "closing kiosk"})
+            threading.Timer(0.6, lambda: subprocess.run(["pkill", "-f", "chromium"])).start()
         else:
             self._json(404, {"ok": False, "error": "not_found"})
 

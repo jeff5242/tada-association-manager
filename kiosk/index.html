@@ -262,6 +262,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
       <button class="kp-x" onclick="closeStatus()" aria-label="關閉">×</button>
       <h2>機台狀態</h2>
       <dl id="st-list"></dl>
+      <button id="st-quit" onclick="quitKiosk()" style="display:none;margin-top:26px;padding:12px 28px;font-family:inherit;font-size:18px;font-weight:700;color:#ffb3aa;background:rgba(192,57,43,.15);border:1.5px solid rgba(192,57,43,.5);border-radius:10px;cursor:pointer;">⏏ 關閉報到機・回到桌面</button>
       <p class="st-foot">此畫面僅供查看。清除報到資料請至會務後臺。</p>
     </div>
 
@@ -686,6 +687,10 @@ fitToScreen();
 let lastOkAt = null, lastErrAt = null;
 
 function openStatus(){ document.getElementById('statuspanel').classList.add('on'); refreshStatus(); }
+async function quitKiosk(){
+  if(!confirm('關閉報到機畫面、回到樹莓派桌面？\n（要重新啟動報到機：桌面重開 Chromium 或整機重開機）')) return;
+  try{ await fetch('http://127.0.0.1:8043/quit',{method:'POST'}); }catch(_){}
+}
 function closeStatus(){ document.getElementById('statuspanel').classList.remove('on'); }
 
 function ago(t){
@@ -714,9 +719,23 @@ async function refreshStatus(){
     if(r.ok){ last = (await r.json())[0] || null; }
   }catch(e){ err = e.message; lastErrAt = Date.now(); }
 
+  // 機台本身的網路資訊：問本機列印代理（只有在樹莓派上開才有；一般電腦看不到屬正常）
+  let agent=null;
+  try{
+    const ac=new AbortController(); setTimeout(()=>ac.abort(),1500);
+    const ar=await fetch('http://127.0.0.1:8043/status',{signal:ac.signal});
+    if(ar.ok) agent=await ar.json();
+  }catch(_){}
+  document.getElementById('st-quit').style.display = agent ? '' : 'none';
+
   const online = !err;
   list.innerHTML = [
     row('連線', online ? `正常（${latency} ms）` : '無法連線', online ? 'ok' : 'bad'),
+    ...(agent ? [
+      row('機台 IP', (agent.ips&&agent.ips.length) ? agent.ips.join('、') : '未取得'),
+      row('Wi-Fi', agent.ssid || '未連線', agent.ssid ? 'ok' : 'bad'),
+      row('印表機', agent.printer_ip ? `${agent.printer_ip}（${agent.reachable?'連線正常':'無回應'}）` : '未找到', agent.reachable ? 'ok' : 'bad'),
+    ] : [ row('列印代理', '未連線（非報到機或代理未啟動）', 'bad') ]),
     row('場次', election ? `${election.title}` : '未載入'),
     row('會員報到', prog ? `${prog.members_checked} / ${prog.members_total}` : '—'),
     row('貴賓報到', prog ? `${prog.guests_checked} / ${prog.guests_total}` : '—'),
