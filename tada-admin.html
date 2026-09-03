@@ -5506,6 +5506,7 @@ function renderSeating(){
     const vegTotal=arr.reduce((s,o)=>s+(o.veg||0),0);         // 該桌素食份數
     const capT=tableCapWithVeg(vegTotal);
     const over=head>capT;
+    const hasRoom=head<capT;   // 還放得下人 → 綠框，一眼看出哪桌可以塞
     const sorted=arr.slice().sort(seatRowCmp);              // 不動原陣列，只排顯示用的副本
     const rows=sorted.length? sorted.map((o,i)=>{
       const icon=seatIdentity(o.name).isMember?'👤':'🎩';   // 依會員名冊，非資料來源
@@ -5548,7 +5549,7 @@ function renderSeating(){
           onclick="openOccEdit('${o.kind}','${escapeHtml(String(o.id))}')" title="編輯姓名／職稱／單位／桌次">✎</button>
       </div>`;
     }).join('') : '<div style="color:var(--gray);font-size:12px;padding:8px 0;">（空桌）</div>';
-    return `<div style="background:var(--surface,rgba(255,255,255,0.03));border:1px solid ${over?'#ef5350':'var(--border,rgba(196,146,42,0.25))'};border-radius:12px;padding:12px 13px;">
+    return `<div style="background:var(--surface,rgba(255,255,255,0.03));border:${over?'1.5px solid #ef5350':(hasRoom?'1.5px solid rgba(102,187,106,.75)':'1px solid var(--border,rgba(196,146,42,0.25))')};border-radius:12px;padding:12px 13px;${hasRoom?'box-shadow:inset 0 0 0 1px rgba(102,187,106,.2);':''}">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
         <span style="width:8px;height:8px;border-radius:50%;background:${col};"></span>
         <a href="/seating/?t=${encodeURIComponent(t)}" target="_blank" rel="noopener"
