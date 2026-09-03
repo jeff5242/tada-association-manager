@@ -1451,6 +1451,20 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- 投票權編輯：直接開關第六屆投票名冊 can_vote -->
+<div id="vt-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeVoteEdit()">
+  <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:22px 24px;width:520px;max-width:94vw;max-height:82vh;display:flex;flex-direction:column;">
+    <h3 style="color:var(--gold-lt);font-size:16px;margin-bottom:2px;">投票權設定</h3>
+    <p id="vt-who" style="font-size:12px;color:var(--gray);margin-bottom:4px;"></p>
+    <p style="font-size:11px;color:var(--warn);margin-bottom:12px;">⚠ 這裡改的是「第六屆投票名冊」的領票資格，會直接影響領票與選票發放，請謹慎操作。</p>
+    <div id="vt-list" style="display:flex;flex-direction:column;gap:6px;overflow:auto;min-height:60px;"></div>
+    <div style="display:flex;align-items:center;margin-top:14px;">
+      <span id="vt-total" style="font-size:12px;color:var(--gold-lt);"></span>
+      <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="closeVoteEdit()">關閉</button>
+    </div>
+  </div>
+</div>
+
 <!-- LINE 使用者 ↔ 會員 手動配對 -->
 <div id="lm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeLinkMember()">
   <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:22px 24px;width:460px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column;">
@@ -1901,6 +1915,80 @@ const statusBadge = s => {
 };
 const memberIsGroup = m => m.member_type==='group';
 
+/* ── 投票權編輯：開關 tada_v_members.can_vote，缺列可現場建列 ── */
+let vtTarget=null, vtRows=[];
+async function openVoteEdit(id){
+  vtTarget=memberRows.find(x=>x.id===id);
+  if(!vtTarget || !vtTarget.member_no){ alert('這位還沒有會員編號，請先編輯補上編號。'); return; }
+  document.getElementById('vt-who').textContent=`${vtTarget.member_no}　${vtTarget.name}${vtTarget.company&&vtTarget.company!==vtTarget.name?'｜'+vtTarget.company:''}`;
+  document.getElementById('vt-modal').style.display='flex';
+  await loadVoteRows();
+}
+function closeVoteEdit(){ document.getElementById('vt-modal').style.display='none'; vtTarget=null; }
+async function loadVoteRows(){
+  const box=document.getElementById('vt-list');
+  box.innerHTML='<div style="color:var(--gray);font-size:12px;padding:10px;">載入中…</div>';
+  const base=String(vtTarget.member_no);
+  const r=await fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&or=(member_no.eq.${encodeURIComponent(base)},member_no.like.${encodeURIComponent(base)}-*)&select=member_no,name,rep,can_vote,is_checked_in`,{headers:SB_HEADERS});
+  vtRows=r.ok?await r.json():[];
+  const byNo=Object.fromEntries(vtRows.map(v=>[v.member_no,v]));
+  // 身分清單：個人＝本人一列；團體＝每位代表一列（依 reps 順序對應母號-N）
+  const idents = memberIsGroup(vtTarget)
+    ? (vtTarget.reps||[]).map((rp,i)=>({no:`${base}-${i+1}`,name:(rp&&rp.name)||('代表'+(i+1))}))
+    : [{no:base,name:vtTarget.name}];
+  // 名冊裡有、但 reps 對不上的列（例如編號手動改過）也要列出，避免看不到
+  vtRows.forEach(v=>{ if(!idents.some(x=>x.no===v.member_no)) idents.push({no:v.member_no,name:v.rep||v.name}); });
+  box.innerHTML=idents.map(x=>{
+    const row=byNo[x.no];
+    const state=row ? (row.can_vote?'on':'off') : 'none';
+    const btn = state==='on'
+      ? `<button class="btn btn-sm" style="background:rgba(192,57,43,.15);color:#ef5350;border:1px solid rgba(192,57,43,.35);" onclick="vtSet('${escapeHtml(x.no)}','${escapeHtml(x.name)}',false)">關閉投票權</button>`
+      : `<button class="btn btn-sm" style="background:rgba(46,125,50,.2);color:#66bb6a;border:1px solid rgba(46,125,50,.4);" onclick="vtSet('${escapeHtml(x.no)}','${escapeHtml(x.name)}',true)">開通投票權</button>`;
+    const st = state==='on' ? '<b style="color:#66bb6a;">🗳 可投票</b>'
+             : state==='off' ? '<span style="color:var(--gray);">無票（名冊在列）</span>'
+             : '<span style="color:var(--warn);">不在投票名冊</span>';
+    return `<div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:8px;padding:9px 12px;">
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gold-lt);white-space:nowrap;">${escapeHtml(x.no)}</span>
+      <b style="color:var(--white);">${escapeHtml(x.name)}</b>
+      <span style="font-size:11.5px;">${st}${row&&row.is_checked_in?'　<span style="color:#4fc3f7;">已報到</span>':''}</span>
+      <span style="margin-left:auto;">${btn}</span></div>`;
+  }).join('');
+  vtRefreshTotal();
+}
+async function vtRefreshTotal(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&can_vote=eq.true&select=member_no`,{headers:SB_HEADERS});
+    if(r.ok) document.getElementById('vt-total').textContent=`目前全名冊可投票：${(await r.json()).length} 票`;
+  }catch(e){}
+}
+async function vtSet(no,name,val){
+  const m=vtTarget;
+  if(!confirm((val?'開通':'關閉')+`「${name}（${no}）」的投票權？
+此變更立即影響領票資格。`)) return;
+  const exists=vtRows.some(v=>v.member_no===no);
+  let ok=false;
+  if(exists){
+    const r=await fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&member_no=eq.${encodeURIComponent(no)}`,
+      {method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({can_vote:val})});
+    ok=r.ok;
+  } else {
+    const r=await fetch(`${SB_URL}/rest/v1/tada_v_members`,
+      {method:'POST',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({
+        election_id:BALLOT_ELECTION_ID, member_no:no, name,
+        rep:memberIsGroup(m)?name:null, member_type:m.member_type||'personal',
+        company:m.company||m.name||'', can_vote:val})});
+    ok=r.ok;
+  }
+  if(!ok){ alert('寫入失敗，請重試'); return; }
+  // 同步畫面：本人視窗與名冊列表的標記
+  await loadVoteRows();
+  try{
+    const vr=await fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&can_vote=eq.true&select=member_no,name,rep`,{headers:SB_HEADERS});
+    if(vr.ok){ memberVoteMap={}; (await vr.json()).forEach(v=>{ const b=String(v.member_no||'').split('-')[0];
+      (memberVoteMap[b]=memberVoteMap[b]||[]).push({no:v.member_no,name:(v.rep||v.name||'').trim()}); }); renderMemberDir(); }
+  }catch(e){}
+}
+
 function renderMemberDir(){
   const q = dirFilter.trim();
   const data = memberRows.filter(m=>{
@@ -1950,9 +2038,9 @@ function memberMainRow(m, seq){
     <td data-label="狀態">${statusBadge(m.status)}${(()=>{
       if(!memberVoteMap || !m.member_no) return '';
       const vs=memberVoteMap[String(m.member_no)]||[];
-      if(!vs.length) return '<div style="font-size:10px;color:var(--gray);opacity:.7;margin-top:3px;">無投票權</div>';
+      if(!vs.length) return `<div onclick="openVoteEdit('${m.id}')" title="點擊設定投票權" style="cursor:pointer;font-size:10px;color:var(--gray);opacity:.75;margin-top:3px;text-decoration:underline dotted;">無投票權 ✎</div>`;
       const who=vs.map(v=>v.name).filter(Boolean).join('、');
-      return `<div title="第六屆投票名冊：${escapeHtml(who)}" style="font-size:10.5px;color:#66bb6a;font-weight:700;margin-top:3px;white-space:nowrap;">🗳 可投票${vs.length>1?' ×'+vs.length:''}</div>`;
+      return `<div onclick="openVoteEdit('${m.id}')" title="第六屆投票名冊：${escapeHtml(who)}｜點擊調整" style="cursor:pointer;font-size:10.5px;color:#66bb6a;font-weight:700;margin-top:3px;white-space:nowrap;text-decoration:underline dotted;">🗳 可投票${vs.length>1?' ×'+vs.length:''}</div>`;
     })()}</td>
     <td data-label="最後繳費" style="font-size:12px;color:var(--gray);white-space:nowrap;">${m.last_paid?escapeHtml(m.last_paid):'–'}</td>
     <td data-label="職務" style="padding:8px 12px;"><div style="display:flex;flex-wrap:wrap;gap:4px;">${termBadges}</div></td>
