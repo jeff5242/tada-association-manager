@@ -116,12 +116,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .b-note .li{display:flex;gap:1.5mm}
 .b-note .li .n{flex:0 0 auto}
 
+/* 一頁 2 張：A4 橫向，左右各一張等比 70.7%（＝A5）選票，中間裁切線 */
+.duo{width:297mm;height:210mm;background:#fff;position:relative;display:flex;
+  page-break-after:always;break-after:page;overflow:hidden}
+.duo:last-child{page-break-after:auto;break-after:auto}
+.duo .slot{width:148.5mm;height:210mm;position:relative;overflow:hidden;flex:0 0 auto}
+.duo .slot .ballot{transform:scale(0.7071);transform-origin:top left;page-break-after:auto;break-after:auto}
+.duo .cut{position:absolute;left:148.5mm;top:0;bottom:0;width:0;border-left:0.3mm dashed #aaa}
 @media print{
   body{background:#fff}
   #gate,#app{display:none !important}
   #sheets{display:block !important}
-  .ballot{margin:0;box-shadow:none}
-  @page{size:A4 portrait;margin:0}
+  .ballot,.duo{margin:0;box-shadow:none}
 }
 @media screen{
   #sheets.preview{display:block;padding:20px;background:#555}
@@ -162,6 +168,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="fld"><label>每票圈選上限</label><input id="limit" class="w80" type="number" value="6" min="1"></div>
       <div class="fld"><label>候補席次</label><input id="alt" class="w80" type="number" value="3" min="0"></div>
       <div class="fld"><label>自填欄</label><input id="writein" class="w80" type="number" value="3" min="0" max="6"></div>
+      <div class="fld"><label>版面</label>
+        <select id="layout">
+          <option value="1">A4 一頁 1 張（標準）</option>
+          <option value="2">A4 一頁 2 張（橫印・對半裁切）</option>
+        </select></div>
       <div class="fld"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:9px;">
         <input type="checkbox" id="testmode"> 測試票（彩排用）</label></div>
     </div>
@@ -549,8 +560,21 @@ function build(preview){
     </div>`);
   }
   const sheets=document.getElementById('sheets');
-  sheets.innerHTML=pages.join('');
-  checkOverflow(sheets);
+  const layout2 = document.getElementById('layout').value==='2';
+  // @page 無法用 class 切換，改為動態注入方向
+  let pageStyle=document.getElementById('page-orient');
+  if(!pageStyle){ pageStyle=document.createElement('style'); pageStyle.id='page-orient'; document.head.appendChild(pageStyle); }
+  pageStyle.textContent = layout2 ? '@page{size:A4 landscape;margin:0}' : '@page{size:A4 portrait;margin:0}';
+  if(layout2){
+    const duos=[];
+    for(let i=0;i<pages.length;i+=2){
+      duos.push(`<div class="duo"><div class="slot">${pages[i]}</div><div class="slot">${pages[i+1]||''}</div><div class="cut"></div></div>`);
+    }
+    sheets.innerHTML=duos.join('');
+  } else {
+    sheets.innerHTML=pages.join('');
+  }
+  if(!layout2) checkOverflow(sheets);   // 2張版是整頁等比縮小，版面不會另外溢出
   sheets.className = preview ? 'preview' : '';
   if(preview){ sheets.style.display='block'; window.scrollTo(0,0); }
   else { sheets.style.display=''; }
