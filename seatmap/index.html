@@ -195,7 +195,7 @@ async function load(manual){
       j('tada_config?key=eq.seating_order&select=value'),
       // 只出席論壇不入席者（meal='no'）不佔座位，不畫進圓桌
       j('tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,title,org,table_no,checked_in,meal,vegetarian,created_at'),
-      j('tada_guests?seat=not.is.null&select=id,name,title,org,seat,checked_in'),
+      j('tada_guests?select=id,name,title,org,seat,checked_in'),   // 全抓：沒排位的貴賓（如講者）報到狀態也要併入
       j(`tada_v_members?election_id=eq.${ELECTION}&select=name,is_checked_in`),
       j('tada_members?select=name,status,reps&limit=1000'),
     ]);
@@ -208,12 +208,14 @@ async function load(manual){
       [m.name].concat((m.reps||[]).map(rp=>rp&&rp.name)).forEach(nm=>{ const k=deTitle(cl(nm)); if(k) MEMBERS.add(k); });
     });
     const vin=new Set(vm.filter(x=>x.is_checked_in).map(x=>cl(x.name)));
+    // 貴賓表的報到狀態也要併給 rsvp 列（同一人畫在 rsvp、報到記在 guests，如講者李紅曦）
+    const gin=new Set(guests.filter(g=>g.checked_in).map(g=>cl(g.name)));
     const inRsvp=new Set(rsvp.map(x=>cl(x.display_name)));
     rows = rsvp.filter(x=>cl(x.table_no) && x.meal!=='no')
       .map(x=>({ key:'member:'+x.user_id, name:cl(x.display_name), title:cl(x.title), org:cl(x.org),
-                 table:cl(x.table_no), inn:!!x.checked_in || vin.has(cl(x.display_name)),
+                 table:cl(x.table_no), inn:!!x.checked_in || vin.has(cl(x.display_name)) || gin.has(cl(x.display_name)),
                  veg:(x.vegetarian||0)>0, t:x.created_at||'' }))
-      .concat(guests.filter(g=>!inRsvp.has(cl(g.name)))
+      .concat(guests.filter(g=>g.seat && !inRsvp.has(cl(g.name)))
         .map(g=>({ key:'guest:'+g.id, name:cl(g.name), title:cl(g.title), org:cl(g.org),
                    table:cl(g.seat), inn:!!g.checked_in, veg:false, t:'' })));
     render(manual);
