@@ -8,6 +8,8 @@
 端點：
   GET  /health   服務與印表機連線狀態
   GET  /status   機台網路資訊（hostname / IP / Wi-Fi SSID / 印表機）
+  GET  /wifi-scan     掃描附近 Wi-Fi（SSID / 訊號 / 加密 / 是否已儲存）
+  POST /wifi-connect  {"ssid","psk"} 連線指定 Wi-Fi（已儲存的不用密碼）
   POST /quit     關閉 kiosk Chromium 回到桌面（回應後延遲執行）
   GET  /test     列印測試單
   POST /print    {"name","member_no","table_no","qr","title","footer"} → 列印
@@ -324,6 +326,60 @@ def net_info():
     return info
 
 
+def wifi_saved_names():
+    try:
+        out = subprocess.run(["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show"],
+                             capture_output=True, text=True, timeout=5).stdout
+        return [l.rsplit(":", 1)[0] for l in out.strip().split("\n") if l.endswith("802-11-wireless")]
+    except Exception:
+        return []
+
+
+def wifi_scan():
+    try:
+        out = subprocess.run(["nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "dev", "wifi",
+                              "list", "--rescan", "yes"],
+                             capture_output=True, text=True, timeout=20).stdout
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+    nets = {}
+    for line in out.strip().split("\n"):
+        parts = line.rsplit(":", 2)   # SSID 內含 : 時 nmcli 會逸出，從右邊切最保險
+        if len(parts) < 3:
+            continue
+        ssid = parts[0].replace("\\:", ":")
+        if not ssid:
+            continue
+        try:
+            sig = int(parts[1])
+        except ValueError:
+            sig = 0
+        secured = bool(parts[2] and parts[2] != "--")
+        if ssid not in nets or nets[ssid]["signal"] < sig:
+            nets[ssid] = {"ssid": ssid, "signal": sig, "secured": secured}
+    return {"ok": True, "current": net_info().get("ssid", ""),
+            "saved": wifi_saved_names(),
+            "networks": sorted(nets.values(), key=lambda x: -x["signal"])[:15]}
+
+
+def wifi_connect(ssid, psk):
+    if not ssid:
+        return {"ok": False, "error": "missing_ssid"}
+    if ssid in wifi_saved_names():
+        cmd = ["nmcli", "connection", "up", ssid]
+    elif psk:
+        cmd = ["nmcli", "device", "wifi", "connect", ssid, "password", psk]
+    else:
+        cmd = ["nmcli", "device", "wifi", "connect", ssid]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
+        ok = r.returncode == 0
+        return {"ok": ok, "info": (r.stdout + r.stderr).strip()[:300],
+                "ssid": net_info().get("ssid", "")}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "timeout", "ssid": net_info().get("ssid", "")}
+
+
 class Handler(BaseHTTPRequestHandler):
     def _json(self, code, obj):
         body = json.dumps(obj, ensure_ascii=False).encode()
@@ -348,6 +404,8 @@ class Handler(BaseHTTPRequestHandler):
                                "footer": "TADA 報到列印測試"})
             ok, info = send_to_printer(star_raster(img))
             self._json(200 if ok else 502, {"ok": ok, "info": info})
+        elif self.path.startswith("/wifi-scan"):
+            self._json(200, wifi_scan())
         elif self.path.startswith("/status"):
             # 只讀 conf、不觸發整網段掃描（掃描最長近 40 秒，狀態面板等不了）
             conf_ip = None
@@ -379,6 +437,8 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path.startswith("/print"):
             ok, info = send_to_printer(star_raster(render_slip(data)))
             self._json(200 if ok else 502, {"ok": ok, "info": info})
+        elif self.path.startswith("/wifi-connect"):
+            self._json(200, wifi_connect(str(data.get("ssid") or ""), str(data.get("psk") or "")))
         elif self.path.startswith("/quit"):
             # 關閉 kiosk 瀏覽器回 labwc 桌面；先回應再殺，避免請求方連線被砍斷
             self._json(200, {"ok": True, "info": "closing kiosk"})

@@ -116,6 +116,34 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
 .statuspanel dd.ok{color:#7fd694;}
 .statuspanel dd.bad{color:#ff8b7a;}
 .st-foot{margin-top:10px;font-size:12.5px;color:var(--green-light);flex:0 0 auto;}
+
+/* ── Wi-Fi 設定 ── */
+.wf-list{width:100%;max-width:660px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;}
+.wf-row{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.16);
+  border-radius:12px;padding:13px 20px;font-size:19px;color:#fff;font-family:inherit;cursor:pointer;text-align:left;}
+.wf-row:active{background:rgba(255,255,255,.14);}
+.wf-row .sig{font-family:monospace;color:var(--gold-light);letter-spacing:1px;flex:0 0 auto;}
+.wf-row .nm{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.wf-row .tag{font-size:12px;color:#7fd694;border:1px solid rgba(127,214,148,.5);border-radius:99px;padding:2px 10px;flex:0 0 auto;}
+.wf-row .cur{color:#7fd694;font-weight:900;flex:0 0 auto;}
+.wf-pwhead{font-size:20px;color:#fff;margin-bottom:10px;}
+.wf-pwhead b{color:var(--gold-light);}
+.wf-pwbox{width:100%;max-width:660px;min-height:52px;background:#0d1710;border:2px solid var(--gold);border-radius:10px;
+  padding:10px 16px;font-family:'DM Mono',monospace;font-size:24px;color:#fff;letter-spacing:2px;
+  display:flex;align-items:center;word-break:break-all;}
+.wf-kb{width:100%;max-width:760px;display:flex;flex-direction:column;gap:7px;margin-top:12px;}
+.wf-kb .kbrow{display:flex;gap:7px;justify-content:center;}
+.wf-kb button{flex:1;max-width:66px;height:50px;font-size:20px;font-weight:700;font-family:inherit;color:#fff;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:9px;cursor:pointer;}
+.wf-kb button:active{background:var(--gold);color:#1a1a12;}
+.wf-kb button.wide{max-width:120px;font-size:16px;}
+.wf-kb button.space{max-width:300px;}
+.wf-kb button.on{background:var(--gold);color:#1a1a12;}
+.wf-actions{display:flex;gap:12px;margin-top:14px;}
+.wf-actions button{padding:12px 34px;font-size:18px;font-weight:700;font-family:inherit;border-radius:10px;cursor:pointer;
+  background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(255,255,255,.25);}
+.wf-actions button.go{background:var(--gold);color:#1a1a12;border:none;}
+#wf-msg{min-height:26px;margin-top:10px;font-size:16px;color:var(--gold-light);}
 .keypad{position:absolute;inset:0 0 0 50%;background:#060e09;border-left:1px solid rgba(212,168,83,.25);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;padding:0 28px;}
 .keypad.on{display:flex;}
 /* 查詢方式分頁：會員編號／統一編號／手機號碼 */
@@ -263,8 +291,31 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
       <button class="kp-x" onclick="closeStatus()" aria-label="關閉">×</button>
       <h2>機台狀態</h2>
       <dl id="st-list"></dl>
-      <button id="st-quit" onclick="quitKiosk()" style="display:none;margin-top:12px;padding:9px 22px;font-family:inherit;font-size:15px;font-weight:700;color:#ffb3aa;background:rgba(192,57,43,.15);border:1.5px solid rgba(192,57,43,.5);border-radius:10px;cursor:pointer;flex:0 0 auto;">⏏ 關閉報到機・回到桌面</button>
+      <div style="display:flex;gap:12px;margin-top:12px;flex:0 0 auto;">
+        <button id="st-wifi" onclick="openWifi()" style="display:none;padding:9px 22px;font-family:inherit;font-size:15px;font-weight:700;color:#7fd694;background:rgba(127,214,148,.12);border:1.5px solid rgba(127,214,148,.45);border-radius:10px;cursor:pointer;">📶 Wi-Fi 設定</button>
+        <button id="st-quit" onclick="quitKiosk()" style="display:none;padding:9px 22px;font-family:inherit;font-size:15px;font-weight:700;color:#ffb3aa;background:rgba(192,57,43,.15);border:1.5px solid rgba(192,57,43,.5);border-radius:10px;cursor:pointer;">⏏ 關閉報到機・回到桌面</button>
+      </div>
       <p class="st-foot">此畫面僅供查看。清除報到資料請至會務後臺。</p>
+    </div>
+
+    <!-- Wi-Fi 設定：掃描 → 點選 → 螢幕鍵盤輸密碼 -->
+    <div class="statuspanel" id="wifipanel">
+      <button class="kp-x" onclick="closeWifi()" aria-label="關閉">×</button>
+      <h2>Wi-Fi 設定</h2>
+      <div id="wf-view-list" style="display:flex;flex-direction:column;align-items:center;width:100%;min-height:0;">
+        <div id="wf-list" class="wf-list"><div style="color:var(--green-light);font-size:17px;padding:20px;">掃描中…</div></div>
+        <div class="wf-actions"><button onclick="loadWifi()">↻ 重新掃描</button></div>
+      </div>
+      <div id="wf-view-pw" style="display:none;flex-direction:column;align-items:center;width:100%;">
+        <div class="wf-pwhead">連線到 <b id="wf-ssid"></b>，請輸入密碼</div>
+        <div class="wf-pwbox" id="wf-pwbox">&nbsp;</div>
+        <div class="wf-kb" id="wf-kb"></div>
+        <div class="wf-actions">
+          <button onclick="wifiBackToList()">‹ 返回</button>
+          <button class="go" id="wf-join" onclick="wifiJoin()">連　線</button>
+        </div>
+      </div>
+      <div id="wf-msg"></div>
     </div>
 
     <!-- 數字鍵盤 -->
@@ -688,6 +739,96 @@ fitToScreen();
 let lastOkAt = null, lastErrAt = null;
 
 function openStatus(){ document.getElementById('statuspanel').classList.add('on'); refreshStatus(); }
+/* ── Wi-Fi 設定：/wifi-scan 列表 → 點選 → 螢幕鍵盤 → /wifi-connect ── */
+let wfPw='', wfTarget=null, wfShift=false, wfSaved=[];
+function openWifi(){
+  document.getElementById('statuspanel').classList.remove('on');
+  document.getElementById('wifipanel').classList.add('on');
+  wifiBackToList(); loadWifi();
+}
+function closeWifi(){ document.getElementById('wifipanel').classList.remove('on'); }
+function wfMsg(t,ok){ const m=document.getElementById('wf-msg'); m.textContent=t||''; m.style.color=ok===false?'#ff8b7a':'var(--gold-light)'; }
+function wifiBackToList(){
+  document.getElementById('wf-view-pw').style.display='none';
+  document.getElementById('wf-view-list').style.display='flex';
+  wfPw=''; wfTarget=null; wfMsg('');
+}
+function sigBar(n){ return n>=70?'▂▄▆█':n>=50?'▂▄▆':n>=30?'▂▄':'▂'; }
+async function loadWifi(){
+  const box=document.getElementById('wf-list');
+  box.innerHTML='<div style="color:var(--green-light);font-size:17px;padding:20px;">掃描中…（約 5 秒）</div>';
+  try{
+    const ac=new AbortController(); setTimeout(()=>ac.abort(),25000);
+    const r=await fetch('http://127.0.0.1:8043/wifi-scan',{signal:ac.signal});
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||'掃描失敗');
+    wfSaved=d.saved||[];
+    if(!(d.networks||[]).length){ box.innerHTML='<div style="color:#ff8b7a;font-size:17px;padding:20px;">掃不到任何網路</div>'; return; }
+    box.innerHTML=d.networks.map(n=>{
+      const cur=n.ssid===d.current, saved=wfSaved.includes(n.ssid);
+      return `<button class="wf-row" onclick="pickWifi('${n.ssid.replace(/'/g,"\\'")}',${n.secured})">
+        <span class="sig">${sigBar(n.signal)}</span>
+        <span class="nm">${n.ssid.replace(/</g,'&lt;')}${n.secured?' 🔒':''}</span>
+        ${saved?'<span class="tag">已儲存</span>':''}${cur?'<span class="cur">✓ 使用中</span>':''}
+      </button>`;
+    }).join('');
+  }catch(e){ box.innerHTML='<div style="color:#ff8b7a;font-size:17px;padding:20px;">掃描失敗：'+e.message+'</div>'; }
+}
+function pickWifi(ssid,secured){
+  wfTarget=ssid;
+  if(wfSaved.includes(ssid) || !secured){ wifiJoin(); return; }   // 已儲存/開放網路直接連
+  wfPw=''; wfShift=false;
+  document.getElementById('wf-ssid').textContent=ssid;
+  document.getElementById('wf-view-list').style.display='none';
+  document.getElementById('wf-view-pw').style.display='flex';
+  renderKb(); renderPw();
+}
+function renderPw(){
+  const b=document.getElementById('wf-pwbox');
+  b.textContent=wfPw||'\u00a0';
+}
+const KB_ROWS=[
+  ['1','2','3','4','5','6','7','8','9','0'],
+  ['q','w','e','r','t','y','u','i','o','p'],
+  ['a','s','d','f','g','h','j','k','l'],
+  ['z','x','c','v','b','n','m'],
+  ['!','@','#','$','%','&','*','-','_','.'],
+];
+function renderKb(){
+  const kb=document.getElementById('wf-kb');
+  kb.innerHTML=KB_ROWS.map((row,i)=>{
+    let cells=row.map(k=>{
+      const ch=wfShift&&/[a-z]/.test(k)?k.toUpperCase():k;
+      return `<button onclick="kbKey('${ch==="'"?"\\'":ch}')">${ch}</button>`;
+    }).join('');
+    if(i===3) cells=`<button class="wide ${wfShift?'on':''}" onclick="kbShift()">⇧ 大寫</button>`+cells+`<button class="wide" onclick="kbBack()">⌫ 刪除</button>`;
+    return `<div class="kbrow">${cells}</div>`;
+  }).join('')+`<div class="kbrow"><button class="wide" onclick="kbClear()">清空</button><button class="space" onclick="kbKey(' ')">空　格</button></div>`;
+}
+function kbKey(ch){ if(wfPw.length<63){ wfPw+=ch; renderPw(); } }
+function kbShift(){ wfShift=!wfShift; renderKb(); }
+function kbBack(){ wfPw=wfPw.slice(0,-1); renderPw(); }
+function kbClear(){ wfPw=''; renderPw(); }
+async function wifiJoin(){
+  if(!wfTarget) return;
+  const btn=document.getElementById('wf-join'); btn.disabled=true;
+  wfMsg('連線中…（最多 45 秒，期間網路會短暫切換）');
+  let d=null;
+  try{
+    const ac=new AbortController(); setTimeout(()=>ac.abort(),50000);
+    const r=await fetch('http://127.0.0.1:8043/wifi-connect',{method:'POST',signal:ac.signal,
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:wfTarget,psk:wfPw})});
+    d=await r.json();
+  }catch(_){ /* 切換網路瞬間回應可能斷掉，改用 /status 確認結果 */ }
+  if(!d){
+    try{ const s=await fetch('http://127.0.0.1:8043/status'); const st=await s.json();
+      d={ok:st.ssid===wfTarget, ssid:st.ssid, info:'以現況判定'}; }catch(_){ d={ok:false, info:'無法確認結果'}; }
+  }
+  btn.disabled=false;
+  if(d.ok){ wfMsg('✓ 已連線到 '+(d.ssid||wfTarget), true); setTimeout(()=>{ wifiBackToList(); loadWifi(); }, 1500); }
+  else{ wfMsg('連線失敗：'+(d.info||d.error||'未知錯誤')+'（請確認密碼）', false); }
+}
+
 async function quitKiosk(){
   if(!confirm('關閉報到機畫面、回到樹莓派桌面？\n（要重新啟動報到機：桌面重開 Chromium 或整機重開機）')) return;
   try{ await fetch('http://127.0.0.1:8043/quit',{method:'POST'}); }catch(_){}
@@ -728,6 +869,7 @@ async function refreshStatus(){
     if(ar.ok) agent=await ar.json();
   }catch(_){}
   document.getElementById('st-quit').style.display = agent ? '' : 'none';
+  document.getElementById('st-wifi').style.display = agent ? '' : 'none';
 
   const online = !err;
   list.innerHTML = [
