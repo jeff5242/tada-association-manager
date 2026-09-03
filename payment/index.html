@@ -252,7 +252,8 @@ async function init(){
   }
 
   try{
-    profile = await window.tadaInitLiff('payment');
+    // 不強制 LINE 登入：Email 連結用一般瀏覽器開啟也能直接填表回報
+    profile = await window.tadaInitLiffOptional('payment');
   }catch(e){ profile = null; }
 
   if(profile && profile.userId){

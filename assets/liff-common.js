@@ -52,6 +52,17 @@ window.tadaGateNotice = function (opts) {
 };
 
 // 初始化 LIFF 並回傳 profile。key = 'rsvp' | 'card' | 'payment' | 'vote' | 'members'
+// 不強制登入版：LINE 內開啟會自動帶身分；一般瀏覽器直接回 null 讓頁面用表單，
+// 絕不觸發 liff.login() 跳轉（繳費回報這類公開表單用，避免會員被登入頁卡住）。
+window.tadaInitLiffOptional = async function (key) {
+  var id = (window.TADA_LIFF_IDS || {})[key];
+  try {
+    await liff.init({ liffId: id });
+    if (liff.isLoggedIn()) return await liff.getProfile();
+  } catch (e) {}
+  return null;
+};
+
 window.tadaInitLiff = async function (key) {
   var id = (window.TADA_LIFF_IDS || {})[key];
   await liff.init({ liffId: id });
