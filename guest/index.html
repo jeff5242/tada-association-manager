@@ -344,10 +344,9 @@ async function load(){
     const [r,m,a]=await Promise.all([
       fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in,party_size,title,status&order=sort.asc,name.asc`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_members?select=name,reps`,{headers:H()}),
-      fetch(`${SB}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=display_name,companions,table_no`,{headers:H()})
+      fetch(`${SB}/rest/v1/tada_rsvp?hidden=eq.false&select=display_name,companions,table_no,attending,created_at,updated_at,user_id`,{headers:H()})
     ]);
     const all=r.ok?await r.json():[];
-    all.forEach((g,i)=>{ g._seq=i+1; });   // 序號＝貴賓名冊順序（sort.asc,name.asc），名牌照名冊順序排即可對應
     const memberKeys=new Set();
     if(m.ok){ (await m.json()).forEach(x=>{
       nameKeys(x.name).forEach(k=>memberKeys.add(k));
@@ -355,14 +354,31 @@ async function load(){
     }); }
     // 出席名單（RSVP 本人＋同行，寬鬆比對）：未回覆出席的受邀貴賓預設不顯示
     attendKeys=new Set(); SEATOF=new Map();
-    if(a.ok){ (await a.json()).forEach(x=>{
-      const main=(x.display_name||'').trim(), tb=(x.table_no||'').trim();
-      nameKeys(main).forEach(k=>{ attendKeys.add(k); if(tb&&!SEATOF.has(k)) SEATOF.set(k,tb); });
-      splitComp(x.companions).forEach(t=>{
-        const nm = REL_WORDS.includes(t) ? (main+'的'+t) : t;
-        nameKeys(nm).forEach(k=>{ attendKeys.add(k); if(tb&&!SEATOF.has(k)) SEATOF.set(k,tb); });
+    const SEQOF=new Map();   // 姓名 → 出席列表序號（與匯出 CSV 完全同規則：依登記時間固定發號，含不克出席者）
+    if(a.ok){
+      const rows=await a.json();
+      const regT=x=>new Date(x.created_at||x.updated_at||0).getTime();
+      const numbered=new Map();
+      rows.slice().sort((p,q)=>regT(p)-regT(q)||String(p.user_id).localeCompare(String(q.user_id)))
+          .forEach((x,i)=>numbered.set(x.user_id,i+1));
+      const pad3=n=>String(n).padStart(3,'0');
+      rows.forEach(x=>{
+        const main=(x.display_name||'').trim(), tb=(x.table_no||'').trim();
+        const seq=pad3(numbered.get(x.user_id));
+        nameKeys(main).forEach(k=>{ if(!SEQOF.has(k)) SEQOF.set(k,seq); });
+        splitComp(x.companions).forEach((t,ci)=>{
+          const nm = REL_WORDS.includes(t) ? (main+'的'+t) : t;
+          nameKeys(nm).forEach(k=>{ if(!SEQOF.has(k)) SEQOF.set(k,seq+'-'+(ci+1)); });
+        });
+        if(!x.attending) return;   // 序號含不克者一併保留；出席比對照舊只認出席者
+        nameKeys(main).forEach(k=>{ attendKeys.add(k); if(tb&&!SEATOF.has(k)) SEATOF.set(k,tb); });
+        splitComp(x.companions).forEach(t=>{
+          const nm = REL_WORDS.includes(t) ? (main+'的'+t) : t;
+          nameKeys(nm).forEach(k=>{ attendKeys.add(k); if(tb&&!SEATOF.has(k)) SEATOF.set(k,tb); });
+        });
       });
-    }); }
+      all.forEach(g=>{ for(const k of nameKeys(g.name)){ if(SEQOF.has(k)){ g._seq=SEQOF.get(k); break; } } });
+    }
     const notMember=g=>!nameKeys(g.name).some(k=>memberKeys.has(k));
     guests=all.filter(g=>notMember(g) && (GS.showAll || isAttending(g)));
   }catch(e){ document.getElementById('list').innerHTML='<div class="empty">載入失敗，請確認網路後重新整理。</div>'; return; }
@@ -427,7 +443,7 @@ function renderList(){
     arr=arr.filter(g=>g.checked_in).sort((a,b)=>(a.name||'').localeCompare(b.name||'','zh-Hant'));
     const el0=document.getElementById('list');
     if(!arr.length){ el0.innerHTML='<div class="empty">目前沒有人完成報到。</div>'; return; }
-    el0.innerHTML=arr.map(g=>`<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="恢復未報到">↺ reset</button>`:''}<span class="g-seq" title="名牌序號">${g._seq||''}</span><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}${seatOf(g)?`<div class="g-seat">🍽️ ${esc(seatOf(g))}</div>`:""}</div><div class="g-done">✓ 已完成報到</div></div>`).join('');
+    el0.innerHTML=arr.map(g=>`<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="恢復未報到">↺ reset</button>`:''}${g._seq?`<span class="g-seq" title="出席列表序號">${g._seq}</span>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}${seatOf(g)?`<div class="g-seat">🍽️ ${esc(seatOf(g))}</div>`:""}</div><div class="g-done">✓ 已完成報到</div></div>`).join('');
     return;
   }
   if(searchQ){ arr=arr.filter(g=>(g.name||'').includes(searchQ)); }
@@ -439,10 +455,10 @@ function renderList(){
   const el=document.getElementById('list');
   if(!arr.length){ el.innerHTML='<div class="empty">'+(GS.hideDone?'此分類已全部完成報到 ✓':'此分類目前沒有貴賓，請改選其他單位或搜尋姓名。')+'</div>'; return; }
   el.innerHTML=arr.map(g=>g.checked_in
-    ? `<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="按錯了？恢復未報到">↺ reset</button>`:''}<span class="g-seq" title="名牌序號">${g._seq||''}</span><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}${seatOf(g)?`<div class="g-seat">🍽️ ${esc(seatOf(g))}</div>`:""}</div><div class="g-done">✓ 已完成報到</div></div>`
+    ? `<div class="gcard done">${GS.checkin?`<button class="g-reset" onclick="event.stopPropagation();doUncheck('${g.id}','${esc(g.name).replace(/'/g,"\\'")}')" title="按錯了？恢復未報到">↺ reset</button>`:''}${g._seq?`<span class="g-seq" title="出席列表序號">${g._seq}</span>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}${seatOf(g)?`<div class="g-seat">🍽️ ${esc(seatOf(g))}</div>`:""}</div><div class="g-done">✓ 已完成報到</div></div>`
     : (GS.checkin
-        ? `<div class="gcard" onclick="doCheckin('${g.id}')"><span class="g-seq" title="名牌序號">${g._seq||''}</span><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}${seatOf(g)?`<div class="g-seat">🍽️ ${esc(seatOf(g))}</div>`:""}</div><button class="g-btn" onclick="event.stopPropagation();doCheckin('${g.id}')">貴賓報到</button></div>`
-        : `<div class="gcard viewonly"><span class="g-seq" title="名牌序號">${g._seq||''}</span><div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}${seatOf(g)?`<div class="g-seat">🍽️ ${esc(seatOf(g))}</div>`:""}</div><div class="g-wait">未報到</div></div>`)
+        ? `<div class="gcard" onclick="doCheckin('${g.id}')">${g._seq?`<span class="g-seq" title="出席列表序號">${g._seq}</span>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}${seatOf(g)?`<div class="g-seat">🍽️ ${esc(seatOf(g))}</div>`:""}</div><button class="g-btn" onclick="event.stopPropagation();doCheckin('${g.id}')">貴賓報到</button></div>`
+        : `<div class="gcard viewonly">${g._seq?`<span class="g-seq" title="出席列表序號">${g._seq}</span>`:''}<div><div class="g-name">${esc(g.name)}</div><div class="g-org">${g.title?`<b class="g-title">${esc(clean(g.title))}</b>${clean(g.org)?" · ":""}`:""}${esc(clean(g.org))}</div>${companionOf(g)?`<div class="g-with">🤝 ${esc(companionOf(g))}</div>`:""}${seatOf(g)?`<div class="g-seat">🍽️ ${esc(seatOf(g))}</div>`:""}</div><div class="g-wait">未報到</div></div>`)
   ).join('');
 }
 // 報到前先確認入座人數（＋/－），確認後才真正報到
