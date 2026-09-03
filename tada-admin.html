@@ -4740,6 +4740,7 @@ const tableLabel = t => t==='工作桌' ? '工作桌（備桌）' : t;
 // 各桌現況：renderSeating() 每次重繪時更新，供桌次下拉顯示「團體名 · 人數/容量」
 let TABLE_INFO = new Map();   // table -> {head, cap, veg, grp, full}
 let SEAT_CFG={};   // 桌位主題設定（tada_config.seating_tables）；宣告需早於 seatTag 使用
+let VIP_OVR={};    // 個人身分覆寫（tada_config.vip_overrides）：occKey → '貴賓'|'嘉賓'；會員不受覆寫
 /* 下拉選單文字：優先用「桌位設定」的主題名稱與類型（與會場平面圖同步）；
    從未設定過的桌才退回自動推測的主要團體名。 */
 function seatTag(t){
@@ -5218,6 +5219,27 @@ async function loadSeatCfg(){
        const d=r.ok?await r.json():[]; SEAT_CFG=d.length?JSON.parse(d[0].value||'{}'):{}; }
   catch(e){ SEAT_CFG={}; }
 }
+const VIP_OVR_KEY='vip_overrides';
+async function loadVipOvr(){
+  try{ const r=await sbEl(`tada_config?key=eq.${VIP_OVR_KEY}&select=value`);
+    const rows=r.ok?await r.json():[];
+    VIP_OVR=rows.length?JSON.parse(rows[0].value||'{}'):{};
+  }catch(e){ VIP_OVR={}; }
+}
+async function saveVipOvr(){
+  await fetch(`${SB_URL}/rest/v1/tada_config`,{method:'POST',
+    headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({key:VIP_OVR_KEY,value:JSON.stringify(VIP_OVR)})});
+}
+// 點類別籤循環切換：自動（依桌型）→ 貴賓 → 嘉賓 → 自動；會員不可切
+async function cycleVip(k){
+  const cur=VIP_OVR[k];
+  if(cur===undefined) VIP_OVR[k]='貴賓';
+  else if(cur==='貴賓') VIP_OVR[k]='嘉賓';
+  else delete VIP_OVR[k];
+  try{ await saveVipOvr(); }catch(e){ alert('儲存失敗：'+e.message); }
+  renderSeating();
+}
 async function saveSeatCfg(){
   const r=await fetch(`${SB_URL}/rest/v1/tada_config`,{method:'POST',
     headers:{...SB_HEADERS,'Prefer':'resolution=merge-duplicates,return=minimal'},
@@ -5318,6 +5340,7 @@ async function loadSeating(){
       fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.false&hidden=eq.false&select=user_id,display_name,org,title,note,table_no,meal&order=updated_at.desc`, { headers: SB_HEADERS }),
     ]);
     await loadSeatCfg();
+    await loadVipOvr();
     await loadSeatOrder();
     seatGuests  = gRes.ok ? await gRes.json() : [];
     seatMembers = mRes.ok ? await mRes.json() : [];
@@ -5426,7 +5449,7 @@ let seatSort='manual';
 function setSeatSort(v){ seatSort=v||'size'; renderSeating(); }
 function seatCatOf(o){
   if(seatIdentity(o.name).isMember) return '會員';
-  return seatType(o.table)==='貴賓' ? '貴賓' : '嘉賓';
+  return VIP_OVR[occKey(o)] || (seatType(o.table)==='貴賓' ? '貴賓' : '嘉賓');
 }
 function seatRowCmp(a,b){
   const zh=(x,y)=>String(x||'').localeCompare(String(y||''),'zh-Hant');
@@ -5491,8 +5514,9 @@ function renderSeating(){
       // 欄位比照會場桌次表：姓名／職稱／單位／類別，所有操作收進 ✎
       // 類別依「桌位類型」判定：只有長官席（類型＝貴賓，第1–4桌）的非會員才是貴賓，
       // 其餘非會員一律嘉賓。用桌型而非人名判斷，桌次調整後會自動跟著更新。
-      const cat = seatIdentity(o.name).isMember ? '會員'
-                : (seatType(o.table)==='貴賓' ? '貴賓' : '嘉賓');
+      const isMem = seatIdentity(o.name).isMember;
+      const ovr = VIP_OVR[occKey(o)];
+      const cat = seatCatOf(o);
       const CAT_COL = { '會員':'#66bb6a', '貴賓':'var(--gold-lt)', '嘉賓':'#8fa8bf' };
       const catCol = CAT_COL[cat];
       const man = seatSort==='manual';
@@ -5515,7 +5539,11 @@ function renderSeating(){
         <span style="flex:0 0 auto;font-size:12.5px;font-weight:700;color:var(--white);white-space:nowrap;">${escapeHtml(o.name)}${sizeTag}${vegTag}</span>
         <span style="flex:1;min-width:0;font-size:11px;color:var(--gray);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
               title="${escapeHtml([o.title,o.org].filter(Boolean).join(' · '))}">${escapeHtml([o.title,o.org].filter(Boolean).join(' · '))}</span>
-        <span style="flex:none;font-size:10px;color:${catCol};border:1px solid ${catCol};opacity:.75;border-radius:99px;padding:0 6px;">${cat}</span>
+        ${isMem
+          ? `<span title="會員（依名冊比對，不可調整）" style="flex:none;font-size:10px;color:${catCol};border:1px solid ${catCol};opacity:.75;border-radius:99px;padding:0 6px;">${cat}</span>`
+          : `<span onclick="cycleVip('${escapeHtml(k)}')" title="${ovr?('手動設定：'+ovr+'（點擊切換：貴賓→嘉賓→回自動依桌型）'):('自動依桌型判定：'+cat+'（點擊改為手動貴賓）')}"
+              style="flex:none;cursor:pointer;font-size:10px;border-radius:99px;padding:0 6px;border:1px solid ${catCol};
+              ${ovr?`background:${catCol};color:#14251a;font-weight:700;`:`color:${catCol};opacity:.75;`}">${cat}${ovr?' ✎':''}</span>`}
         <button class="btn btn-sm btn-outline" style="flex:none;padding:1px 7px;font-size:11px;"
           onclick="openOccEdit('${o.kind}','${escapeHtml(String(o.id))}')" title="編輯姓名／職稱／單位／桌次">✎</button>
       </div>`;
