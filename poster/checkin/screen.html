@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>報到流程投影版｜TADA 第六屆會員大會</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{ --green:#1e4d2b; --gold:#b8860b; --gold-lt:#d4a017; --ink:#1a1a1a; }
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-snap-type:y mandatory}
+body{font-family:'Noto Sans TC','PingFang TC',sans-serif;color:var(--ink);background:#fff}
+.slide{width:100vw;height:100vh;scroll-snap-align:start;display:flex;flex-direction:column;
+  padding:3.2vh 4vw;background:#fff;overflow:hidden}
+.hd{text-align:center;border-bottom:.55vh solid var(--green);padding-bottom:1.6vh;flex:0 0 auto}
+.hd .org{font-size:1.9vh;font-weight:700;letter-spacing:.25em;color:var(--green)}
+.hd h1{font-size:6.2vh;font-weight:900;letter-spacing:.12em;margin-top:.6vh}
+.hd .sub{font-size:2.3vh;color:#555;margin-top:.5vh;letter-spacing:.08em}
+.flow{flex:1;display:flex;align-items:stretch;gap:1.6vw;margin-top:3vh;min-height:0}
+.col{flex:1;display:flex;flex-direction:column;min-width:0}
+.colno{align-self:center;background:var(--green);color:#fff;border-radius:1.4vh;
+  width:12vh;height:12vh;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto}
+.vip .colno{background:var(--gold)}
+.colno b{font-size:5.6vh;font-weight:900;line-height:1}
+.colno span{font-size:1.7vh;letter-spacing:.25em;margin-top:.4vh}
+.col h2{font-size:3.4vh;font-weight:900;text-align:center;margin-top:1.8vh;letter-spacing:.04em}
+.card{flex:1;border:.45vh solid var(--green);border-radius:1.8vh;background:#f4f8f4;
+  margin-top:1.6vh;padding:2.2vh 1.6vw;display:flex;flex-direction:column;justify-content:center;gap:1.6vh}
+.vipcard{border-color:var(--gold);background:#fdf8ec}
+.card .opt{font-size:2.5vh;line-height:1.55}
+.card .opt b{color:var(--green)}
+.card .opt .t{font-size:2.7vh;font-weight:900;color:var(--green)}
+.card .big{font-size:3.2vh;font-weight:900;text-align:center;line-height:1.6}
+.card .icons{font-size:5.4vh;text-align:center;line-height:1.3}
+.card .sub{font-size:2vh;color:#555;text-align:center}
+.between{align-self:center;font-size:4.6vh;font-weight:900;color:var(--gold);flex:0 0 auto;padding-top:16vh}
+.warn{flex:0 0 auto;margin-top:2.6vh;background:var(--gold);color:#fff;border-radius:1.6vh;
+  text-align:center;padding:2vh}
+.warn b{font-size:3.6vh;font-weight:900;letter-spacing:.06em}
+.warn span{display:block;font-size:2vh;margin-top:.4vh}
+.pgnote{position:fixed;right:1.4vw;bottom:1.6vh;font-size:1.6vh;color:#bbb}
+@media print{ .slide{page-break-after:always} .pgnote{display:none}
+  @page{size:A4 landscape;margin:0} }
+</style>
+</head>
+<body>
+
+<!-- 第 1 面：會員報到流程（投影主畫面） -->
+<section class="slide">
+  <div class="hd">
+    <div class="org">TADA 台灣科技農企業發展協會・第六屆會員大會</div>
+    <h1>會員報到流程</h1>
+    <div class="sub">15:00 開始報到領票</div>
+  </div>
+  <div class="flow">
+    <div class="col">
+      <div class="colno"><b>1</b><span>報　到</span></div>
+      <h2>完成報到（二擇一）</h2>
+      <div class="card">
+        <div class="opt"><span class="t">📱 有帶手機</span><br>LINE 選單「<b>電子會員證</b>」<br>出示報到 QR Code 掃描</div>
+        <div class="opt"><span class="t">🙋 沒帶手機</span><br>向服務台報<b>手機號碼或統編</b><br>由服務人員協助報到</div>
+      </div>
+    </div>
+    <div class="between">▶</div>
+    <div class="col">
+      <div class="colno"><b>2</b><span>領　取</span></div>
+      <h2>依報到單領取</h2>
+      <div class="card">
+        <div class="icons">🪪 🎁 🗳</div>
+        <div class="big">名牌・禮物・選票</div>
+        <div class="sub">依報到單勾選項目領取<br>選票限具投票權會員（含受託代領）</div>
+      </div>
+    </div>
+    <div class="between">▶</div>
+    <div class="col">
+      <div class="colno"><b>3</b><span>投　票</span></div>
+      <h2>領完票，馬上投票</h2>
+      <div class="card">
+        <div class="big">圈選選票<br>▼<br>投入票箱<br>▼<br>完成！</div>
+      </div>
+    </div>
+  </div>
+  <div class="warn">
+    <b>⚠ 報到・領票・投票，請於 15:30 前完成</b>
+    <span>逾時將無法領票投票，敬請把握時間</span>
+  </div>
+  <div class="pgnote">▼ 往下捲動：貴賓報到</div>
+</section>
+
+<!-- 第 2 面：貴賓報到 -->
+<section class="slide vip">
+  <div class="hd" style="border-color:var(--gold)">
+    <div class="org">TADA 台灣科技農企業發展協會・第六屆會員大會</div>
+    <h1>貴賓報到</h1>
+    <div class="sub">歡迎蒞臨指導</div>
+  </div>
+  <div class="flow">
+    <div class="col">
+      <div class="colno"><b>1</b><span>貴賓桌</span></div>
+      <h2>至旁邊「貴賓接待桌」</h2>
+      <div class="card vipcard"><div class="big">由接待人員<br>為您服務</div></div>
+    </div>
+    <div class="between">▶</div>
+    <div class="col">
+      <div class="colno"><b>2</b><span>簽　到</span></div>
+      <h2>貴賓簽到本 簽名 ✍</h2>
+      <div class="card vipcard"><div class="big">歡迎留下<br>您的祝福話語</div></div>
+    </div>
+    <div class="between">▶</div>
+    <div class="col">
+      <div class="colno"><b>3</b><span>領　取</span></div>
+      <h2>領取名牌・禮物</h2>
+      <div class="card vipcard"><div class="icons">🪪 🎁</div><div class="big">接待人員<br>引導您入座</div></div>
+    </div>
+  </div>
+  <div class="warn" style="background:var(--green)">
+    <b>智耕傳承・農業新世代　敬祝 賓主盡歡</b>
+  </div>
+</section>
+
+</body>
+</html>
