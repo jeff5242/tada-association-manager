@@ -1763,6 +1763,15 @@ async function loadMembers(){
     const all = await res.json();
     const hiddenN = all.filter(m=>m.hidden).length;
     memberRows = all.filter(m=>!m.hidden);
+    // 可投票欄：以第六屆投票名冊 can_vote 為準（第5屆有效名冊），非由會員狀態推導
+    try{
+      const vr=await fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&can_vote=eq.true&select=member_no,name,rep`,{headers:SB_HEADERS});
+      memberVoteMap = {};
+      if(vr.ok)(await vr.json()).forEach(v=>{
+        const base=String(v.member_no||'').split('-')[0];
+        (memberVoteMap[base]=memberVoteMap[base]||[]).push({no:v.member_no,name:(v.rep||v.name||'').trim()});
+      });
+    }catch(e){ memberVoteMap=null; }
     renderMemberDir();
     if(status){ status.style.color='#66bb6a';
       status.textContent=`✓ ${memberRows.length} 位`+(hiddenN?`（另有 ${hiddenN} 筆已隱藏）`:''); }
@@ -1856,6 +1865,7 @@ async function saveFeature(key,on){
 const SESSION_NAMES = {1:'第一屆',2:'第二屆',3:'第三屆',4:'第四屆',5:'第五屆',6:'第六屆'};
 
 let memberRows = [];              // 直接讀寫 tada_members
+let memberVoteMap = null;         // 母號 → 第六屆可投票身分（null=載入失敗不顯示）
 let adminColReady = false;        // tada_members.admin_enabled 欄位是否已建立
 
 // 開通／取消會員的後台管理權限（供其以手機＋OTP登入）
@@ -1937,7 +1947,13 @@ function memberMainRow(m, seq){
     <td data-label="統編" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gray);white-space:nowrap;">${(m.tax_id||m.cert_no)?escapeHtml(m.tax_id||m.cert_no):'–'}</td>
     <td data-label="電話" style="font-size:12px;color:var(--gray);white-space:nowrap;">${escapeHtml(phone)||'–'}</td>
     <td data-label="Email" style="font-size:12px;color:var(--gray);">${email?escapeHtml(email):'–'}</td>
-    <td data-label="狀態">${statusBadge(m.status)}</td>
+    <td data-label="狀態">${statusBadge(m.status)}${(()=>{
+      if(!memberVoteMap || !m.member_no) return '';
+      const vs=memberVoteMap[String(m.member_no)]||[];
+      if(!vs.length) return '<div style="font-size:10px;color:var(--gray);opacity:.7;margin-top:3px;">無投票權</div>';
+      const who=vs.map(v=>v.name).filter(Boolean).join('、');
+      return `<div title="第六屆投票名冊：${escapeHtml(who)}" style="font-size:10.5px;color:#66bb6a;font-weight:700;margin-top:3px;white-space:nowrap;">🗳 可投票${vs.length>1?' ×'+vs.length:''}</div>`;
+    })()}</td>
     <td data-label="最後繳費" style="font-size:12px;color:var(--gray);white-space:nowrap;">${m.last_paid?escapeHtml(m.last_paid):'–'}</td>
     <td data-label="職務" style="padding:8px 12px;"><div style="display:flex;flex-wrap:wrap;gap:4px;">${termBadges}</div></td>
     <td data-label="操作" style="white-space:nowrap;">
