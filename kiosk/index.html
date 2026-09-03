@@ -41,11 +41,12 @@ html,body{width:1200px;height:800px;overflow:hidden;}
   */
   /* 用 html 前綴提高權重：原本的 .screen{height:794px} 寫在後面會蓋掉同權重的規則 */
   html body{height:720px;transform-origin:top left;}
-  html body .screen{height:714px;}
+  html body .screen{height:720px;}
 }
 body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at top,#1e3320,#0d1710);color:var(--cream);user-select:none;-webkit-user-select:none;cursor:default;}
-.bar{height:6px;background:linear-gradient(90deg,var(--green-mid),var(--gold),var(--gold-light),var(--gold),var(--green-mid));}
-.screen{height:794px;display:flex;flex-direction:column;}
+/* 頂部金綠裝飾條取消：小螢幕上看起來像畫面沒滿版（使用者回饋 2026-09-03） */
+.bar{display:none;}
+.screen{height:800px;display:flex;flex-direction:column;}
 /* 頂列 */
 .top{display:flex;align-items:center;justify-content:space-between;padding:10px 40px;border-bottom:1px solid rgba(255,255,255,.08);}
 .top .t-title{font-family:'Noto Serif TC',serif;font-size:26px;font-weight:900;color:#fff;}
