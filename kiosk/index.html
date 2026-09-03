@@ -106,15 +106,15 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
 */
 .t-status{padding:9px 20px;font-family:inherit;font-size:17px;font-weight:700;color:var(--green-light);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:10px;cursor:pointer;}
 .t-status:active{background:rgba(255,255,255,.15);}
-.statuspanel{position:absolute;inset:0;background:#060e09;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:35;padding:0 60px;}
+.statuspanel{position:absolute;inset:0;background:#060e09;display:none;flex-direction:column;align-items:center;justify-content:flex-start;z-index:35;padding:16px 60px 14px;overflow-y:auto;}
 .statuspanel.on{display:flex;}
-.statuspanel h2{font-family:'Noto Serif TC',serif;font-size:38px;font-weight:900;color:#fff;margin-bottom:26px;}
-.statuspanel dl{display:grid;grid-template-columns:auto 1fr;gap:14px 30px;font-size:24px;width:100%;max-width:720px;}
+.statuspanel h2{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:900;color:#fff;margin-bottom:12px;flex:0 0 auto;}
+.statuspanel dl{display:grid;grid-template-columns:auto 1fr;gap:6px 26px;font-size:16.5px;width:100%;max-width:620px;}
 .statuspanel dt{color:var(--green-light);white-space:nowrap;}
 .statuspanel dd{color:#fff;font-weight:700;text-align:right;}
 .statuspanel dd.ok{color:#7fd694;}
 .statuspanel dd.bad{color:#ff8b7a;}
-.st-foot{margin-top:30px;font-size:17px;color:var(--green-light);}
+.st-foot{margin-top:10px;font-size:12.5px;color:var(--green-light);flex:0 0 auto;}
 .keypad{position:absolute;inset:0 0 0 50%;background:#060e09;border-left:1px solid rgba(212,168,83,.25);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;padding:0 28px;}
 .keypad.on{display:flex;}
 /* 查詢方式分頁：會員編號／統一編號／手機號碼 */
@@ -262,7 +262,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
       <button class="kp-x" onclick="closeStatus()" aria-label="關閉">×</button>
       <h2>機台狀態</h2>
       <dl id="st-list"></dl>
-      <button id="st-quit" onclick="quitKiosk()" style="display:none;margin-top:26px;padding:12px 28px;font-family:inherit;font-size:18px;font-weight:700;color:#ffb3aa;background:rgba(192,57,43,.15);border:1.5px solid rgba(192,57,43,.5);border-radius:10px;cursor:pointer;">⏏ 關閉報到機・回到桌面</button>
+      <button id="st-quit" onclick="quitKiosk()" style="display:none;margin-top:12px;padding:9px 22px;font-family:inherit;font-size:15px;font-weight:700;color:#ffb3aa;background:rgba(192,57,43,.15);border:1.5px solid rgba(192,57,43,.5);border-radius:10px;cursor:pointer;flex:0 0 auto;">⏏ 關閉報到機・回到桌面</button>
       <p class="st-foot">此畫面僅供查看。清除報到資料請至會務後臺。</p>
     </div>
 
