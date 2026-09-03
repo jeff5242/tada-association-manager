@@ -1391,6 +1391,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <select class="filter-select" id="mc-cat" style="width:auto;" onchange="renderMailLog()">
           <option value="">全部類別</option>
           <option value="assembly">開會通知</option>
+          <option value="dues">繳費通知</option>
           <option value="approval">審核通過</option>
           <option value="payment_confirm">繳費確認</option>
           <option value="manual">個別寄信</option>
@@ -3638,7 +3639,7 @@ function resetMailTpl(key){
 }
 
 // ── 發信中心（批次發送＋發信記錄）──────────────────────────────
-const MAIL_CAT_LBL = { assembly:'開會通知', approval:'審核通過', payment_confirm:'繳費確認', manual:'個別寄信', line_broadcast:'LINE 廣播' };
+const MAIL_CAT_LBL = { assembly:'開會通知', dues:'繳費通知', approval:'審核通過', payment_confirm:'繳費確認', manual:'個別寄信', line_broadcast:'LINE 廣播' };
 const MAIL_STATUS_LBL = { sent:['已送出','#9aa'], delivered:['已送達','#66bb6a'], opened:['已開信','#29b6f6'], clicked:['已點擊','#e8b84b'], bounced:['退信','#ef5350'], failed:['失敗','#ef5350'] };
 
 let mcTemplates = [];
@@ -3680,7 +3681,7 @@ async function sendLineBroadcast(){
 // 載入所有「開會通知」範本（key 以 assembly 開頭）到下拉選單
 async function populateMcTemplates(){
   try{
-    const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?key=like.assembly*&select=key,subject,body&order=key.asc`, {headers:SB_HEADERS});
+    const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?or=(key.like.assembly*,key.like.dues*)&select=key,subject,body&order=key.asc`, {headers:SB_HEADERS});
     mcTemplates = r.ok ? await r.json() : [];
   }catch(e){ mcTemplates = []; }
   const sel = document.getElementById('mc-tpl');
@@ -3794,7 +3795,9 @@ function fillMailVars(tpl, m, info){
   if(no)  lines.push('　會員編號：'+no);
   if(mob) lines.push('　手機號碼：'+mob);
   if(tax) lines.push('　公司統編：'+tax);
+  const fee = m.member_type==='group' ? '新臺幣 20,000 元整（團體會員・三年一期）' : '新臺幣 6,000 元整（個人會員・三年一期）';
   return String(tpl)
+    .split('{會費金額}').join(fee)
     .split('{姓名}').join(m.name||'會員')
     .split('{會員編號}').join(no||'（未登記）')
     .split('{統編}').join(tax||'（未登記）')
@@ -3810,7 +3813,7 @@ async function batchSendAssembly(){
   const statuses=selectedSendStatuses();
   if(!subject || !bodyTpl){ alert('請填寫主旨與內文'); return; }
   if(!statuses.length){ alert('請至少勾選一種會員狀態'); return; }
-  const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,email,contact_email,status,reps&order=member_no`, {headers:SB_HEADERS});
+  const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,email,contact_email,status,reps,member_type&order=member_no`, {headers:SB_HEADERS});
   let mems=(r.ok?await r.json():[]).map(m=>({...m,_email:(m.email||m.contact_email||'').trim()}))
     .filter(m=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m._email))
     .filter(m=>statuses.includes(m.status));
@@ -3833,7 +3836,7 @@ async function batchSendAssembly(){
     const text=fillMailVars(bodyTpl, m, info);
     try{
       const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},
-        body:JSON.stringify({to:m._email,subject,text,category:'assembly',name:m.name,member_no:m.member_no})});
+        body:JSON.stringify({to:m._email,subject,text,category:(mcCurrentTplKey||'').startsWith('dues')?'dues':'assembly',name:m.name,member_no:m.member_no})});
       const d=await res.json().catch(()=>({})); d.ok?ok++:fail++;
     }catch(e){ fail++; }
     prog.textContent=`發送中… ${i+1}/${mems.length}（成功 ${ok}／失敗 ${fail}）`;
