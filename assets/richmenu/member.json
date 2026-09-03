@@ -1,12 +1,12 @@
 {
   "size": { "width": 2500, "height": 1686 },
   "selected": true,
-  "name": "TADA 選單 v3（選舉）",
+  "name": "TADA 選單 v4（大會手冊）",
   "chatBarText": "☰ TADA 選單",
   "areas": [
     {
       "bounds": { "x": 0, "y": 0, "width": 833, "height": 562 },
-      "action": { "type": "uri", "uri": "https://tada-ai.org.tw/vote/" }
+      "action": { "type": "uri", "uri": "https://tada-ai.org.tw/handbook/" }
     },
     {
       "bounds": { "x": 833, "y": 0, "width": 833, "height": 562 },

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大會手冊｜TADA 台灣科技農企業發展協會</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{ --green:#1e4d2b; --green-deep:#1e3320; --gold:#b8913a; --gold-lt:#d4a853; --cream:#f8f4ea; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC','PingFang TC',sans-serif;background:#e8e4d8;color:#1a1a14}
+.hd{position:sticky;top:0;z-index:10;background:var(--green-deep);color:#fff;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.hd .t{flex:1;min-width:0}
+.hd .t b{display:block;font-size:16px;font-weight:900;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hd .t span{display:block;font-size:11px;color:var(--gold-lt);letter-spacing:.12em;margin-top:1px}
+.hd a.dl{flex:0 0 auto;background:var(--gold);color:#fff;text-decoration:none;font-size:12px;font-weight:700;
+  padding:7px 12px;border-radius:999px;letter-spacing:.04em}
+.pgbar{position:sticky;top:52px;z-index:9;text-align:center;pointer-events:none}
+.pgbar span{display:inline-block;background:rgba(30,51,32,.82);color:#fff;font-size:12px;
+  padding:3px 12px;border-radius:0 0 10px 10px;letter-spacing:.08em}
+.pages{max-width:820px;margin:0 auto;padding:10px 8px 30px}
+.pg{margin:0 0 12px;box-shadow:0 2px 10px rgba(0,0,0,.18);border-radius:4px;overflow:hidden;background:#fff;position:relative}
+.pg img{display:block;width:100%;height:auto;min-height:120px;background:#fff}
+.pg .no{position:absolute;right:8px;bottom:8px;background:rgba(30,51,32,.7);color:#fff;
+  font-size:11px;padding:2px 8px;border-radius:999px}
+.foot{text-align:center;font-size:12px;color:#777;padding:0 16px 40px;line-height:1.8}
+.foot a{color:var(--green);font-weight:700}
+</style>
+</head>
+<body>
+
+<header class="hd">
+  <div class="t">
+    <b>115年會員大會手冊</b>
+    <span>TADA 台灣科技農企業發展協會</span>
+  </div>
+  <a class="dl" href="TADA-115-assembly-handbook.pdf" target="_blank" rel="noopener">PDF 下載</a>
+</header>
+
+<div class="pgbar"><span id="pgnow">第 1 / 11 頁</span></div>
+
+<main class="pages" id="pages"></main>
+
+<div class="foot">
+  往下滑動即可閱讀全冊（共 11 頁）<br>
+  需要原始檔請點右上「PDF 下載」<br>
+  <a href="TADA-115-assembly-handbook.pdf" target="_blank" rel="noopener">TADA-115年會員大會手冊.pdf</a>
+</div>
+
+<script>
+(function(){
+  var TOTAL = 11;
+  var wrap = document.getElementById('pages');
+  var frag = document.createDocumentFragment();
+  for (var i = 1; i <= TOTAL; i++) {
+    var n = (i < 10 ? '0' : '') + i;
+    var d = document.createElement('div');
+    d.className = 'pg';
+    d.dataset.p = i;
+    d.innerHTML = '<img src="pages/p-' + n + '.jpg" alt="手冊第 ' + i + ' 頁"' +
+      (i > 2 ? ' loading="lazy"' : '') + '>' +
+      '<div class="no">' + i + ' / ' + TOTAL + '</div>';
+    frag.appendChild(d);
+  }
+  wrap.appendChild(frag);
+
+  var label = document.getElementById('pgnow');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (e.isIntersecting) label.textContent = '第 ' + e.target.dataset.p + ' / ' + TOTAL + ' 頁';
+      });
+    }, { rootMargin: '-45% 0px -45% 0px' });
+    Array.prototype.forEach.call(wrap.children, function(el){ io.observe(el); });
+  }
+})();
+</script>
+</body>
+</html>
