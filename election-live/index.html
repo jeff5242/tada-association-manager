@@ -85,6 +85,17 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
 let election = null, chartD = null, chartS = null;
 const GOLD='#d4a853', GREEN='#7fae86', GREY='#4a6b52', TIE='#d97b45';
 
+let voterTotal = null;   // 具投票權人數（領票名冊 can_vote=true）——「應到會員」以此計
+async function loadVoterTotal(){
+  try{
+    const res = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_members?election_id=eq.${election.id}&can_vote=eq.true&select=member_no`,
+      { method:'HEAD', headers: { ...window.tadaSbHeaders(), Prefer:'count=exact' } });
+    const cr = res.headers.get('content-range');
+    const m = cr && /\/(\d+)$/.exec(cr);
+    if(m) voterTotal = parseInt(m[1], 10);
+  }catch(e){}
+}
+
 async function rpc(fn, body){
   const res = await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`, { method:'POST', headers: window.tadaSbHeaders(), body: JSON.stringify(body) });
   if(!res.ok) throw new Error('HTTP '+res.status);
@@ -100,6 +111,7 @@ async function boot(){
   const list = r.ok ? await r.json() : [];
   if(!list.length){ document.getElementById('loading').textContent='目前沒有進行中或已結束的選舉場次。'; return; }
   election = list[0];
+  loadVoterTotal();
   document.getElementById('loading').style.display='none';
   document.getElementById('board').style.display='block';
   document.getElementById('e-title').textContent = election.title;
@@ -136,7 +148,7 @@ function renderStats(p){
   pill.textContent = isOpen ? '● 投票進行中' : '● 投票已結束';
   document.getElementById('st-checked').textContent = p.checked_in;
   document.getElementById('st-cast').textContent = p.ballots_cast;
-  document.getElementById('st-total').textContent = p.total_members;
+  document.getElementById('st-total').textContent = (voterTotal != null ? voterTotal : p.total_members);
   const rate = p.checked_in ? Math.round(p.ballots_cast/p.checked_in*100) : 0;
   document.getElementById('st-rate').textContent = rate+'%';
   document.getElementById('prog-bar').style.width = rate+'%';
