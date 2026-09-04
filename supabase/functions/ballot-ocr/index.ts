@@ -60,14 +60,13 @@ type Read = {
   notes: string;
 };
 
-async function readOnce(apiKey: string, imageBase64: string, mediaType: string, temperature: number): Promise<Read | null> {
+async function readOnce(apiKey: string, imageBase64: string, mediaType: string): Promise<Read | null> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 2048,
-      temperature,
       messages: [{
         role: 'user',
         content: [
@@ -147,12 +146,12 @@ Deno.serve(async (req) => {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!apiKey) return json({ error: '判讀服務未設定 API Key' }, 500);
 
-  // ── 雙重判讀：兩次獨立呼叫，temperature 略有差異以取得獨立觀察 ──
+  // ── 雙重判讀：兩次獨立呼叫取得獨立觀察（Claude 5 已移除 temperature 參數，靠預設取樣自然變異）──
   let r1: Read | null, r2: Read | null;
   try {
     [r1, r2] = await Promise.all([
-      readOnce(apiKey, imageBase64, mediaType, 0),
-      readOnce(apiKey, imageBase64, mediaType, 0.4),
+      readOnce(apiKey, imageBase64, mediaType),
+      readOnce(apiKey, imageBase64, mediaType),
     ]);
   } catch (e) {
     return json({ error: 'AI 服務錯誤：' + (e instanceof Error ? e.message : String(e)) }, 502);
