@@ -607,8 +607,8 @@ async function agentPrint(res){
       const rows=q.ok?await q.json():[];
       table=(rows[0]&&rows[0].table_no)||'';
     }catch(_){}
-    // 領取清單：名片/禮物人人有；選票=本人票未委託出去且有投票權；委託票=受託投票者
-    const checklist=['名片','禮物'];
+    // 領取清單：名牌/禮物人人有；選票=本人票未委託出去且有投票權；委託票=受託投票者
+    const checklist=['名牌','禮物'];
     if(res.self_ballot!==0 && res.can_vote!==false) checklist.push('選票');
     if((res.proxy_vote_count||0)>0) checklist.push('委託票');
     const hasBallot = checklist.includes('選票')||checklist.includes('委託票');

@@ -736,7 +736,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <button class="btn btn-outline btn-sm" onclick="clearCheckinsByDate()">清除此日（含）以前</button>
         <span style="font-size:11px;color:var(--gray);">或於下方清單逐筆「撤銷報到」</span>
       </div>
-      <div class="tbl-wrap"><table><thead><tr><th>編號</th><th>姓名</th><th>類型</th><th title="取消勾選＝報到只能領名片/禮物，不發選票、不印條碼">可投票</th><th>報到</th><th>操作</th></tr></thead>
+      <div class="tbl-wrap"><table><thead><tr><th>編號</th><th>姓名</th><th>類型</th><th title="取消勾選＝報到只能領名牌/禮物，不發選票、不印條碼">可投票</th><th>報到</th><th>操作</th></tr></thead>
         <tbody id="roster-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray);padding:20px;">尚無名冊</td></tr></tbody></table></div>
     </div>
 
@@ -1479,7 +1479,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
-<!-- 會員報到列表：領取項目即時概況（名片/會員禮/選票/委託票，資料來源 /assist/ 勾記） -->
+<!-- 會員報到列表：領取項目即時概況（名牌/會員禮/選票/委託票，資料來源 /assist/ 勾記） -->
 <div id="ck-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center;" onclick="if(event.target===this)closeCheckList()">
   <div style="background:var(--surface);border:1px solid var(--gold);border-radius:14px;padding:20px 22px;width:1080px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
@@ -1504,7 +1504,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     </div>
     <div class="tbl-wrap" style="overflow:auto;flex:1;">
       <table style="min-width:900px;">
-        <thead><tr><th>會員編號</th><th>姓名</th><th>單位</th><th>投票權</th><th>報到</th><th>名片</th><th>會員禮</th><th>選票</th><th>委託票</th></tr></thead>
+        <thead><tr><th>會員編號</th><th>姓名</th><th>單位</th><th>投票權</th><th>報到</th><th>名牌</th><th>會員禮</th><th>選票</th><th>委託票</th></tr></thead>
         <tbody id="ck-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray);padding:26px;">載入中…</td></tr></tbody>
       </table>
     </div>
@@ -2810,7 +2810,7 @@ function openPickupRoll(){
 function closePickupRoll(){ document.getElementById('pk-modal').style.display='none'; }
 
 /* ── 會員報到列表：領取項目即時概況 ──
-   名片/會員禮人人可領；選票＝can_vote；委託票僅顯示已勾記者（受託名單需逐人查委託，列表不即時算）。 */
+   名牌/會員禮人人可領；選票＝can_vote；委託票僅顯示已勾記者（受託名單需逐人查委託，列表不即時算）。 */
 let ckRows=[];
 function openCheckList(){ document.getElementById('ck-modal').style.display='flex'; loadCheckList(); }
 function closeCheckList(){ document.getElementById('ck-modal').style.display='none'; }
@@ -2849,7 +2849,7 @@ function renderCheckList(){
   const stat=[
     `共 ${ckRows.length} 人`,
     `已報到 ${ckRows.filter(v=>v.is_checked_in).length}`,
-    `名片 ${P.filter(v=>v.pickup.card).length}`,
+    `名牌 ${P.filter(v=>v.pickup.card).length}`,
     `會員禮 ${P.filter(v=>v.pickup.gift).length}`,
     `選票 ${P.filter(v=>v.pickup.ballot).length}／可領 ${ckRows.filter(v=>v.can_vote!==false).length}`,
     `委託票 ${P.filter(v=>v.pickup.proxy).length}`,
@@ -2877,7 +2877,7 @@ function renderCheckList(){
 }
 function exportCheckListCSV(){
   const SRC={card:'電子會員證',slip:'小白單',staff:'服務台',manual:'手動',unknown:'未記錄'};
-  const rows=[['會員編號','姓名','單位','投票權','已報到','報到時間','報到方式','名片','會員禮','選票','委託票']];
+  const rows=[['會員編號','姓名','單位','投票權','已報到','報到時間','報到方式','名牌','會員禮','選票','委託票']];
   ckRows.forEach(v=>rows.push([v.member_no,v.rep||v.name||'',v.company||'',v.can_vote!==false?'可投票':'無',
     v.is_checked_in?'是':'否', v.check_in_time?new Date(v.check_in_time).toLocaleString('zh-TW'):'',
     SRC[v.checkin_source]||'', v.pickup.card||'', v.pickup.gift||'',
@@ -6566,7 +6566,7 @@ async function votersBatchPrint(){
       const act=p=>(p.status||'active')==='active';
       const delegatedVote=votersProxy.some(p=>act(p)&&p.proxy_vote&&(p.principal_no===no||p.principal_name===v.name));
       const recvVote=votersProxy.filter(p=>act(p)&&p.proxy_vote&&(p.delegate_no===no||p.delegate_name===v.name)).length;
-      const checklist=['名片','禮物'];
+      const checklist=['名牌','禮物'];
       if(!delegatedVote) checklist.push('選票');
       if(recvVote>0) checklist.push('委託票');
       const hasBallot=checklist.includes('選票')||checklist.includes('委託票');

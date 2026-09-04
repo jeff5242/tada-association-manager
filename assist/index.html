@@ -328,9 +328,9 @@ function detailBodyHTML(p){
 }
 
 /* ── 領取清單：規則比照報到機小白單 ──
-   名片/會員禮人人有；選票＝有投票權且未把票委託出去；委託票＝受託投票者。 */
+   名牌/會員禮人人有；選票＝有投票權且未把票委託出去；委託票＝受託投票者。 */
 function pickItems(p){
-  const items=[{k:'card',label:'名片'},{k:'gift',label:'會員禮'}];
+  const items=[{k:'card',label:'名牌'},{k:'gift',label:'會員禮'}];
   const votedAway = p.proxy && p.proxy.delegated && p.proxy.proxy_vote;
   if(p.canVote && !votedAway) items.push({k:'ballot',label:'選票'});
   if(p.proxy && p.proxy.is_delegate_for && p.proxy.delegate_vote)
