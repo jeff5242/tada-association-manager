@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#14251a">
+<title>服務台貴賓查詢｜TADA 第六屆會員大會</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@900&display=swap" rel="stylesheet">
+<script src="../../assets/liff-common.js"></script>
+<style>
+:root{
+  --bg:#101a13; --surface:#18261c; --surface2:#1f3124; --line:#2c4433;
+  --ink:#e8e6de; --muted:#94a898; --gold:#c4922a; --gold-lt:#e0b45a;
+  --green:#4f9a5e; --red:#c0392b; --sans:'Noto Sans TC',-apple-system,BlinkMacSystemFont,'PingFang TC',sans-serif;
+  --serif:'Noto Serif TC',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;
+  min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+.wrap{max-width:520px;margin:0 auto;padding:16px 14px 40px}
+
+/* ── 登入 ── */
+#gate{max-width:400px;margin:16vh auto;padding:0 18px}
+#gate .box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px 22px}
+#gate h1{font-size:19px;font-weight:900;color:var(--gold-lt);margin-bottom:4px}
+#gate p{font-size:12.5px;color:var(--muted);margin-bottom:18px}
+#gate input{width:100%;background:var(--bg);border:1.5px solid var(--line);border-radius:10px;
+  padding:13px 14px;color:var(--ink);font-size:16px;font-family:var(--sans);outline:none}
+#gate input:focus{border-color:var(--gold)}
+#gate button{width:100%;margin-top:12px;background:var(--gold);color:#1a1a12;border:none;border-radius:10px;
+  padding:14px;font-size:16px;font-weight:700;font-family:var(--sans);cursor:pointer}
+#gate .err{color:#e77;font-size:13px;min-height:20px;margin-top:8px}
+
+/* ── 標題列 ── */
+header{display:flex;align-items:baseline;gap:8px;margin-bottom:14px}
+header h1{font-size:17px;font-weight:900;color:var(--gold-lt)}
+header .sub{font-size:11.5px;color:var(--muted)}
+header .st{margin-left:auto;font-size:11.5px;color:var(--muted);text-align:right}
+
+/* ── 搜尋 ── */
+.search{position:sticky;top:0;z-index:5;background:var(--bg);padding:6px 0 10px}
+.search input{width:100%;background:var(--surface2);border:1.5px solid var(--line);border-radius:12px;
+  padding:14px 16px;color:var(--ink);font-size:17px;font-family:var(--sans);outline:none}
+.search input:focus{border-color:var(--gold)}
+.search .tip{font-size:11.5px;color:var(--muted);margin-top:6px;padding:0 2px}
+
+/* ── 結果 ── */
+.list{display:flex;flex-direction:column;gap:8px}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+  display:flex;align-items:center;gap:10px;cursor:pointer}
+.row:active{background:var(--surface2)}
+.row .sq{font-family:var(--serif);font-size:15px;font-weight:900;color:var(--gold-lt);flex:0 0 auto;white-space:nowrap}
+.row .sq::before{content:'№';font-size:10px;opacity:.7;margin-right:2px}
+.row .nm{font-size:17px;font-weight:700;color:#fff;letter-spacing:.04em;white-space:nowrap}
+.row .meta{font-size:11.5px;color:var(--muted);min-width:0;flex:1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .arw{color:var(--gold);font-size:18px;flex:0 0 auto}
+.badge{font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap;flex:0 0 auto}
+.b-done{background:rgba(79,154,94,.18);color:#7ec98d;border:1px solid rgba(79,154,94,.4)}
+.b-grp{background:rgba(196,146,42,.14);color:var(--gold-lt);border:1px solid rgba(196,146,42,.3)}
+.b-wait{background:rgba(148,168,152,.12);color:var(--muted);border:1px solid var(--line)}
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:36px 10px;line-height:2}
+
+/* ── 詳情 ── */
+#detail{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;display:none}
+#detail .inner{max-width:520px;margin:0 auto;padding:14px 16px 40px;text-align:center}
+#detail .back{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:14px;
+  background:none;border:none;font-family:var(--sans);padding:6px 2px;cursor:pointer;float:left}
+#detail .card{clear:both;margin-top:16px;background:linear-gradient(180deg,var(--surface2),var(--surface));
+  border:1px solid var(--line);border-radius:22px;padding:26px 18px 22px;position:relative;
+  box-shadow:0 14px 40px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05)}
+#detail .seqno{position:absolute;top:16px;left:20px;font-family:var(--serif);font-size:26px;font-weight:900;color:var(--gold-lt)}
+#detail .seqno::before{content:'№ ';font-size:14px;opacity:.7}
+#detail .who .cap{font-size:10.5px;letter-spacing:.34em;color:var(--muted);text-indent:.34em;margin-bottom:8px}
+#detail .who .nm{font-size:32px;font-weight:900;color:#fff;letter-spacing:.16em;padding-left:.16em;line-height:1.25}
+#detail .who .ttl{font-size:14px;color:var(--gold-lt);margin-top:4px;letter-spacing:.08em}
+#detail .who .org{font-size:12.5px;color:var(--muted);margin-top:3px}
+#detail .tags{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+#detail .who::after{content:'';display:block;width:44px;height:2px;margin:16px auto 0;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);border-radius:2px}
+.seatbig{margin:20px auto 0;background:rgba(196,146,42,.1);border:1px solid var(--gold);border-radius:16px;
+  padding:14px 20px;width:fit-content;min-width:180px}
+.seatbig .s-l{font-size:11px;letter-spacing:.3em;color:var(--muted);text-indent:.3em}
+.seatbig .s-v{font-family:var(--serif);font-size:34px;font-weight:900;color:var(--gold-lt);margin-top:2px}
+.seatbig .s-v.small{font-size:20px}
+#detail .howto{font-size:12.5px;color:var(--muted);margin-top:16px;line-height:1.9}
+#detail .howto b{color:var(--ink)}
+#detail .act{margin-top:22px;display:flex;flex-direction:column;gap:10px}
+.btn{border:none;border-radius:13px;padding:15px;font-size:15px;font-weight:700;
+  font-family:var(--sans);cursor:pointer;transition:transform .06s}
+.btn:active{transform:scale(.975)}
+.btn-out{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.btn-go{background:linear-gradient(180deg,#57a768,#44854f);color:#fff;
+  box-shadow:0 8px 20px rgba(79,154,94,.28),inset 0 1px 0 rgba(255,255,255,.18)}
+.btn-go:disabled{opacity:.4}
+#d-msg{font-size:13px;min-height:22px;margin-top:10px}
+.done-mark{font-size:44px;margin:22px 0 6px}
+.w-note{margin-top:14px;font-size:12.5px;color:var(--gold-lt);background:rgba(196,146,42,.08);
+  border:1px dashed rgba(196,146,42,.4);border-radius:10px;padding:8px 12px}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h1>服務台貴賓查詢</h1>
+    <p>TADA 第六屆會員大會 · 2026/9/4<br>請輸入服務人員通關密碼</p>
+    <input id="pw" type="password" inputmode="text" autocomplete="off" placeholder="通關密碼">
+    <button onclick="tryLogin()">進入</button>
+    <div class="err" id="gate-err"></div>
+  </div>
+</div>
+
+<div class="wrap" id="app" style="display:none">
+  <header>
+    <h1>貴賓查詢</h1><span class="sub">服務人員專用</span>
+    <span class="st" id="st">載入中…</span>
+  </header>
+
+  <div class="search">
+    <input id="q" type="search" inputmode="search" autocomplete="off"
+           placeholder="輸入姓名、單位或出席序號" oninput="renderList()">
+    <div class="tip">姓名可只打一個字；序號直接打數字（例如 023）</div>
+  </div>
+
+  <div class="list" id="list"></div>
+</div>
+
+<div id="detail">
+  <div class="inner">
+    <button class="back" onclick="closeDetail()">‹ 返回查詢</button>
+    <div class="card">
+      <div class="seqno" id="d-seq" style="display:none"></div>
+      <div class="who">
+        <div class="cap">TADA 第六屆會員大會・貴賓報到</div>
+        <div class="nm" id="d-name">—</div>
+        <div class="ttl" id="d-ttl"></div>
+        <div class="org" id="d-org"></div>
+        <div class="tags" id="d-tags"></div>
+      </div>
+      <div id="d-body"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB=window.TADA_SB_URL, SBH=window.tadaSbHeaders();
+const LOGIN_PW_HASH='ed6f1a565c864f401b0aba93e9623ea1f4616fe7ebd3f8774fa37dedef301aca';
+const OK_KEY='tadaAssistOk';   // 與會員版共用：登入一次兩頁都通
+
+let people=[], current=null;
+
+/* ── 登入 ── */
+async function sha256(s){const d=new TextEncoder().encode(s);
+  const h=await crypto.subtle.digest('SHA-256',d);
+  return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('');}
+async function tryLogin(){
+  const h=await sha256(document.getElementById('pw').value.trim().toLowerCase());
+  if(h!==LOGIN_PW_HASH){ document.getElementById('gate-err').textContent='密碼錯誤'; return; }
+  try{ sessionStorage.setItem(OK_KEY,'1'); }catch(_){}
+  unlock();
+}
+function unlock(){
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='block';
+  loadAll();
+  setTimeout(()=>document.getElementById('q').focus(),150);
+}
+document.getElementById('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') tryLogin(); });
+try{ if(sessionStorage.getItem(OK_KEY)==='1') unlock(); }catch(_){}
+
+/* ── 姓名比對（與 /guest/ 貴賓報到頁同一套規則）── */
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clean=v=>{ v=(v==null?'':String(v)).trim(); return (v===''||v==='?'||v==='？')?'':v; };
+const REL_WORDS=['太太','先生','夫人','眷屬','友人','家人','小孩','兒子','女兒','助理','司機','母親','父親','媽媽','爸爸','秘書'];
+const TITLES=['署長','副署長','局長','副局長','主委','副主委','委員','立委','市長','副市長','縣長','議員','部長','次長','司長',
+  '副院長','前院長','院長','教授','研究員','總監','副總','經理','主任','技正','技監','組長',
+  '分所長','副所長','所長','處長','鄉長','社長','顧問','博士','董事','前所長','老師'];
+const NAME_STOP=new Set(['友人','夫人','眷屬','同行','貴賓']);
+function deTitle(n){ let t=String(n||'').replace(/\s+/g,''); TITLES.forEach(x=>{t=t.split(x).join('')}); return t; }
+function nameKeys(n){
+  const ks=new Set(), base=deTitle(n);
+  if(base && !NAME_STOP.has(base)) ks.add(base);
+  (String(n||'').match(/[一-鿿]{2,}/g)||[]).forEach(r=>{
+    const d=deTitle(r); if(d && !NAME_STOP.has(d)) ks.add(d);
+  });
+  return [...ks];
+}
+const COMP_TITLES=['高專','經理','副理','襄理','協理','總經理','副總經理','執行長','秘書','特助','助理','主任','組長','專員','顧問','董事長','課長','總監','副總','處長','科長','技正','所長','場長','司機','總幹事','秘書長','董事','理事','監事'];
+function splitComp(raw){
+  return String(raw||'').split(/[、,，;；/]+/).flatMap(p=>{
+    p=p.replace(/^\s*(眷屬|同行|友人)\s*[：:]\s*/,'').trim();
+    if(!p) return [];
+    if(/[（(]/.test(p)) return [p];
+    const toks=p.split(/\s+/).filter(Boolean);
+    const out=[];
+    toks.forEach(t=>{ if(COMP_TITLES.includes(t) && out.length) return; out.push(t); });
+    return out;
+  }).filter(t=>t.length>=2 && !COMP_TITLES.includes(t));
+}
+function companionOf(g){ const m=/同行於\s*([^｜]+)/.exec(g.note||''); return m?('同行於 '+m[1].trim()):''; }
+function noteWithoutCompanion(g){ return String(g.note||'').split('｜').filter(x=>!/同行於/.test(x)).join('｜').trim(); }
+
+/* ── 載入：一次抓完，查詢都在本機做 ── */
+let SEATOF=new Map(), attendKeys=new Set();
+function seatOf(g){
+  const own=clean(g&&g.seat); if(own) return own;
+  for(const k of nameKeys(g&&g.name||'')) if(SEATOF.has(k)) return SEATOF.get(k);
+  const m=/同行於\s*([^｜]+)/.exec((g&&g.note)||'');
+  if(m){ for(const k of nameKeys(m[1].trim())) if(SEATOF.has(k)) return SEATOF.get(k); }
+  return '';
+}
+function isAttending(g){
+  if((g.seat||'').trim()) return true;
+  if(g.status==='confirmed') return true;
+  return nameKeys(g.name).some(k=>attendKeys.has(k));
+}
+async function loadAll(){
+  const st=document.getElementById('st');
+  st.textContent='載入中…';
+  try{
+    const [r,m,a]=await Promise.all([
+      fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in,party_size,title,status&order=sort.asc,name.asc`,{headers:SBH}),
+      fetch(`${SB}/rest/v1/tada_members?select=name,reps`,{headers:SBH}),
+      fetch(`${SB}/rest/v1/tada_rsvp?hidden=eq.false&select=display_name,companions,table_no,attending,created_at,updated_at,user_id`,{headers:SBH})
+    ]);
+    const all=r.ok?await r.json():[];
+    const memberKeys=new Set();
+    if(m.ok){ (await m.json()).forEach(x=>{
+      nameKeys(x.name).forEach(k=>memberKeys.add(k));
+      (x.reps||[]).forEach(rp=>nameKeys(rp&&rp.name).forEach(k=>memberKeys.add(k)));
+    }); }
+    attendKeys=new Set(); SEATOF=new Map();
+    const SEQOF=new Map();
+    if(a.ok){
+      const rows=await a.json();
+      const regT=x=>new Date(x.created_at||x.updated_at||0).getTime();
+      const numbered=new Map();
+      rows.slice().sort((p,q)=>regT(p)-regT(q)||String(p.user_id).localeCompare(String(q.user_id)))
+          .forEach((x,i)=>numbered.set(x.user_id,i+1));
+      const pad3=n=>String(n).padStart(3,'0');
+      rows.forEach(x=>{
+        const main=(x.display_name||'').trim(), tb=(x.table_no||'').trim();
+        const seq=pad3(numbered.get(x.user_id));
+        nameKeys(main).forEach(k=>{ if(!SEQOF.has(k)) SEQOF.set(k,seq); });
+        splitComp(x.companions).forEach((t,ci)=>{
+          const nm = REL_WORDS.includes(t) ? (main+'的'+t) : t;
+          nameKeys(nm).forEach(k=>{ if(!SEQOF.has(k)) SEQOF.set(k,seq+'-'+(ci+1)); });
+        });
+        if(!x.attending) return;
+        nameKeys(main).forEach(k=>{ attendKeys.add(k); if(tb&&!SEATOF.has(k)) SEATOF.set(k,tb); });
+        splitComp(x.companions).forEach(t=>{
+          const nm = REL_WORDS.includes(t) ? (main+'的'+t) : t;
+          nameKeys(nm).forEach(k=>{ attendKeys.add(k); if(tb&&!SEATOF.has(k)) SEATOF.set(k,tb); });
+        });
+      });
+      all.forEach(g=>{ for(const k of nameKeys(g.name)){ if(SEQOF.has(k)){ g._seq=SEQOF.get(k); break; } } });
+    }
+    const notMember=g=>!nameKeys(g.name).some(k=>memberKeys.has(k));
+    people=all.filter(g=>notMember(g)&&isAttending(g)).map(g=>({
+      ...g,
+      _seat:seatOf(g),
+      _key:((g.name||'')+' '+clean(g.org||g.unit)+' '+clean(g.title)+' '+(g._seq||'')).toLowerCase()
+    }));
+    st.textContent=`${people.length} 位貴賓可查`;
+  }catch(e){ st.textContent='載入失敗'; }
+  renderList();
+}
+
+function renderList(){
+  const q=(document.getElementById('q').value||'').trim().toLowerCase();
+  const box=document.getElementById('list');
+  if(!q){ box.innerHTML='<div class="empty">輸入姓名、單位或序號開始查詢<br>例如：彭　或　國發會　或　023</div>'; return; }
+  const hit=people.filter(p=>p._key.includes(q));
+  if(!hit.length){ box.innerHTML='<div class="empty">查無資料<br><span style="font-size:11.5px">此人可能是會員（請改用會員版查詢），或不在出席名單，請洽秘書處</span></div>'; return; }
+  box.innerHTML=hit.slice(0,40).map(p=>{
+    const tags=[ p.checked_in?'<span class="badge b-done">已報到</span>':'<span class="badge b-wait">未報到</span>' ];
+    const meta=[clean(p.org||p.unit),p._seat].filter(Boolean).join(' · ');
+    return `<div class="row" onclick="openDetail('${p.id}')">
+      ${p._seq?`<span class="sq">${esc(p._seq)}</span>`:''}
+      <span class="nm">${esc(p.name)}</span>
+      <span class="meta">${esc(meta)}</span>${tags.join('')}
+      <span class="arw">›</span></div>`;
+  }).join('')+(hit.length>40?`<div class="empty">另有 ${hit.length-40} 筆，請輸入更完整的關鍵字</div>`:'');
+}
+
+/* ── 詳情 ── */
+function openDetail(id){
+  current=people.find(p=>p.id===id); if(!current) return;
+  const p=current;
+  const sq=document.getElementById('d-seq');
+  if(p._seq){ sq.textContent=p._seq; sq.style.display='block'; } else sq.style.display='none';
+  document.getElementById('d-name').textContent=p.name;
+  document.getElementById('d-ttl').textContent=clean(p.title);
+  document.getElementById('d-org').textContent=clean(p.org||p.unit);
+  const tags=[];
+  if(clean(p.category)) tags.push(`<span class="badge b-grp">${esc(clean(p.category))}</span>`);
+  if(companionOf(p)) tags.push(`<span class="badge b-grp">🤝 ${esc(companionOf(p))}</span>`);
+  if(p.checked_in) tags.push('<span class="badge b-done">已報到</span>');
+  document.getElementById('d-tags').innerHTML=tags.join('');
+  document.getElementById('d-body').innerHTML=detailBodyHTML(p);
+  document.getElementById('detail').style.display='block';
+  window.scrollTo(0,0);
+}
+function detailBodyHTML(p){
+  const seat=p._seat;
+  const seatBox = seat
+    ? `<div class="seatbig"><div class="s-l">桌　　號</div><div class="s-v">${esc(seat)}</div></div>`
+    : `<div class="seatbig"><div class="s-l">桌　　號</div><div class="s-v small">請洽接待人員</div></div>`;
+  const note=noteWithoutCompanion(p);
+  if(p.checked_in){
+    return `${seatBox}
+      <div class="done-mark">✅</div>
+      <div style="font-size:19px;font-weight:700;color:#7ec98d">已完成報到</div>
+      ${note?`<div class="w-note">📌 ${esc(note)}</div>`:''}
+      <div class="howto">名牌與禮物請至<b>貴賓接待桌</b>領取。</div>
+      <div class="act"><button class="btn btn-out" onclick="closeDetail()">返回查詢</button></div>
+      <div id="d-msg"></div>`;
+  }
+  return `${seatBox}
+    ${note?`<div class="w-note">📌 ${esc(note)}</div>`:''}
+    <div class="howto">貴賓請至<b>貴賓接待桌</b>簽到並領取名牌、禮物；<br>本頁可代為完成系統報到。</div>
+    <div class="act">
+      <button class="btn btn-go" id="d-go" onclick="staffCheckin()">⚡ 直接完成報到</button>
+      <button class="btn btn-out" onclick="closeDetail()">返回查詢</button>
+    </div>
+    <div id="d-msg"></div>`;
+}
+function closeDetail(){ document.getElementById('detail').style.display='none'; current=null; }
+
+/* ── 直接報到（與 /guest/ 貴賓報到頁同一支 RPC）── */
+async function staffCheckin(){
+  if(!current) return;
+  const p=current, btn=document.getElementById('d-go'), msg=document.getElementById('d-msg');
+  if(!confirm(`確定為「${p.name}」完成貴賓報到？`)) return;
+  btn.disabled=true; msg.style.color='var(--muted)'; msg.textContent='報到中…';
+  try{
+    const r=await fetch(`${SB}/rest/v1/rpc/guest_checkin`,{method:'POST',
+      headers:{...SBH,'Content-Type':'application/json'},
+      body:JSON.stringify({p_guest_id:p.id})});
+    const res=await r.json();
+    if(res.ok || res.error==='already_checked_in'){
+      p.checked_in=true;
+      msg.style.color='#7ec98d'; msg.textContent='✅ 報到完成';
+      document.getElementById('d-tags').innerHTML=document.getElementById('d-tags').innerHTML+'<span class="badge b-done">已報到</span>';
+      document.getElementById('d-body').innerHTML=detailBodyHTML(p);
+      renderList();
+    }else{
+      msg.style.color='#e08a80'; msg.textContent='報到失敗：'+(res.error||'未知');
+      btn.disabled=false;
+    }
+  }catch(e){ msg.style.color='#e08a80'; msg.textContent='連線失敗，請重試'; btn.disabled=false; }
+}
+</script>
+</body>
+</html>
