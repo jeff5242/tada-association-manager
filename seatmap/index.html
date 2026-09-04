@@ -195,7 +195,7 @@ async function load(manual){
       j('tada_config?key=eq.seating_order&select=value'),
       // 只出席論壇不入席者（meal='no'）不佔座位，不畫進圓桌
       j('tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,title,org,table_no,checked_in,meal,vegetarian,created_at'),
-      j('tada_guests?select=id,name,title,org,seat,checked_in'),   // 全抓：沒排位的貴賓（如講者）報到狀態也要併入
+      j('tada_guests?select=id,name,title,org,seat,checked_in&status=neq.hidden'),   // 全抓：沒排位的貴賓（如講者）報到狀態也要併入
       j(`tada_v_members?election_id=eq.${ELECTION}&select=name,is_checked_in`),
       j('tada_members?select=name,status,reps&limit=1000'),
     ]);

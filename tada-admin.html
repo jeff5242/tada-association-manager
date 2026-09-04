@@ -5334,7 +5334,7 @@ async function loadSeating(){
   st.textContent='載入中…'; st.style.color='var(--gray)';
   try{
     const [gRes, mRes, roRes, dRes] = await Promise.all([
-      fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category,sort,status,title`, { headers: SB_HEADERS }),
+      fetch(`${SB_URL}/rest/v1/tada_guests?select=id,name,org,seat,checked_in,party_size,category,sort,status,title&status=neq.hidden`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=user_id,display_name,org,title,note,companions,headcount,vegetarian,table_no,meal`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,status,reps,title,company`, { headers: SB_HEADERS }),
       fetch(`${SB_URL}/rest/v1/tada_rsvp?attending=eq.false&hidden=eq.false&select=user_id,display_name,org,title,note,table_no,meal&order=updated_at.desc`, { headers: SB_HEADERS }),
@@ -5697,7 +5697,7 @@ function openOccEdit(kind, id){
   document.getElementById('oc-title-in').value=o.title||'';
   document.getElementById('oc-org').value=o.org||'';
   document.getElementById('oc-table').innerHTML=tableOptionsHtml(o.table);
-  document.getElementById('oc-hide').style.display = kind==='member' ? '' : 'none';
+  document.getElementById('oc-hide').style.display = '';   // 兩種來源都可隱藏（貴賓用 status='hidden' 標記）
   document.getElementById('oc-att-wrap').style.display = kind==='member' ? '' : 'none';
   if(kind==='member'){
     document.getElementById('oc-att').value = isDeclined ? 'no' : (mealNow==='no' ? 'forum' : 'yes');
@@ -5805,12 +5805,18 @@ async function occSave(){
 }
 
 async function occHide(){
-  if(!occEditing || occEditing.kind!=='member') return;
+  if(!occEditing) return;
   const nm=document.getElementById('oc-name').value.trim();
-  const uid=occEditing.id;                    // closeOccEdit() 會把 occEditing 清掉，先留住
-  if(!confirm(`隱藏「${nm}」？\n將不列入出席人數與桌次規劃（可到出席統計勾「顯示已隱藏」還原）。`)) return;
+  const kind=occEditing.kind, uid=occEditing.id;   // closeOccEdit() 會把 occEditing 清掉，先留住
+  const tip = kind==='member' ? '（可到出席統計勾「顯示已隱藏」還原）' : '（還原請至貴賓名冊把該筆狀態改回）';
+  if(!confirm(`隱藏「${nm}」？\n將不列入出席人數與桌次規劃${tip}。`)) return;
   closeOccEdit();
-  await hideOcc(uid, true);
+  if(kind==='member'){ await hideOcc(uid, true); return; }
+  // 貴賓：status='hidden' ＋ 清桌位（tada_guests 無 hidden 欄，以狀態標記）
+  const res=await fetch(`${SB_URL}/rest/v1/tada_guests?id=eq.${encodeURIComponent(uid)}`,
+    {method:'PATCH',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({status:'hidden',seat:null})});
+  if(res.ok){ await loadSeating(); const st=document.getElementById('seating-status'); st.style.color='#66bb6a'; st.textContent='✓ 已隱藏「'+nm+'」（貴賓名冊）'; }
+  else alert('隱藏失敗：'+await res.text());
 }
 
 async function moveOccSelect(kind, id, val){

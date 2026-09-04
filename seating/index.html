@@ -346,7 +346,7 @@ async function load(){
   try{
     const [r1,r2,r3,r4,r5,r6]=await Promise.all([
       fetch(`${SB}/rest/v1/tada_rsvp?attending=eq.true&hidden=eq.false&select=display_name,org,title,note,companions,headcount,vegetarian,table_no,meal&limit=500`,{headers:H()}),
-      fetch(`${SB}/rest/v1/tada_guests?select=name,org,title,seat,party_size,note,checked_in&limit=400`,{headers:H()}),
+      fetch(`${SB}/rest/v1/tada_guests?select=name,org,title,seat,party_size,note,checked_in&status=neq.hidden&limit=400`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_members?select=name,member_type,terms,reps,company&limit=1000`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_v_members?election_id=eq.${BALLOT}&select=name,is_checked_in&limit=400`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_config?key=eq.${CFG_KEY}&select=value`,{headers:H()}),

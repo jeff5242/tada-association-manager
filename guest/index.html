@@ -353,7 +353,7 @@ function nameKeys(n){
 async function load(){
   try{
     const [r,m,a]=await Promise.all([
-      fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in,party_size,title,status&order=sort.asc,name.asc`,{headers:H()}),
+      fetch(`${SB}/rest/v1/tada_guests?select=id,name,org,unit,category,seat,meal,train,note,checked_in,party_size,title,status&status=neq.hidden&order=sort.asc,name.asc`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_members?select=name,reps`,{headers:H()}),
       fetch(`${SB}/rest/v1/tada_rsvp?hidden=eq.false&select=display_name,companions,table_no,attending,created_at,updated_at,user_id`,{headers:H()})
     ]);
