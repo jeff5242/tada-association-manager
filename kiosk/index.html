@@ -261,11 +261,11 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
         <div class="no" id="f-no"></div>
         <div class="rep" id="f-rep"></div>
         <div class="rep" id="f-proxy" style="color:#e8b84b;font-weight:900;line-height:1.5;"></div>
+        <!-- 依 9/4 現場裁示：一律紙本流程，不再詢問電子/紙本，直接確認列印小白單 -->
         <div class="btn-row">
-          <button class="big go" onclick="confirmCheckin()">🎫 領電子票<br><span style="font-size:16px;font-weight:400;">手機掃描投票</span></button>
-          <button class="big go" style="background:linear-gradient(180deg,#b8913a,#8a6d28);" onclick="confirmCheckinPaper()">📄 領紙本票<br><span style="font-size:16px;font-weight:400;">現場圈選投票</span></button>
+          <button class="big go" onclick="confirmCheckinPaper()">✓ 確認報到並列印</button>
+          <button class="big cancel" onclick="toIdle()">✕ 取消</button>
         </div>
-        <div class="btn-row" style="margin-top:16px;"><button class="big cancel" onclick="toIdle()">✕ 取消</button></div>
       </div>
       <div id="found-done" style="display:none;">
         <div class="nm" id="fd-name" style="font-size:60px;">—</div>
