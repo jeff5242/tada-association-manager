@@ -216,7 +216,7 @@ h1.t{font-family:var(--serif);font-weight:900;font-size:clamp(26px,5vw,40px);let
     <div class="stats">
       <div class="stat" title="出席總人數，等於現場需要擺放的椅子數"><b id="s-people">—</b><span>出席人數</span><small id="s-people-note">＝椅子數</small></div>
       <div class="stat" title="素食為另出套餐，不與桌菜共享，故不佔每桌 10 位的容量"><b id="s-veg">—</b><span>素食份數</span><small>另出套餐</small></div>
-      <div class="stat" title="目前已排入賓客的桌數"><b id="s-tables">—</b><span>使用桌數</span><small>現有訂桌 23 桌</small></div>
+      <div class="stat" title="目前已排入賓客的桌數"><b id="s-tables">—</b><span>使用桌數</span><small>現有訂桌 25 桌</small></div>
       <div class="stat" title="已完成報到人數"><b id="s-checked">—</b><span>已報到</span><small id="s-checked-note">—</small></div>
       <div class="stat" title="以現有訂桌 23 桌 × 每桌 10 位計；素食另出套餐不佔位，故已扣除"><b id="s-left">—</b><span>剩餘座位</span><small id="s-left-note">23 桌 × 10 位</small></div>
       <div class="stat" title="飯店另備 1 桌，不計入上方剩餘座位；臨時來賓請洽會館開桌"><b id="s-spare">10</b><span>飯店預備桌</span><small>1 桌．另計</small></div>
@@ -408,7 +408,7 @@ function render(rs,gs,ms,vm,ds){
   document.getElementById('s-checked-note').textContent=total?`${Math.round(ckd/total*100)}%．共 ${total} 位`:'—';
   document.getElementById('qhint').textContent='共 '+total+' 人';
   // 剩餘座位＝現有訂桌 23 桌 × 10 位 −（已排人數 − 素食份數）；素食另出套餐不佔桌菜位
-  const CAP_TABLES=23, CAP_PER=10, SPARE_TABLES=1;
+  const CAP_TABLES=25, CAP_PER=10, SPARE_TABLES=1;
   const totalVeg=P.reduce((s,p)=>s+p.veg,0);
   document.getElementById('s-veg').textContent=totalVeg;
   document.getElementById('s-people-note').textContent=`＝${total} 張椅子`+(forumH?`・另 ${forumH} 位僅論壇`:'');
@@ -471,6 +471,7 @@ const FLOOR=[
   [12, 13, 14, 15],
   [16, 17, 18, 19],
   [20, 21, 22, 23],
+  [24, 25],
 ];
 const FLOOR_COLS=12;
 /* 桌位用途一律由「✎ 編輯桌位」設定（存 tada_config），程式不再寫死任何桌名，
