@@ -127,6 +127,29 @@ video{width:100%;max-width:420px;border-radius:10px;background:#000;display:bloc
   </div>
 
   <div class="box">
+    <h3>②b 人工輸入（掃票號條碼＋勾選）</h3>
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;">
+      <input id="mi-no" inputmode="numeric" placeholder="票號 11 碼（如 20260904001）"
+        style="flex:1;min-width:200px;background:var(--bg);border:1.5px solid var(--line);border-radius:9px;padding:11px 12px;color:var(--ink);font-size:16px;font-family:ui-monospace,Menlo,monospace;outline:none">
+      <button class="btn btn-out" onclick="miScan()" id="mi-scan-btn">📷 掃條碼</button>
+    </div>
+    <div class="cam" id="mi-cam" style="display:none;margin-top:9px;">
+      <video id="mi-video" playsinline muted style="width:100%;border-radius:10px;"></video>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;">對準票面右上角條碼，讀到會自動填入</div>
+    </div>
+    <div id="mi-cands" style="display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;"></div>
+    <div class="row" style="margin-top:11px;align-items:center;gap:10px;">
+      <span id="mi-count" style="font-size:13px;color:var(--muted);">已勾 0</span>
+      <span style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-out" onclick="miClear()">清除</button>
+        <button class="btn btn-gold" onclick="miSave()" id="mi-save">存入此票</button>
+      </span>
+    </div>
+    <div id="mi-msg" style="font-size:13px;min-height:20px;margin-top:8px;"></div>
+    <div class="warn" style="margin-top:8px;">勾 0 位＝空白廢票、超過上限＝超圈廢票，存入時自動依規則判定並直接入帳（有效票即時併進開票結果）。</div>
+  </div>
+
+  <div class="box">
     <h3>③ 判讀進度</h3>
     <div class="stats">
       <div class="st"><div class="n" id="s-total">0</div><div class="l">總張數</div></div>
@@ -189,7 +212,7 @@ async function loadKindLimit(){
   }catch(err){ /* 保底值繼續用 */ }
   onKind();
 }
-function onKind(){
+function onKind(){ if(typeof miRenderCands==='function') miRenderCands();
   document.getElementById('limit').value = KIND_LIMIT[document.getElementById('kind').value]||11;
 }
 
@@ -347,6 +370,116 @@ async function shoot(){
 }
 
 /* ── 畫面 ── */
+/* ── ②b 人工輸入：掃票號條碼＋勾選候選人 ── */
+let miCands=[], miStream=null, miDetTimer=null;
+async function miLoadCands(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/rpc/vote_outcome`,{method:'POST',headers:SB_H,
+      body:JSON.stringify({p_election:ELECTION_ID})});
+    const d=await r.json();
+    miCands=(d&&d.candidates)||[];
+  }catch(_){ miCands=[]; }
+  miRenderCands();
+}
+function miRenderCands(){
+  const kind=document.getElementById('kind').value;
+  const box=document.getElementById('mi-cands'); if(!box) return;
+  const list=miCands.filter(c=>c.position===kind).sort((a,b)=>(a.no||0)-(b.no||0));
+  box.innerHTML=list.length?list.map(c=>
+    `<label style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:14px;">
+      <input type="checkbox" class="mi-ck" value="${c.no}" onchange="miCount()" style="width:17px;height:17px;">
+      <b style="color:var(--gold-lt,#e0b45a);">${c.no}</b> ${c.name}</label>`).join('')
+    :'<span style="font-size:13px;color:var(--muted);">候選人名單載入中…（換票種或重新整理）</span>';
+  miCount();
+}
+function miCount(){
+  const n=document.querySelectorAll('.mi-ck:checked').length;
+  const limit=parseInt(document.getElementById('limit').value,10)||1;
+  const el=document.getElementById('mi-count');
+  el.textContent=`已勾 ${n}／上限 ${limit}`+(n===0?'（存入＝空白廢票）':n>limit?'（超圈＝廢票）':'');
+  el.style.color=n>limit?'#ef5350':'var(--muted)';
+}
+function miClear(){
+  document.querySelectorAll('.mi-ck:checked').forEach(x=>x.checked=false);
+  document.getElementById('mi-no').value='';
+  document.getElementById('mi-msg').textContent='';
+  miCount(); miStopCam();
+}
+async function miScan(){
+  const cam=document.getElementById('mi-cam');
+  if(miStream){ miStopCam(); return; }
+  if(!('BarcodeDetector' in window)){
+    document.getElementById('mi-msg').textContent='此瀏覽器不支援條碼掃描，請直接輸入票號數字（Android Chrome 支援掃描）';
+    return;
+  }
+  try{
+    miStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=document.getElementById('mi-video'); v.srcObject=miStream; await v.play();
+    cam.style.display='block';
+    document.getElementById('mi-scan-btn').textContent='✕ 關閉相機';
+    const det=new BarcodeDetector({formats:['code_39']});
+    miDetTimer=setInterval(async ()=>{
+      try{
+        const codes=await det.detect(v);
+        const hit=codes.find(c=>/^\d{8,12}$/.test((c.rawValue||'').trim()));
+        if(hit){
+          document.getElementById('mi-no').value=hit.rawValue.trim();
+          document.getElementById('mi-msg').style.color='var(--ok,#7ec98d)';
+          document.getElementById('mi-msg').textContent='✓ 讀到票號 '+hit.rawValue.trim();
+          miStopCam();
+        }
+      }catch(_){}
+    },400);
+  }catch(e){
+    document.getElementById('mi-msg').textContent='相機開啟失敗：'+e.message;
+  }
+}
+function miStopCam(){
+  if(miDetTimer){ clearInterval(miDetTimer); miDetTimer=null; }
+  if(miStream){ miStream.getTracks().forEach(t=>t.stop()); miStream=null; }
+  document.getElementById('mi-cam').style.display='none';
+  document.getElementById('mi-scan-btn').textContent='📷 掃條碼';
+}
+async function miSave(){
+  const msg=document.getElementById('mi-msg'), btn=document.getElementById('mi-save');
+  const no=document.getElementById('mi-no').value.trim();
+  const kind=document.getElementById('kind').value;
+  const limit=parseInt(document.getElementById('limit').value,10)||1;
+  const isTest=document.getElementById('test').checked;
+  const nos=[...document.querySelectorAll('.mi-ck:checked')].map(x=>parseInt(x.value,10)).sort((a,b)=>a-b);
+  if(!/^\d{8,12}$/.test(no)){ msg.style.color='#ef5350'; msg.textContent='請先輸入或掃描票號（8~12 位數字）'; return; }
+  const verdict = nos.length===0?'invalid_blank' : nos.length>limit?'invalid_over' : 'valid';
+  const label = verdict==='valid'?`有效票（圈 ${nos.length} 人）`: verdict==='invalid_blank'?'空白廢票':'超圈廢票';
+  if(!confirm(`票號 ${no}（${kind==='director'?'理事':'監事'}票）\n判定：${label}\n${nos.length?'圈選號次：'+nos.join('、'):''}\n確定存入？`)) return;
+  btn.disabled=true; msg.style.color='var(--muted)'; msg.textContent='存入中…';
+  try{
+    const row={ election_id:ELECTION_ID, position:kind, ballot_no:no,
+      marked_count:nos.length, marked_nos:nos, verdict,
+      review_status:'confirmed', reviewed_by:'manual-entry', reviewed_at:new Date().toISOString(),
+      review_note:'人工輸入（掃條碼＋勾選）', is_test:isTest };
+    const ins=await fetch(`${SB_URL}/rest/v1/tada_ballot_scans`,{
+      method:'POST',headers:{...SB_H,'Prefer':'return=representation'},body:JSON.stringify(row)});
+    const txt=await ins.text();
+    if(!ins.ok){
+      if(txt.includes('uq_ballot_no_live')) throw new Error(`票號 ${no} 已入帳過（防重複計票）`);
+      throw new Error('寫入失敗：'+txt.slice(0,120));
+    }
+    const saved=JSON.parse(txt)[0];
+    if(verdict==='valid' && !isTest){
+      const c=await fetch(`${SB_URL}/rest/v1/rpc/tada_ballot_commit`,{
+        method:'POST',headers:SB_H,body:JSON.stringify({p_scan_id:saved.id})});
+      const cr=await c.json();
+      if(!cr?.ok) throw new Error('已存檔但計票未完成：'+(cr?.error||'unknown'));
+    }
+    msg.style.color='var(--ok,#7ec98d)';
+    msg.textContent=`✓ 票號 ${no} 已存入（${label}${isTest?'・測試':''}）`;
+    document.querySelectorAll('.mi-ck:checked').forEach(x=>x.checked=false);
+    document.getElementById('mi-no').value=''; miCount();
+  }catch(e){ msg.style.color='#ef5350'; msg.textContent=e.message; }
+  btn.disabled=false;
+}
+miLoadCands();
+
 function render(){
   const c={total:queue.length,valid:0,invalid:0,manual:0,err:0,done:0};
   queue.forEach(q=>{
