@@ -387,7 +387,7 @@ function miRenderCands(){
   const list=miCands.filter(c=>c.position===kind).sort((a,b)=>(a.no||0)-(b.no||0));
   box.innerHTML=list.length?list.map(c=>
     `<label style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1.5px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;font-size:14px;">
-      <input type="checkbox" class="mi-ck" value="${c.no}" onchange="miCount()" style="width:17px;height:17px;">
+      <input type="checkbox" class="mi-ck" value="${c.no}" checked onchange="miCount()" style="width:17px;height:17px;">
       <b style="color:var(--gold-lt,#e0b45a);">${c.no}</b> ${c.name}</label>`).join('')
     :'<span style="font-size:13px;color:var(--muted);">候選人名單載入中…（換票種或重新整理）</span>';
   miCount();
@@ -400,7 +400,7 @@ function miCount(){
   el.style.color=n>limit?'#ef5350':'var(--muted)';
 }
 function miClear(){
-  document.querySelectorAll('.mi-ck:checked').forEach(x=>x.checked=false);
+  document.querySelectorAll('.mi-ck').forEach(x=>x.checked=true);   // 預設全選，操作者取消沒被圈的
   document.getElementById('mi-no').value='';
   document.getElementById('mi-msg').textContent='';
   miCount(); miStopCam();
@@ -473,7 +473,7 @@ async function miSave(){
     }
     msg.style.color='var(--ok,#7ec98d)';
     msg.textContent=`✓ 票號 ${no} 已存入（${label}${isTest?'・測試':''}）`;
-    document.querySelectorAll('.mi-ck:checked').forEach(x=>x.checked=false);
+    document.querySelectorAll('.mi-ck').forEach(x=>x.checked=true);   // 回到預設全選
     document.getElementById('mi-no').value=''; miCount();
   }catch(e){ msg.style.color='#ef5350'; msg.textContent=e.message; }
   btn.disabled=false;
