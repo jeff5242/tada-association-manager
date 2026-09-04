@@ -263,7 +263,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
         <div class="rep" id="f-proxy" style="color:#e8b84b;font-weight:900;line-height:1.5;"></div>
         <!-- 依 9/4 現場裁示：一律紙本流程，不再詢問電子/紙本，直接確認列印小白單 -->
         <div class="btn-row">
-          <button class="big go" onclick="confirmCheckinPaper()">✓ 確認報到並列印</button>
+          <button class="big go" id="btn-confirm" onclick="confirmCheckinPaper()">✓ 確認報到並列印</button>
           <button class="big cancel" onclick="toIdle()">✕ 取消</button>
         </div>
       </div>
@@ -353,6 +353,25 @@ let election = null, current = null, state = 'idle';
    兩種 QR 內容都是「前綴＋會員編號」，其餘處理完全相同。
    宣告需早於 toIdle()／printReceipt() 使用。 */
 let scanSrc = 'card';
+/* 掃碼快速通道：確認畫面倒數 3 秒無動作自動報到列印（現場加速；手動輸入不倒數） */
+let autoTimer=null;
+function clearAutoConfirm(){
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; }
+  const b=document.getElementById('btn-confirm');
+  if(b) b.textContent='✓ 確認報到並列印';
+}
+function startAutoConfirm(sec){
+  clearAutoConfirm();
+  let left=sec;
+  const b=document.getElementById('btn-confirm');
+  const tick=()=>{ if(b) b.textContent=`✓ 確認報到並列印（${left}）`; };
+  tick();
+  autoTimer=setInterval(()=>{
+    left--;
+    if(left<=0){ clearAutoConfirm(); confirmCheckinPaper(); }
+    else tick();
+  },1000);
+}
 
 function renderOaQr(){ /* 使用官方 QR 圖片（assets/line/oa-qr.png），毋須動態產生 */ }
 
@@ -425,6 +444,7 @@ async function lookup(memberNo){
       proxyPreview(current);
     }
     state='found'; show('v-found');
+    if(!current.is_checked_in && scanSrc!=='manual') startAutoConfirm(3);
   }catch(e){ toast('系統忙碌，請重試'); }
 }
 
@@ -471,6 +491,7 @@ async function markCheckinSource(memberNo){
 
 // 領紙本票：標記已報到（不發電子票），顯示應圈張數，開啟紙本選票列印
 async function confirmCheckinPaper(){
+  clearAutoConfirm();
   if(!current) return;
   try{
     const res=await rpc('vote_checkin_paper',{p_election:election.id,p_member_no:current.member_no});
@@ -612,7 +633,8 @@ async function agentPrint(res){
   }catch(_){ /* 無代理或印表機離線：不影響報到 */ }
 }
 
-function toIdle(){ current=null; scanSrc='card'; state='idle'; show('v-idle'); }
+function toIdle(){
+  clearAutoConfirm(); current=null; scanSrc='card'; state='idle'; show('v-idle'); }
 
 // ── 硬體 QR Reader（HID 鍵盤）：快速輸入 + Enter ─────────────
 let scanBuf='', scanTimer=null;
