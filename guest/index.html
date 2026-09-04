@@ -125,6 +125,12 @@ header .prog.on .l{color:var(--gold-lt)}
   color:var(--gold-lt);opacity:.95;letter-spacing:.02em;z-index:2}
 .gcard .g-seq::before{content:'№ ';font-size:13px;opacity:.7}
 .gcard.done .g-seq{right:100px}   /* 已報到卡右上有 reset 鈕，序號往左讓位 */
+.w-seqno{position:absolute;top:14px;left:18px;font-family:var(--serif);font-size:28px;font-weight:900;
+  color:var(--gold-lt);letter-spacing:.02em}
+.w-seqno::before{content:'№ ';font-size:15px;opacity:.7}
+#pc-seq{font-family:var(--serif);font-size:26px;font-weight:900;color:var(--gold-lt);margin-top:2px}
+#pc-seq:empty{display:none}
+#pc-seq::before{content:'№ ';font-size:14px;opacity:.7}
 .gcard .g-btn{margin-top:auto;background:var(--gold);color:#1a1a12;border:none;border-radius:12px;padding:18px;font-size:22px;font-weight:900;font-family:inherit;letter-spacing:.06em;cursor:pointer}
 .gcard.done{opacity:.6;border-color:rgba(102,187,106,.4)}
 .gcard.done .g-done{margin-top:auto;text-align:center;background:rgba(102,187,106,.14);border:1px solid rgba(102,187,106,.4);border-radius:12px;padding:17px;font-size:19px;font-weight:700;color:#9be0a3}
@@ -259,6 +265,7 @@ header .prog.on .l{color:var(--gold-lt)}
 <!-- 報到人數確認：有同行者可用 ＋/－ 選實際入座人數 -->
 <div class="overlay" id="pcModal" onclick="closePC()"><div class="addcard" onclick="event.stopPropagation()" style="max-width:430px;text-align:center;">
   <div class="add-h" id="pc-name">報到</div>
+  <div id="pc-seq"></div>
   <div class="add-sub">請確認這次一起入座的人數</div>
   <div style="display:flex;align-items:center;justify-content:center;gap:26px;margin:14px 0 4px;">
     <button class="pc-step" onclick="pcAdj(-1)">−</button>
@@ -471,6 +478,7 @@ function doCheckin(id){
   const g=guests.find(x=>x.id===id); if(!g||g.checked_in) return;
   pcId=id; pcN=Math.min(9,Math.max(1,g.party_size||1));
   document.getElementById('pc-name').textContent=g.name;
+  document.getElementById('pc-seq').textContent=g._seq||'';
   document.getElementById('pc-num').textContent=pcN;
   document.getElementById('pcModal').classList.add('show');
 }
@@ -591,6 +599,7 @@ function showWelcome(d, gid){
   const wTitle=clean(d.title)||clean(gLocal.title);
   document.getElementById('wcard').innerHTML=
     `<button class="w-x" onclick="closeWelcome()">✕</button>
+     ${gLocal._seq?`<div class="w-seqno" title="出席列表序號">${gLocal._seq}</div>`:''}
      <div class="w-hi">歡　迎　蒞　臨</div>
      <div class="w-name">${esc(d.name)}${wTitle?` <span class="w-ttl">${esc(wTitle)}</span>`:''}</div>
      ${clean(d.org)?`<div class="w-org">${esc(clean(d.org))}</div>`:''}
