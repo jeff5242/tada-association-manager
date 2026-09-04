@@ -61,7 +61,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
       <div class="stat"><div class="n" id="st-checked">0</div><div class="l">已報到領票</div></div>
       <div class="stat"><div class="n" id="st-cast">0</div><div class="l">已投票</div></div>
       <div class="stat"><div class="n" id="st-rate">0%</div><div class="l">投票率</div></div>
-      <div class="stat"><div class="n" id="st-total">0</div><div class="l">應到會員</div></div>
+      <div class="stat"><div class="n" id="st-total">0</div><div class="l" id="st-total-l">應到會員</div></div>
     </div>
     <div class="prog"><i id="prog-bar" style="width:0%"></i></div>
 
@@ -85,15 +85,31 @@ body{font-family:'Noto Sans TC',sans-serif;background:radial-gradient(ellipse at
 let election = null, chartD = null, chartS = null;
 const GOLD='#d4a853', GREEN='#7fae86', GREY='#4a6b52', TIE='#d97b45';
 
-let voterTotal = null;   // 具投票權人數（領票名冊 can_vote=true）——「應到會員」以此計
+let voterTotal = null;   // 可投票數（領票名冊 can_vote=true 列數；團體每位代表一票）
+let memberTotal = null;  // 會員數（團體會員一家算一人）
 async function loadVoterTotal(){
   try{
-    const res = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_members?election_id=eq.${election.id}&can_vote=eq.true&select=member_no`,
-      { method:'HEAD', headers: { ...window.tadaSbHeaders(), Prefer:'count=exact' } });
-    const cr = res.headers.get('content-range');
-    const m = cr && /\/(\d+)$/.exec(cr);
-    if(m) voterTotal = parseInt(m[1], 10);
+    const res = await fetch(`${window.TADA_SB_URL}/rest/v1/tada_v_members?election_id=eq.${election.id}&can_vote=eq.true&select=member_no,member_type`,
+      { headers: window.tadaSbHeaders() });
+    if(!res.ok) return;
+    const rows = await res.json();
+    voterTotal = rows.length;
+    const groupBases = new Set();
+    let persons = 0;
+    rows.forEach(r=>{
+      const no = String(r.member_no||'');
+      if(r.member_type==='group' || no.includes('-')) groupBases.add(no.split('-')[0]);
+      else persons++;
+    });
+    memberTotal = persons + groupBases.size;
+    renderTotals();
   }catch(e){}
+}
+function renderTotals(){
+  if(memberTotal == null) return;
+  document.getElementById('st-total').innerHTML =
+    memberTotal + '<span style="font-size:.55em;color:var(--green-light);"> / </span>' + voterTotal;
+  document.getElementById('st-total-l').textContent = '應到會員數 / 可投票數';
 }
 
 async function rpc(fn, body){
@@ -148,7 +164,8 @@ function renderStats(p){
   pill.textContent = isOpen ? '● 投票進行中' : '● 投票已結束';
   document.getElementById('st-checked').textContent = p.checked_in;
   document.getElementById('st-cast').textContent = p.ballots_cast;
-  document.getElementById('st-total').textContent = (voterTotal != null ? voterTotal : p.total_members);
+  if(memberTotal != null) renderTotals();
+  else document.getElementById('st-total').textContent = p.total_members;
   const rate = p.checked_in ? Math.round(p.ballots_cast/p.checked_in*100) : 0;
   document.getElementById('st-rate').textContent = rate+'%';
   document.getElementById('prog-bar').style.width = rate+'%';
