@@ -166,9 +166,11 @@ function renderStats(p){
   document.getElementById('st-cast').textContent = p.ballots_cast;
   if(memberTotal != null) renderTotals();
   else document.getElementById('st-total').textContent = p.total_members;
-  const rate = p.checked_in ? Math.round(p.ballots_cast/p.checked_in*100) : 0;
+  // 投票率＝已投票 ÷ 應到會員數（團體一家算一人）；名冊還沒載入前退回舊算法
+  const denom = (memberTotal != null) ? memberTotal : p.checked_in;
+  const rate = denom ? Math.round(p.ballots_cast/denom*100) : 0;
   document.getElementById('st-rate').textContent = rate+'%';
-  document.getElementById('prog-bar').style.width = rate+'%';
+  document.getElementById('prog-bar').style.width = Math.min(rate,100)+'%';
 }
 
 const OUTCOME_COLOR={ elected:GOLD, reserve:GREEN, tiebreak:TIE, not_elected:GREY };
