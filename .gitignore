@@ -16,3 +16,4 @@ supabase/.temp/
 
 # 系統
 .DS_Store
+__pycache__/
