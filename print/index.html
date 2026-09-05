@@ -152,12 +152,15 @@ async function render(){
       const who = p.applicant_name || p.display_name || '';
       const amt = (p.amount||0).toLocaleString();
       const payDate = p.paid_date ? rocDate(p.paid_date).replace('中華民國','').trim() : '';
+      const isCash = /^0+$/.test(p.last5||'');   // 現場現金代填以 00000 佔位
+      const payLine = isCash ? `<br>繳費方式：<span class="fill">現金（現場繳納）</span>`
+                    : p.last5 ? `<br>匯款帳號後五碼：<span class="fill">${esc(p.last5)}</span>` : '';
       sheet(`
         <div class="doc-title">繳費確認證明</div>
         <div class="body-txt">茲證明　<span class="fill">${esc(who)}</span>　已繳納本會${p.member_type?`（${esc(TYPE[p.member_type]||p.member_type)}）`:''}<br>
-          會費　新臺幣　<span class="fill">${esc(amt)}</span>　元整，經核對入帳無誤，特此確認。</div>
+          會費　新臺幣　<span class="fill">${esc(amt)}</span>　元整，經${isCash?'點收':'核對入帳'}無誤，特此確認。</div>
         <div class="sign-block">
-          繳費日期：<span class="fill">${esc(payDate||'—')}</span>${p.last5?`<br>匯款帳號後五碼：<span class="fill">${esc(p.last5)}</span>`:''}
+          繳費日期：<span class="fill">${esc(payDate||'—')}</span>${payLine}
         </div>
         <div class="to" style="margin-top:50px;">此致</div>
         <div class="org">${esc(who)}　台端</div>
