@@ -23,9 +23,28 @@ COMMON_FLAGS=(--kiosk --password-store=basic --use-mock-keychain --lang=zh-TW
   --remote-debugging-port=9222)
 URL='https://tada-ai.org.tw/kiosk/'
 
+# HDMI 鏡像投影（Wayland 限定）：偵測外接螢幕原生解析度，縮放到高度貼齊
+# DSI 480、DSI 區域置中重疊。wlr-randr 同一道指令會自動避開重疊，且移動
+# 其中一顆會把另一顆推開，所以必須分三步：HDMI 定位 → DSI 置中 → HDMI 拉回。
+setup_hdmi_mirror() {
+  local info W H S LW OFF
+  info=$(wlr-randr 2>/dev/null) || return 0
+  echo "$info" | grep -q '^HDMI-A-1' || { echo "無 HDMI，跳過鏡像"; return 0; }
+  read -r W H <<<"$(echo "$info" | awk '/^HDMI-A-1/{f=1;next} /^[A-Z]/{f=0} f && /preferred/{split($1,a,"x"); print a[1],a[2]; exit}')"
+  [ -n "$W" ] && [ -n "$H" ] || { echo "HDMI 解析度偵測失敗"; return 0; }
+  S=$(python3 -c "print($H/480)")
+  LW=$(python3 -c "print(round($W*480/$H))")
+  OFF=$(( (LW-800)/2 )); [ "$OFF" -lt 0 ] && OFF=0
+  echo "HDMI 鏡像：${W}x${H} scale=$S 邏輯寬=$LW DSI位移=$OFF"
+  wlr-randr --output HDMI-A-1 --mode "${W}x${H}" --scale "$S" --pos 0,0; sleep 1
+  wlr-randr --output DSI-1 --pos "${OFF},0"; sleep 1
+  wlr-randr --output HDMI-A-1 --pos 0,0
+}
+
 if [ -S "/run/user/$(id -u)/wayland-0" ]; then
   # Bookworm / Wayland
   export XDG_RUNTIME_DIR="/run/user/$(id -u)" WAYLAND_DISPLAY=wayland-0
+  setup_hdmi_mirror
   "$CHROME_BIN" --ozone-platform=wayland "${COMMON_FLAGS[@]}" "$URL"
 else
   # Bullseye / X11
