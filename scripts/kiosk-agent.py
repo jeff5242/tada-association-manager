@@ -466,6 +466,24 @@ class Handler(BaseHTTPRequestHandler):
         # 頁面與資源
         if method == 'GET' and path in ('/', '/index.html', '/kiosk/', '/kiosk/index.html'):
             return self._serve_page()
+        if method == 'GET' and path == '/wall':
+            # 投影顯示牆：依螢幕長寬比自動決定並排幾份報到頁（16:9=1 份、32:9 超寬=2 份）
+            return self._send(200, (
+                '<!doctype html><html><head><meta charset="utf-8"><title>TADA 報到顯示牆</title>'
+                '<style>html,body{margin:0;height:100%;background:#07130d;overflow:hidden}'
+                '#row{display:flex;height:100vh}'
+                'iframe{flex:1;border:0;height:100%;min-width:0}'
+                '#row.multi iframe+iframe{border-left:1px solid rgba(196,146,42,.25)}</style></head>'
+                '<body><div id="row"></div><script>'
+                'const PANEL_AR=1200/720;const row=document.getElementById("row");let cur=0;'
+                'function build(){'
+                ' const n=Math.max(1,Math.round((innerWidth/innerHeight)/PANEL_AR));'
+                ' if(n===cur)return; cur=n; row.innerHTML="";'
+                ' row.classList.toggle("multi",n>1);'
+                ' for(let i=0;i<n;i++){const f=document.createElement("iframe");f.src="/";row.appendChild(f);}'
+                '}'
+                'build();let t;addEventListener("resize",()=>{clearTimeout(t);t=setTimeout(build,400);});'
+                '</script></body></html>'), 'text/html; charset=utf-8')
         if method == 'GET' and path.startswith('/assets/'):
             return self._serve_asset(path)
         if method == 'GET' and path == '/agent/status':
