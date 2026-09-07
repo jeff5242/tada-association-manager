@@ -222,6 +222,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
         <button data-tab="invite" onclick="switchTab('invite')">邀請進度</button>
         <button data-tab="rsvp" onclick="switchTab('rsvp')">📋 出席統計</button>
         <button data-tab="seating" onclick="switchTab('seating')">🍽️ 桌次規劃</button>
+        <button data-tab="devices" onclick="switchTab('devices')">🖥️ 報到機管理</button>
         <a href="/seatmap/" target="_blank" rel="noopener" style="padding:10px 14px;font-size:14px;cursor:pointer;color:var(--gray);text-decoration:none;border-radius:4px;letter-spacing:0.05em;white-space:nowrap;display:block;">🪑 入桌狀況 ↗</a>
         <a href="/seating/" target="_blank" rel="noopener" style="padding:10px 14px;font-size:14px;cursor:pointer;color:var(--gray);text-decoration:none;border-radius:4px;letter-spacing:0.05em;white-space:nowrap;display:block;">🗺️ 桌次呈現 ↗</a>
       </div>
@@ -1289,6 +1290,30 @@ tr:hover td{background:rgba(74,124,89,0.06);}
   </div>
 </div>
 
+<!-- ══════════ 報到機管理 ══════════ -->
+<div class="page" id="page-devices">
+  <div class="section-header" style="margin-bottom:16px;">
+    <div class="section-title">🖥️ 報到機裝置管理</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-outline btn-sm" onclick="loadDevices()">↻ 重新載入</button>
+    </div>
+  </div>
+  <p style="font-size:12px;color:var(--gray);line-height:1.8;margin-bottom:16px;">
+    報到機開機後會自動註冊並每 10 秒回報狀態。開啟「受管理」後，該機才會下載離線名冊快照——
+    斷網時仍可查詢、報到、列印，復線後自動把離線報到同步回系統（兩台同時報到同一人時，先同步者為準）。
+    「待同步」大於 0 表示該機還有離線報到未回傳。
+  </p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>名稱</th><th>裝置 ID</th><th>IP</th><th>版本</th><th style="text-align:center;">連線</th>
+        <th style="text-align:center;">受管理</th><th style="text-align:center;">待同步</th><th>最後回報</th>
+      </tr></thead>
+      <tbody id="dev-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">載入中…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ══════════ 信件範本 ══════════ -->
 <div class="page" id="page-mailtpl">
   <div class="section-header" style="margin-bottom:12px;">
@@ -1839,6 +1864,7 @@ function switchTab(id){
   if(id==='lineusers') loadLineUsers();
   if(id==='rsvp') loadRsvp();
   if(id==='seating') loadSeating();
+  if(id==='devices') loadDevices();
   if(id==='ballot') loadBallotScans();
   if(id==='payments') loadPayments();
   if(id==='mailtpl') loadMailTemplates();
@@ -1846,6 +1872,57 @@ function switchTab(id){
   if(id==='votes') loadVotes();
   if(id==='election'){ loadElection(); loadFeatures(); }
   if(id==='docs') loadDocs();
+}
+
+// ── 報到機裝置管理 ──────────────────────────────────────────
+let devTimer=null;
+async function loadDevices(){
+  clearTimeout(devTimer);
+  const tb=document.getElementById('dev-tbody');
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_devices?order=created_at`,{headers:SB_HEADERS});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const rows=await r.json();
+    if(!rows.length){ tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--gray);padding:30px;">尚無裝置註冊。報到機開機後會自動出現在這裡。</td></tr>'; }
+    else tb.innerHTML=rows.map(d=>{
+      const seen=d.last_seen?new Date(d.last_seen):null;
+      const fresh=seen && (Date.now()-seen.getTime())<45000;   // 45 秒內有 heartbeat 視為連線中
+      const seenTxt=seen?seen.toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'–';
+      const pend=d.pending_count||0;
+      return `<tr>
+        <td><span style="cursor:pointer;border-bottom:1px dashed var(--gray);" title="點擊改名"
+             onclick="renameDevice('${d.device_id}','${escapeHtml(d.label||'')}')">${escapeHtml(d.label||'（未命名）')}</span></td>
+        <td style="font-family:monospace;font-size:12px;">${escapeHtml(d.device_id)}</td>
+        <td style="font-family:monospace;font-size:12px;">${escapeHtml(d.ip||'–')}</td>
+        <td style="font-size:12px;">${escapeHtml(d.version||'–')}</td>
+        <td style="text-align:center;">${fresh?'<span style="color:#66bb6a;">● 連線中</span>':'<span style="color:var(--gray);">○ 離線</span>'}</td>
+        <td style="text-align:center;"><input type="checkbox" ${d.managed?'checked':''} onchange="toggleManaged('${d.device_id}',this.checked)"></td>
+        <td style="text-align:center;font-weight:700;color:${pend>0?'#ef5350':'var(--gray)'};">${pend}</td>
+        <td style="font-size:11px;color:var(--gray);white-space:nowrap;">${seenTxt}</td>
+      </tr>`;
+    }).join('');
+  }catch(e){ tb.innerHTML=`<tr><td colspan="8" style="text-align:center;color:#ef5350;padding:30px;">載入失敗：${escapeHtml(e.message)}（tada_devices 表尚未建立？）</td></tr>`; }
+  // 分頁停留時每 15 秒自動更新
+  if(document.getElementById('page-devices').classList.contains('active'))
+    devTimer=setTimeout(loadDevices,15000);
+}
+async function toggleManaged(id,on){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/tada_devices?device_id=eq.${encodeURIComponent(id)}`,
+      {method:'PATCH',headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
+       body:JSON.stringify({managed:on})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+  }catch(e){ alert('更新失敗：'+e.message); }
+  loadDevices();
+}
+async function renameDevice(id,cur){
+  const name=prompt('裝置名稱',cur); if(name===null) return;
+  try{
+    await fetch(`${SB_URL}/rest/v1/tada_devices?device_id=eq.${encodeURIComponent(id)}`,
+      {method:'PATCH',headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
+       body:JSON.stringify({label:name})});
+  }catch(e){ alert('更新失敗：'+e.message); }
+  loadDevices();
 }
 
 // ── 功能開關（tada_config，前台頁面即時生效）──────────────
