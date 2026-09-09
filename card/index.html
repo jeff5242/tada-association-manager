@@ -216,6 +216,14 @@ async function init(){
 }
 
 function renderCard(m){
+  // 綁定成功／已綁定者：確保拿到「會員版」Rich Menu（背景補綁，失敗不影響會員證）
+  try{
+    if(profile && profile.userId){
+      fetch(`${window.TADA_SB_URL}/functions/v1/richmenu-deploy`,{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({mode:'selflink',user_id:profile.userId})}).catch(()=>{});
+    }
+  }catch(_){}
   document.getElementById('member-name').textContent = m.name;
   const sl=document.getElementById('status-line');
   // 退會會員不顯示狀態徽章（自己的會員證上不貼負面標籤）

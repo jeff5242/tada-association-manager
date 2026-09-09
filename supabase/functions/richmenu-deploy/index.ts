@@ -68,6 +68,28 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
     const body = await req.json();
+
+    // ── 模式四：selflink —— 綁卡頁自助補綁會員版選單（不需管理密碼）──
+    // 安全性：server 端先驗證該 LINE ID 確實存在於會員名冊（line_user_id 已綁定），
+    // 冒用只能幫「本來就是會員的人」綁上會員選單，無利可圖。
+    if (body.mode === "selflink") {
+      const uid = String(body.user_id || "");
+      if (!/^U[0-9a-f]{32}$/.test(uid)) return json({ error: "bad_user_id" }, 400);
+      const SB = Deno.env.get("SUPABASE_URL")!;
+      const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const chk = await fetch(`${SB}/rest/v1/tada_members?line_user_id=eq.${uid}&hidden=eq.false&select=member_no&limit=1`,
+        { headers: { apikey: ANON, Authorization: `Bearer ${ANON}` } });
+      const rows = await chk.json();
+      if (!Array.isArray(rows) || !rows.length) return json({ error: "not_member" }, 403);
+      const menus = (await (await fetch(`${API}/richmenu/list`, { headers: auth() })).json()).richmenus || [];
+      const target = menus.find((m: { name?: string }) => (m.name || "").includes("會員三格"));
+      if (!target) return json({ error: "member_menu_not_found" }, 500);
+      const lk = await fetch(`${API}/user/${uid}/richmenu/${target.richMenuId}`,
+        { method: "POST", headers: { ...auth(), "Content-Length": "0" } });
+      return json({ ok: lk.status === 200, status: lk.status, richMenuId: target.richMenuId });
+    }
+
+    // 以下模式皆需管理密碼
     if (body.pw_hash !== ADMIN_HASH) return json({ error: "unauthorized" }, 403);
 
     // ── 模式三：只補綁會員 ──
