@@ -1,0 +1,14 @@
+{
+  "size": { "width": 2500, "height": 843 },
+  "selected": true,
+  "name": "TADA 選單 v6（會員三格）",
+  "chatBarText": "☰ TADA 選單",
+  "areas": [
+    { "bounds": { "x": 0,    "y": 0, "width": 833, "height": 843 },
+      "action": { "type": "uri", "uri": "https://tada-ai.org.tw/#news" } },
+    { "bounds": { "x": 833,  "y": 0, "width": 833, "height": 843 },
+      "action": { "type": "uri", "uri": "https://liff.line.me/2010670397-e09JL6ri" } },
+    { "bounds": { "x": 1666, "y": 0, "width": 834, "height": 843 },
+      "action": { "type": "uri", "uri": "https://tada-ai.org.tw/services/" } }
+  ]
+}
