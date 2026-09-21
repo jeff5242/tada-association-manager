@@ -149,9 +149,9 @@ function memberCount(rows){
   try{
     const [election, roster, proxies, scans, outcome] = await Promise.all([
       sbGet(`tada_v_election?id=eq.${E_ID}&select=*`).then(r=>r[0]),
-      sbGet(`tada_v_members?election_id=eq.${E_ID}&select=member_no,name,member_type,can_vote,is_checked_in`),
+      sbGet(`tada_v_members?election_id=eq.${E_ID}&select=member_no,name,member_type,can_vote,is_checked_in,check_in_time`),
       sbGet(`tada_v_proxy?election_id=eq.${E_ID}&select=principal_name,delegate_name,proxy_vote,proxy_attend,status`),
-      sbGet(`tada_ballot_scans?election_id=eq.${E_ID}&select=position,verdict,counted,is_test,marked_nos`),
+      sbGet(`tada_ballot_scans?election_id=eq.${E_ID}&select=position,verdict,counted,is_test,marked_nos,created_at`),
       rpc('vote_outcome', { p_election: E_ID })
     ]);
     render(election, roster, proxies, scans, outcome.candidates || []);
@@ -164,26 +164,39 @@ function memberCount(rows){
 function render(election, roster, proxies, scans, cands){
   /* ── 選舉人與出席 ─────────────────────────────────────────────── */
   const voters   = roster.filter(r=>r.can_vote);            // 具選舉權（第五屆有效會員）
-  const attended = voters.filter(r=>r.is_checked_in);       // 實到並領票
+  const attended = voters.filter(r=>r.is_checked_in);       // 全日完成報到者（含餐會時段）
   const vCount = memberCount(voters), aCount = memberCount(attended);
-  const attendedNames = new Set(attended.map(r=>r.name));
+
+  // 投票截止時間以「第一張選票開始掃描」為界：其後才報到者係參加餐會，未及投票。
+  const real0 = scans.filter(s=>!s.is_test && s.created_at);
+  const closeAt = real0.length
+    ? new Date(Math.min(...real0.map(s=>new Date(s.created_at).getTime())))
+    : null;
+  const inTime  = closeAt ? attended.filter(r=>r.check_in_time && new Date(r.check_in_time) < closeAt) : attended;
+  const lateIn  = attended.filter(r=>!inTime.includes(r));
+  const iCount  = memberCount(inTime);
+  const inTimeNames = new Set(inTime.map(r=>r.name));
 
   const act = proxies.filter(p=>p.status === 'active');
-  // 委託投票：受託人已到場方能代行；委託人若已將投票權委託他人，本人到場亦不另發票
-  const proxyVoteUsed = act.filter(p=>p.proxy_vote && attendedNames.has(p.delegate_name)).length;
-  const selfWaived    = act.filter(p=>p.proxy_vote && attendedNames.has(p.principal_name)).length;
-  const issuable      = attended.length - selfWaived + proxyVoteUsed;   // 應發選票數
+  // 委託投票：受託人須於投票截止前到場方能代行；
+  // 委託人縱於餐會時段報到，其投票權已委託他人，不另發給選票。
+  const proxyVoteUsed = act.filter(p=>p.proxy_vote && inTimeNames.has(p.delegate_name)).length;
+  const selfWaived    = act.filter(p=>p.proxy_vote && inTimeNames.has(p.principal_name)).length;
+  const issuable      = inTime.length - selfWaived + proxyVoteUsed;   // 應發選票數
+  const fmtT = d => d ? d.toLocaleTimeString('zh-TW',{hour12:false, timeZone:'Asia/Taipei'}) : '—';
 
   /* ── 選票統計（以電子判讀系統計入者為準）──────────────────────── */
   const real = scans.filter(s=>!s.is_test);
   const stat = pos => {
     const rows  = real.filter(s=>s.position === pos);
     const valid = rows.filter(s=>s.counted && s.verdict === 'valid');
+    const ts    = rows.map(s=>new Date(s.created_at).getTime()).filter(n=>!isNaN(n));
     return {
       received: rows.length,
       valid:    valid.length,
       invalid:  rows.length - valid.length,
-      marks:    valid.reduce((n,s)=>n + (s.marked_nos ? s.marked_nos.length : 0), 0)
+      marks:    valid.reduce((n,s)=>n + (s.marked_nos ? s.marked_nos.length : 0), 0),
+      span:     ts.length ? `${fmtT(new Date(Math.min(...ts)))} – ${fmtT(new Date(Math.max(...ts)))}` : '—'
     };
   };
   const sD = stat('director'), sS = stat('supervisor');
@@ -208,25 +221,32 @@ function render(election, roster, proxies, scans, cands){
         理事票 ${election.director_pick} 人　／　監事票 ${election.supervisor_pick} 人（連記法）</td></tr>
     </tbody></table>`);
 
+  const waivedNames = act.filter(p=>p.proxy_vote && inTimeNames.has(p.principal_name))
+                         .map(p=>`${esc(p.principal_name)}（委託 ${esc(p.delegate_name)} 代行）`);
+  const proxyNames  = act.filter(p=>p.proxy_vote && inTimeNames.has(p.delegate_name))
+                         .map(p=>`${esc(p.delegate_name)} 代 ${esc(p.principal_name)}`);
   H.push(`<h2>二、選舉權人數及出席情形<span class="en">ELECTORATE &amp; ATTENDANCE</span></h2>
-    <table><thead><tr><th style="width:46%">項目</th><th style="width:18%">人數／票數</th><th>說明</th></tr></thead>
+    <table><thead><tr><th style="width:40%">項目</th><th style="width:15%">人數／票數</th><th>說明</th></tr></thead>
     <tbody>
       <tr><td>具選舉權會員數（應到）</td><td class="c mono"><b>${vCount.total}</b></td>
           <td>個人會員 ${vCount.persons} 人、團體會員 ${vCount.groups} 家</td></tr>
       <tr><td>具選舉權之票權總數</td><td class="c mono"><b>${voters.length}</b></td>
           <td>團體會員每位會員代表各一票</td></tr>
-      <tr><td>實到並完成領票會員數</td><td class="c mono"><b>${aCount.total}</b></td>
-          <td>個人會員 ${aCount.persons} 人、團體會員 ${aCount.groups} 家</td></tr>
-      <tr><td>實到領票之票權數</td><td class="c mono"><b>${attended.length}</b></td>
-          <td>出席率 ${(attended.length / voters.length * 100).toFixed(1)}%（票權基準）</td></tr>
+      <tr><td>全日完成報到會員數</td><td class="c mono">${aCount.total}</td>
+          <td>個人會員 ${aCount.persons} 人、團體會員 ${aCount.groups} 家（含投票結束後之餐會時段報到者）</td></tr>
+      <tr><td><b>投票截止前完成報到領票之票權數</b></td><td class="c mono"><b>${inTime.length}</b></td>
+          <td>出席率 ${(inTime.length / voters.length * 100).toFixed(1)}%（票權基準）；
+              以第一張選票開始開票之時間 ${fmtT(closeAt)} 為截止界線</td></tr>
+      <tr><td>投票結束後始報到者（未參與投票）</td><td class="c mono">${lateIn.length}</td>
+          <td>${lateIn.length ? lateIn.map(r=>`${esc(r.name)} ${fmtT(new Date(r.check_in_time))}`).join('、') : '無'}</td></tr>
       <tr><td>委託出席（受託人代為出席）</td><td class="c mono">${act.filter(p=>p.proxy_attend).length}</td>
           <td>依章程受理之出席委託書件數</td></tr>
       <tr><td>委託投票（受託人代為行使投票權）</td><td class="c mono">${proxyVoteUsed}</td>
-          <td>受託人須本人到場始得代行</td></tr>
-      <tr><td>本人到場但已將投票權委託他人者</td><td class="c mono">${selfWaived}</td>
-          <td>本人不另發給選票，避免一權二票</td></tr>
+          <td>${proxyNames.join('、') || '無'}</td></tr>
+      <tr><td>已將投票權委託他人，本人不另發票者</td><td class="c mono">${selfWaived}</td>
+          <td>${waivedNames.join('、') || '無'}；投票權已由受託人行使，本人縱於餐會時段報到亦不另發選票，避免一權二票</td></tr>
       <tr style="background:#f4f6f1"><td><b>應發選票數</b></td><td class="c mono"><b>${issuable}</b></td>
-          <td>實到領票票權 ${attended.length} － 已委託他人 ${selfWaived} ＋ 受託代行 ${proxyVoteUsed}</td></tr>
+          <td>投票截止前領票票權 ${inTime.length} － 已委託他人代行 ${selfWaived} ＋ 受託代行 ${proxyVoteUsed}</td></tr>
     </tbody></table>`);
 
   const row = (label, d, s, cls) => `<tr${cls?` style="background:#f4f6f1"`:''}>
@@ -238,16 +258,19 @@ function render(election, roster, proxies, scans, cands){
       ${row('實際收回並計入之選票數', `<b>${sD.received}</b>`, `<b>${sS.received}</b>`)}
       ${row('有效票', `<b>${sD.valid}</b>`, `<b>${sS.valid}</b>`)}
       ${row('無效票', sD.invalid, sS.invalid)}
-      ${row('有效圈選總人次', sD.marks, sS.marks, true)}
+      ${row('有效圈選總人次', sD.marks, sS.marks)}
+      ${row('開票（選票判讀）時間', sD.span, sS.span, true)}
     </tbody></table>`);
 
-  const gapD = issuable - sD.received, gapS = issuable - sS.received;
+  const gapD = sD.received - issuable, gapS = sS.received - issuable;
   if(gapD !== 0 || gapS !== 0){
+    const dir = n => n > 0 ? `多 ${n} 張` : `少 ${-n} 張`;
     H.push(`<div class="note warn"><b>※ 待複核事項：</b>
-      應發選票數 ${issuable} 張，與系統計入之選票數（理事 ${sD.received} 張、監事 ${sS.received} 張）
-      不一致${gapD>0?`，理事票短少 ${gapD} 張`:''}${gapS>0?`，監事票短少 ${gapS} 張`:''}。
-      可能原因為領票後未投入票匭（棄權）或選票未完成掃描。
-      <b>本表送件前，請由監票人依現場紙本清點紀錄核對並於本欄加註說明。</b></div>`);
+      依報到與委託紀錄推算之應發選票數為 ${issuable} 張，與實際計入之選票數
+      （理事 ${sD.received} 張、監事 ${sS.received} 張）不一致：理事票${dir(gapD)}、監事票${dir(gapS)}。
+      ${(gapD > 0 || gapS > 0) ? `可能原因為現場紙本委託書未全數登錄系統（系統現有委託書 ${act.length} 件），
+        或部分會員代表之領票未經系統登錄。` : `可能原因為領票後未投入票匭（棄權）或選票未完成掃描。`}
+      <b>本表送件前，請由監票人依現場領票簽名冊與委託書正本核對，並於本欄加註實際數字與說明。</b></div>`);
   }
 
   /* ── 得票明細 ── */
