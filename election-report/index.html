@@ -76,10 +76,16 @@ tbody tr:nth-child(even) td{background:#fbfcfa}
 
 .loading{padding:70px 0;text-align:center;color:var(--ink2);font-size:14px}
 
+/* 會議抬頭：系統無從查證的欄位，可於頁面上直接修改後列印 */
+.ed{border-bottom:1px dashed #a8b6a5;padding:0 2px;outline:none;border-radius:2px}
+.ed:hover{background:#f2f7f0}
+.ed:focus{background:#fdf6e3;border-bottom-color:var(--gold)}
+
 @media print{
   body{background:#fff}
   .toolbar{display:none}
   .sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}
+  .ed{border-bottom:none;background:none !important}
   h2{break-after:avoid}
   table{break-inside:auto}
   tr{break-inside:avoid}
@@ -95,6 +101,7 @@ tbody tr:nth-child(even) td{background:#fbfcfa}
   <button class="primary" onclick="window.print()">🖨 列印／存成 PDF</button>
   <button onclick="location.reload()">↻ 重新讀取</button>
   <span id="tb-note">資料即時取自開票系統</span>
+  <span>·　虛線欄位（會議名稱／日期／地點／主席／選舉方式）可直接點擊修改後再列印</span>
 </div>
 
 <div class="sheet" id="sheet">
@@ -103,13 +110,16 @@ tbody tr:nth-child(even) td{background:#fbfcfa}
 
 <script>
 const E_ID = '66666666-6666-4666-8666-666666666666';   // 第六屆理監事改選
+// 以下為會議抬頭欄位。系統無從查證，先帶入既有紀錄，
+// 送件前請由秘書處在頁面上直接點擊修正（虛線欄位皆可編輯，改完再列印）。
 const MEETING = {
   date:  '中華民國 115 年 9 月 4 日（星期五）',
-  place: '臻愛婚宴會館（嘉義縣太保市)',
+  place: '臻愛婚宴會館（嘉義縣太保市）',
   body:  '第六屆第一次會員大會',
   chair: '胡炳輝（第五屆理事長）',
   method:'無記名連記法，紙本選票現場圈選，投票結束後當場開票，以電子判讀系統計票並由監票人複核'
 };
+const ed = (key, cls) => `<span class="ed${cls?' '+cls:''}" contenteditable="true" data-k="${key}">${MEETING[key]}</span>`;
 const POS = { director:{ label:'理事' }, supervisor:{ label:'監事' } };
 
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -183,14 +193,14 @@ function render(election, roster, proxies, scans, cands){
   H.push(`
     <div class="org">台灣科技農企業發展協會</div>
     <h1>第六屆理事、監事選舉開票結果紀錄表</h1>
-    <div class="sub">${MEETING.body}　·　${MEETING.date}</div>
+    <div class="sub">${ed('body')}　·　${ed('date')}</div>
     <div class="hr"></div><div class="hr thin"></div>`);
 
   H.push(`<h2>一、選舉基本資料<span class="en">ELECTION INFORMATION</span></h2>
     <table class="kv"><tbody>
-      <tr><th>會議名稱</th><td>${MEETING.body}</td><th>選舉日期</th><td>${MEETING.date}</td></tr>
-      <tr><th>會議地點</th><td>${MEETING.place}</td><th>會議主席</th><td>${MEETING.chair}</td></tr>
-      <tr><th>選舉方式</th><td colspan="3" style="font-weight:400">${MEETING.method}</td></tr>
+      <tr><th>會議名稱</th><td>${ed('body')}</td><th>選舉日期</th><td>${ed('date')}</td></tr>
+      <tr><th>會議地點</th><td>${ed('place')}</td><th>會議主席</th><td>${ed('chair')}</td></tr>
+      <tr><th>選舉方式</th><td colspan="3" style="font-weight:400">${ed('method')}</td></tr>
       <tr><th>應選名額</th><td colspan="3">
         理事 ${election.director_seats} 人（候補理事 ${election.director_reserve} 人）　／
         監事 ${election.supervisor_seats} 人（候補監事 ${election.supervisor_reserve} 人）</td></tr>
@@ -309,6 +319,15 @@ function render(election, roster, proxies, scans, cands){
   document.getElementById('sheet').innerHTML = H.join('');
   document.getElementById('tb-note').textContent =
     `理事 ${sD.valid} 張有效票・監事 ${sS.valid} 張有效票`;
+
+  // 同一欄位在抬頭與表格各出現一次，失焦時同步，避免兩處內容不一致
+  document.querySelectorAll('.ed').forEach(el=>{
+    el.addEventListener('blur', ()=>{
+      const k = el.dataset.k, v = el.textContent.trim();
+      MEETING[k] = v;
+      document.querySelectorAll(`.ed[data-k="${k}"]`).forEach(o=>{ if(o !== el) o.textContent = v; });
+    });
+  });
 }
 </script>
 </body>
