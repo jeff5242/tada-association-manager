@@ -54,9 +54,11 @@ BEGIN
             COALESCE(NULLIF(a.addr_mail,''), a.org_addr), v_reps,
             '有效會員', v_join, '由入會申請轉入'||CASE WHEN a.is_renewal THEN '（續約）' ELSE '' END);
 
-  -- 加進第六屆投票名冊（可報到/投票）
-  INSERT INTO tada_v_members (election_id, member_no, name, member_type)
-    VALUES (v_e, v_no, v_name, v_type)
+  -- 加進本屆領票名冊，但 can_vote = FALSE：
+  -- 依章程，投票權以「上一屆有效會員」名冊為準；本屆新入會者可出席、不得領票。
+  -- 若確認該員其實是上屆有效會員（原名冊缺漏），由後台手動開通投票即可。
+  INSERT INTO tada_v_members (election_id, member_no, name, member_type, can_vote)
+    VALUES (v_e, v_no, v_name, v_type, FALSE)
     ON CONFLICT (election_id, member_no) DO NOTHING;
 
   -- 申請標記為已核准＋記錄已轉成的會員編號（按鈕據此變灰）

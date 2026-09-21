@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>常務理監事互選計票台｜TADA</title>
+<meta name="robots" content="noindex">
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+:root{
+  --bg:#0f1a12;--card:#1a2b1e;--card2:#16241a;--gold:#c4922a;--gold-lt:#e0b458;
+  --green:#2d5235;--green-lt:#7fae86;--text:#e8e0d0;--muted:#8a9a80;--red:#ef5350;--tie:#d97b45;
+  --sans:'Noto Sans TC',"PingFang TC",system-ui,sans-serif;--serif:'Noto Serif TC',serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+button{font-family:inherit;cursor:pointer}
+.mono{font-variant-numeric:tabular-nums}
+
+/* ── 登入 ── */
+#gate{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.gate-box{background:var(--card);border-radius:16px;padding:32px 28px;text-align:center;width:100%;max-width:340px}
+.gate-box h2{color:var(--gold-lt);font-size:17px;margin-bottom:6px}
+.gate-box p{color:var(--muted);font-size:12px;margin-bottom:18px}
+.gate-box input{width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--green);background:var(--bg);color:var(--text);font-size:16px;text-align:center;letter-spacing:.2em;outline:none}
+.gate-box button{margin-top:12px;width:100%;padding:12px;border:none;border-radius:10px;background:var(--gold);color:#1a1a12;font-weight:700;font-size:15px}
+.gate-err{color:var(--red);font-size:12px;margin-top:8px;min-height:18px}
+
+#app{display:none}
+.wrap{max-width:1280px;margin:0 auto;padding:18px 16px 60px}
+
+/* ── 頁首 ── */
+.top{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.top .kick{font-size:12px;letter-spacing:.3em;color:var(--gold)}
+.top h1{font-family:var(--serif);font-size:24px;font-weight:900;color:#fff}
+.top select{background:var(--card);color:var(--text);border:1px solid var(--green);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit}
+
+/* ── 輪次分頁 ── */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.tab{background:var(--card);border:1px solid var(--green);color:var(--muted);border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700}
+.tab .sub{display:block;font-size:11px;font-weight:400;color:var(--muted);margin-top:1px}
+.tab.on{background:rgba(196,146,42,.16);border-color:var(--gold);color:var(--gold-lt)}
+.tab.on .sub{color:var(--gold)}
+.tab.done{border-color:var(--green-lt)}
+.tab.done::after{content:' ✓';color:var(--green-lt)}
+
+/* ── 卡片 ── */
+.card{background:var(--card);border:1px solid rgba(45,82,53,.7);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+.card h2{font-family:var(--serif);font-size:17px;color:var(--gold-lt);margin-bottom:4px}
+.card .hint{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.law{font-size:12px;color:var(--muted);background:var(--card2);border-left:3px solid var(--green);border-radius:0 8px 8px 0;padding:9px 12px;margin-bottom:14px;line-height:1.7}
+.law b{color:var(--green-lt)}
+
+.btn{border:1px solid var(--green);background:var(--card2);color:var(--text);border-radius:9px;padding:9px 16px;font-size:14px;font-weight:500}
+.btn:hover{border-color:var(--gold)}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#1a1a12;font-weight:700}
+.btn.danger{color:var(--red);border-color:rgba(239,83,80,.4)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.num{width:76px;background:var(--bg);border:1px solid var(--green);color:var(--text);border-radius:8px;padding:8px;font-size:15px;text-align:center;font-family:inherit}
+
+/* ── 計票台 ── */
+.stage{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start}
+@media(max-width:900px){.stage{grid-template-columns:1fr}}
+
+.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+.pick{position:relative;text-align:left;background:var(--card2);border:1.5px solid var(--green);border-radius:11px;padding:11px 12px 11px 42px;color:var(--text);min-height:60px}
+.pick .no{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:24px;height:24px;line-height:24px;text-align:center;border-radius:6px;background:var(--green);color:var(--text);font-size:12px;font-weight:700}
+.pick .nm{font-size:15px;font-weight:700;line-height:1.3}
+.pick .co{font-size:11px;color:var(--muted);line-height:1.35;margin-top:2px}
+.pick.sel{border-color:var(--gold);background:rgba(196,146,42,.18)}
+.pick.sel .no{background:var(--gold);color:#1a1a12}
+.pick.sel .nm{color:var(--gold-lt)}
+
+.ballot-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap}
+.ballot-head .seq{font-family:var(--serif);font-size:20px;font-weight:900;color:#fff}
+.ballot-head .lim{font-size:12.5px;color:var(--muted)}
+.ballot-head .lim b{color:var(--gold-lt)}
+.keys{font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.8}
+.keys kbd{background:var(--card2);border:1px solid var(--green);border-radius:4px;padding:1px 6px;font-family:var(--sans);font-size:11px;color:var(--text)}
+
+/* ── 票數面板 ── */
+.tallies{display:flex;flex-direction:column;gap:9px}
+.row{display:grid;grid-template-columns:26px 1fr auto;gap:9px;align-items:center}
+.row .rno{font-size:11px;color:var(--muted);text-align:right}
+.row .bar-wrap{position:relative;background:var(--card2);border-radius:7px;height:36px;overflow:hidden}
+.row .bar{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,rgba(45,82,53,.9),rgba(45,82,53,.5));transition:width .35s}
+.row.elected .bar{background:linear-gradient(90deg,rgba(196,146,42,.85),rgba(224,180,88,.35))}
+.row.tiebreak .bar{background:linear-gradient(90deg,rgba(217,123,69,.85),rgba(217,123,69,.3))}
+.row .lbl{position:relative;padding:0 10px;height:36px;display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700}
+.row .lbl small{font-weight:400;font-size:11px;color:var(--muted)}
+.row .cnt{font-family:var(--serif);font-size:19px;font-weight:900;color:var(--gold-lt);min-width:34px;text-align:right}
+.badge{font-size:10px;font-weight:700;border-radius:4px;padding:1px 6px;letter-spacing:.05em}
+.badge.e{background:rgba(196,146,42,.25);color:var(--gold-lt)}
+.badge.t{background:rgba(217,123,69,.25);color:var(--tie)}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--card2);border-radius:10px;padding:10px;text-align:center}
+.stat .n{font-family:var(--serif);font-size:24px;font-weight:900;color:var(--gold-lt);line-height:1.1}
+.stat .l{font-size:11px;color:var(--muted);margin-top:2px}
+
+.log{margin-top:14px;max-height:230px;overflow:auto;border-top:1px dashed var(--green);padding-top:10px}
+.log-row{display:flex;gap:8px;font-size:12px;padding:3px 0;border-bottom:1px dotted rgba(45,82,53,.5)}
+.log-row .s{color:var(--muted);min-width:34px}
+.log-row .p{color:var(--text)}
+.log-row.inv .p{color:var(--red)}
+
+.notice{background:rgba(217,123,69,.12);border:1px solid rgba(217,123,69,.45);color:#f0c3a5;border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:14px;line-height:1.7}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--card);border:1px solid var(--gold);color:var(--gold-lt);padding:11px 22px;border-radius:30px;font-size:14px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+.toast.on{opacity:1}
+.toast.err{border-color:var(--red);color:var(--red)}
+.empty{color:var(--muted);font-size:13px;padding:22px 0;text-align:center}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <h2>常務理監事互選計票台</h2>
+    <p>限選務／監票人員使用</p>
+    <input id="pw" type="password" placeholder="通關密碼" autocomplete="off">
+    <button id="gate-btn">進入</button>
+    <div class="gate-err" id="gate-err"></div>
+  </div>
+</div>
+
+<div id="app">
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <div class="kick">TADA 理監事選舉 · 第二階段</div>
+      <h1>常務理監事互選計票台</h1>
+    </div>
+    <select id="sel-election"></select>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div id="body"></div>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const LOGIN_PW_HASH = 'ed6f1a565c864f401b0aba93e9623ea1f4616fe7ebd3f8774fa37dedef301aca';
+
+// 三輪的靜態說明（章程依據與流程順序）。seats/pick 由 runoff_state 從資料庫帶回。
+const ROUNDS = [
+  { pos:'executive',       name:'常務理事互選', sub:'理事互選 3 席',
+    law:'章程第十八條：理事會設置<b>常務理事 3 人，由理事互選之</b>。',
+    need:null },
+  { pos:'chairman',        name:'理事長選舉',   sub:'理事就常務理事中選 1 人',
+    law:'章程第十八條：<b>由理事就常務理事中選舉一人為理事長</b>。選舉人是全體理事，候選人限已當選的常務理事。',
+    need:'executive' },
+  { pos:'exec_supervisor', name:'常務監事互選', sub:'監事互選 1 席',
+    law:'章程第二十條：監事會置<b>常務監事 1 人，由監事互選之</b>。',
+    need:null },
+];
+const RNAME = Object.fromEntries(ROUNDS.map(r=>[r.pos, r.name]));
+const SRC_LABEL = { director:'當選理事', supervisor:'當選監事', executive:'常務理事' };
+
+let elections = [], election = null, pos = 'executive';
+let state = null, picked = new Set(), ballotLog = [], showLog = false;
+
+/* ── 基礎工具 ───────────────────────────────────────────────────────── */
+async function sha256(s){
+  const d = new TextEncoder().encode(s);
+  const h = await crypto.subtle.digest('SHA-256', d);
+  return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function rpc(fn, body){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`,
+    { method:'POST', headers:window.tadaSbHeaders(), body:JSON.stringify(body||{}) });
+  if(!r.ok) throw new Error(`${fn} HTTP ${r.status}：${await r.text()}`);
+  return r.json();
+}
+async function sbGet(path){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/${path}`, { headers:window.tadaSbHeaders() });
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+let toastTimer = null;
+function toast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast on' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.className = 'toast'; }, isErr ? 3200 : 1400);
+}
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const ERR_MSG = {
+  round_not_found:'本輪尚未建立，請先按「建立本輪名單」。',
+  not_open:'本輪尚未開始計票。',
+  already_counted:'本輪已經有唱票紀錄，若要重建名單請先「清空本輪重來」。',
+  no_elected_source:'上一階段還沒有當選名單，無法產生候選人。',
+  empty_pick:'沒有圈選任何人。若是空白票請按「廢票」。',
+  too_many:'圈選人數超過上限。',
+  invalid_candidate:'候選人不屬於本輪。',
+  nothing_to_undo:'沒有可撤銷的票。',
+  bad_position:'職位設定有誤。',
+};
+function fail(d){ return ERR_MSG[d && d.error] || ('操作失敗：' + ((d && d.error) || '未知錯誤')); }
+
+/* ── 載入 ──────────────────────────────────────────────────────────── */
+async function boot(){
+  elections = await sbGet('tada_v_election?select=id,title,status&order=created_at.desc');
+  const sel = document.getElementById('sel-election');
+  sel.innerHTML = elections.map(e=>`<option value="${e.id}">${esc(e.title)}（${e.status}）</option>`).join('');
+  // 預設挑正式場次（status 非 draft），沒有就用第一筆
+  election = elections.find(e=>e.status !== 'draft') || elections[0];
+  if(!election){ document.getElementById('body').innerHTML = '<div class="card"><div class="empty">找不到任何選舉場次。</div></div>'; return; }
+  sel.value = election.id;
+  sel.onchange = ()=>{ election = elections.find(e=>e.id===sel.value); refresh(); };
+  renderTabs();
+  await refresh();
+}
+
+function renderTabs(){
+  document.getElementById('tabs').innerHTML = ROUNDS.map(r=>{
+    const on = r.pos === pos ? ' on' : '';
+    return `<button class="tab${on}" data-pos="${r.pos}">${r.name}<span class="sub">${r.sub}</span></button>`;
+  }).join('');
+  document.querySelectorAll('.tab').forEach(b=>{
+    b.onclick = ()=>{ pos = b.dataset.pos; picked.clear(); renderTabs(); refresh(); };
+  });
+}
+
+async function refresh(){
+  try{
+    state = await rpc('runoff_state', { p_election: election.id, p_position: pos });
+    ballotLog = await sbGet(
+      `tada_v_runoff_ballots?election_id=eq.${election.id}&position=eq.${pos}&select=seq,picks,invalid,reason&order=seq.desc&limit=200`);
+  }catch(e){
+    document.getElementById('body').innerHTML =
+      `<div class="card"><div class="notice">讀取失敗：${esc(e.message)}<br>
+       若錯誤提到 <code>runoff_state</code> 不存在，表示 <code>supabase/tada_runoff.sql</code> 還沒在 Supabase SQL Editor 執行。</div></div>`;
+    return;
+  }
+  render();
+}
+
+/* ── 畫面 ──────────────────────────────────────────────────────────── */
+function render(){
+  const meta = ROUNDS.find(r=>r.pos===pos);
+  const round = state.round;
+  const cands = state.candidates || [];
+  let html = `<div class="card">
+    <h2>${meta.name}</h2>
+    <div class="hint">應選 ${state.seats} 席・每票至多圈選 ${state.pick} 人・候選人＝${SRC_LABEL[state.source]||state.source}・選舉人＝${SRC_LABEL[state.electorate]||state.electorate}</div>
+    <div class="law">${meta.law}</div>`;
+
+  if(!round || !cands.length){
+    html += `<div class="empty">本輪尚未建立候選人名單。</div>
+      <div class="btn-row"><button class="btn primary" onclick="doSetup()">建立本輪名單</button></div>
+      <div class="keys">名單會自動從上一階段的開票結果（<code>vote_outcome</code> 判定為當選者）帶入，不需手動輸入。</div>`;
+    if(meta.need){
+      html += `<div class="keys">⚠ 本輪候選人來自「${RNAME[meta.need]}」的當選結果，請先完成該輪。</div>`;
+    }
+    html += `</div>`;
+    document.getElementById('body').innerHTML = html;
+    return;
+  }
+
+  html += renderRoundControls(round) + `</div>`;
+
+  if(round.status === 'open'){
+    html += `<div class="stage">${renderStage(cands)}${renderTally(cands, round)}</div>`;
+  }else{
+    html += `<div class="stage"><div class="card">${renderRoster(cands)}</div>${renderTally(cands, round)}</div>`;
+  }
+
+  document.getElementById('body').innerHTML = html;
+  bindStage();
+}
+
+function renderRoundControls(round){
+  if(round.status === 'draft'){
+    return `<div class="btn-row">
+      <span style="font-size:13px;color:var(--muted)">出席（實到）人數</span>
+      <input class="num" id="in-present" type="number" min="0" value="${round.present}">
+      <span style="font-size:12px;color:var(--muted)">／ 應到 ${round.electors} 人</span>
+      <button class="btn primary" onclick="doOpen()">開始計票</button>
+      <button class="btn" onclick="doSetup()">重建名單</button>
+    </div>
+    <div class="keys">實到人數即「應開票數」，計票結束時系統會比對已開票數是否相符。</div>`;
+  }
+  if(round.status === 'open'){
+    return `<div class="btn-row">
+      <span class="badge e">計票進行中</span>
+      <button class="btn" onclick="doUndo()">↩ 撤銷上一張</button>
+      <button class="btn" onclick="toggleLog()">${showLog?'隱藏':'顯示'}開票紀錄</button>
+      <button class="btn primary" onclick="doClose()">結束計票</button>
+      <button class="btn danger" onclick="doReset()">清空本輪重來</button>
+    </div>`;
+  }
+  return `<div class="btn-row">
+    <span class="badge e">本輪已結束</span>
+    <button class="btn" onclick="toggleLog()">${showLog?'隱藏':'顯示'}開票紀錄</button>
+    <button class="btn" onclick="doOpen()">重新開啟計票</button>
+    <button class="btn danger" onclick="doReset()">清空本輪重來</button>
+  </div>`;
+}
+
+function renderRoster(cands){
+  return `<h2>候選人名冊</h2><div class="hint">共 ${cands.length} 位</div><div class="picks">` +
+    cands.slice().sort((a,b)=>a.no-b.no).map(c=>
+      `<div class="pick"><span class="no">${c.no}</span>
+        <div class="nm">${esc(c.name)}</div>
+        ${c.company?`<div class="co">${esc(c.company)}</div>`:''}</div>`).join('') + `</div>`;
+}
+
+function renderStage(cands){
+  const seq = (state.counted || 0) + 1;
+  const list = cands.slice().sort((a,b)=>a.no-b.no);
+  return `<div class="card">
+    <div class="ballot-head">
+      <div class="seq">唱第 <span class="mono">${seq}</span> 張</div>
+      <div class="lim">已選 <b id="sel-n">${picked.size}</b> / 上限 <b>${state.pick}</b> 人</div>
+    </div>
+    <div class="picks" id="picks">` +
+      list.map(c=>`<button class="pick${picked.has(c.id)?' sel':''}" data-id="${c.id}" data-no="${c.no}">
+          <span class="no">${c.no}</span>
+          <div class="nm">${esc(c.name)}</div>
+          ${c.company?`<div class="co">${esc(c.company)}</div>`:''}
+        </button>`).join('') +
+    `</div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn primary" onclick="doCast(false)">送出這張票</button>
+      <button class="btn" onclick="clearPick()">清除選取</button>
+      <button class="btn danger" onclick="doCast(true)">登記為廢票</button>
+    </div>
+    <div class="keys">
+      鍵盤：<kbd>1</kbd>–<kbd>9</kbd> 圈選對應號次　<kbd>0</kbd>＝10 號　<kbd>-</kbd>＝11 號<br>
+      <kbd>Enter</kbd> 送出這張　<kbd>Esc</kbd> 清除選取　<kbd>Backspace</kbd> 撤銷上一張　<kbd>X</kbd> 廢票
+    </div>
+  </div>`;
+}
+
+function renderTally(cands, round){
+  const arr = cands.slice().sort((a,b)=> b.votes - a.votes || a.no - b.no);
+  const max = Math.max(1, ...arr.map(c=>c.votes));
+  const counted = state.counted || 0, invalid = state.invalid || 0;
+  const diff = counted - (round.present || 0);
+  let html = `<div class="card">
+    <h2>即時票數</h2>
+    <div class="hint">依得票高低排序；同票時的先後僅為畫面排列，不代表名次。</div>
+    <div class="stats">
+      <div class="stat"><div class="n mono">${counted}</div><div class="l">已開票數</div></div>
+      <div class="stat"><div class="n mono">${round.present||0}</div><div class="l">應開票數</div></div>
+      <div class="stat"><div class="n mono">${invalid}</div><div class="l">廢票</div></div>
+    </div>`;
+
+  if(round.status !== 'draft' && diff !== 0 && counted > 0){
+    html += `<div class="notice">已開 ${counted} 張，與應開 ${round.present||0} 張${diff>0?'多':'少'} ${Math.abs(diff)} 張，請與監票人複核。</div>`;
+  }
+  const tie = arr.filter(c=>c.status==='tiebreak');
+  if(tie.length){
+    html += `<div class="notice">⚠ 第 ${tie[0].rank} 名出現同票（${tie.map(c=>esc(c.name)).join('、')}，各 ${tie[0].votes} 票），
+      跨越當選分界線。依人民團體選舉慣例應<b>當場抽籤決定</b>，系統不自動判定。</div>`;
+  }
+
+  html += `<div class="tallies">` + arr.map((c,i)=>{
+    const w = Math.round(c.votes / max * 100);
+    const cls = c.status === 'elected' ? ' elected' : (c.status === 'tiebreak' ? ' tiebreak' : '');
+    const badge = c.status === 'elected' ? '<span class="badge e">當選</span>'
+                : c.status === 'tiebreak' ? '<span class="badge t">待抽籤</span>' : '';
+    return `<div class="row${cls}">
+      <div class="rno mono">${i+1}</div>
+      <div class="bar-wrap"><div class="bar" style="width:${w}%"></div>
+        <div class="lbl">${esc(c.name)}${c.company?` <small>${esc(c.company)}</small>`:''} ${badge}</div></div>
+      <div class="cnt mono">${c.votes}</div>
+    </div>`;
+  }).join('') + `</div>`;
+
+  if(showLog){
+    const nameOf = Object.fromEntries(cands.map(c=>[c.id, c.name]));
+    html += `<div class="log">` + (ballotLog.length ? ballotLog.map(b=>
+      `<div class="log-row${b.invalid?' inv':''}">
+        <span class="s mono">#${b.seq}</span>
+        <span class="p">${b.invalid ? '廢票' + (b.reason?`（${esc(b.reason)}）`:'')
+                                     : (b.picks||[]).map(id=>esc(nameOf[id]||'?')).join('、')}</span>
+      </div>`).join('') : '<div class="empty">尚無開票紀錄</div>') + `</div>`;
+  }
+
+  return html + `</div>`;
+}
+
+/* ── 互動 ──────────────────────────────────────────────────────────── */
+function bindStage(){
+  document.querySelectorAll('#picks .pick').forEach(b=>{
+    b.onclick = ()=> togglePick(b.dataset.id);
+  });
+}
+function togglePick(id){
+  if(picked.has(id)) picked.delete(id);
+  else{
+    if(picked.size >= state.pick){
+      // 單選輪次直接換人，多選輪次提示已達上限
+      if(state.pick === 1) picked.clear();
+      else return toast(`最多只能圈選 ${state.pick} 人`, true);
+    }
+    picked.add(id);
+  }
+  document.querySelectorAll('#picks .pick').forEach(b=>
+    b.classList.toggle('sel', picked.has(b.dataset.id)));
+  const n = document.getElementById('sel-n');
+  if(n) n.textContent = picked.size;
+}
+function clearPick(){
+  picked.clear();
+  document.querySelectorAll('#picks .pick').forEach(b=>b.classList.remove('sel'));
+  const n = document.getElementById('sel-n');
+  if(n) n.textContent = 0;
+}
+function toggleLog(){ showLog = !showLog; render(); }
+
+async function doSetup(){
+  if(!confirm(`重建「${RNAME[pos]}」候選人名單？\n名單將依上一階段開票結果的當選人自動產生。`)) return;
+  try{
+    const d = await rpc('runoff_setup', { p_election: election.id, p_position: pos });
+    if(!d.ok) return toast(fail(d), true);
+    toast(`已建立 ${d.candidates} 位候選人`);
+    await refresh();
+  }catch(e){ toast(e.message, true); }
+}
+async function doOpen(){
+  const el = document.getElementById('in-present');
+  const present = el ? parseInt(el.value, 10) : (state.round ? state.round.present : 0);
+  try{
+    const d = await rpc('runoff_open', { p_election: election.id, p_position: pos, p_present: isNaN(present)?0:present });
+    if(!d.ok) return toast(fail(d), true);
+    picked.clear();
+    toast('開始計票');
+    await refresh();
+  }catch(e){ toast(e.message, true); }
+}
+async function doClose(){
+  const counted = state.counted || 0, present = (state.round||{}).present || 0;
+  if(counted !== present && !confirm(`已開 ${counted} 張、應開 ${present} 張，數量不符。\n仍要結束本輪計票嗎？`)) return;
+  try{
+    const d = await rpc('runoff_close', { p_election: election.id, p_position: pos });
+    if(!d.ok) return toast(fail(d), true);
+    toast('本輪計票已結束');
+    await refresh();
+  }catch(e){ toast(e.message, true); }
+}
+async function doCast(invalid){
+  if(invalid){
+    if(!confirm('將這張票登記為廢票？')) return;
+  }else if(!picked.size){
+    return toast('尚未圈選任何人；空白票請按「登記為廢票」', true);
+  }
+  try{
+    const d = await rpc('runoff_cast', {
+      p_election: election.id, p_position: pos,
+      p_picks: [...picked], p_invalid: !!invalid, p_reason: invalid ? '唱票登記' : null
+    });
+    if(!d.ok) return toast(fail(d), true);
+    picked.clear();
+    toast(`第 ${d.seq} 張已計入`);
+    await refresh();
+  }catch(e){ toast(e.message, true); }
+}
+async function doUndo(){
+  try{
+    const d = await rpc('runoff_undo', { p_election: election.id, p_position: pos });
+    if(!d.ok) return toast(fail(d), true);
+    toast(`已撤銷第 ${d.undone_seq} 張`);
+    await refresh();
+  }catch(e){ toast(e.message, true); }
+}
+async function doReset(){
+  if(!confirm(`清空「${RNAME[pos]}」全部唱票紀錄與票數，回到未開始狀態？\n此動作無法復原。`)) return;
+  if(!confirm('再確認一次：真的要清空本輪所有已開的票嗎？')) return;
+  try{
+    const d = await rpc('runoff_reset', { p_election: election.id, p_position: pos });
+    if(!d.ok) return toast(fail(d), true);
+    picked.clear();
+    toast(`已清空 ${d.deleted} 張`);
+    await refresh();
+  }catch(e){ toast(e.message, true); }
+}
+
+/* ── 鍵盤：唱票時不必離開鍵盤 ──────────────────────────────────────── */
+document.addEventListener('keydown', e=>{
+  if(document.getElementById('app').style.display !== 'block') return;
+  if(/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if(!state || !state.round || state.round.status !== 'open') return;
+
+  if(e.key === 'Enter'){ e.preventDefault(); return doCast(false); }
+  if(e.key === 'Escape'){ e.preventDefault(); return clearPick(); }
+  if(e.key === 'Backspace'){ e.preventDefault(); return doUndo(); }
+  if(e.key === 'x' || e.key === 'X'){ e.preventDefault(); return doCast(true); }
+
+  let no = null;
+  if(/^[1-9]$/.test(e.key)) no = parseInt(e.key, 10);
+  else if(e.key === '0') no = 10;
+  else if(e.key === '-') no = 11;
+  if(no == null) return;
+  const btn = document.querySelector(`#picks .pick[data-no="${no}"]`);
+  if(btn){ e.preventDefault(); togglePick(btn.dataset.id); }
+});
+
+/* ── 登入 ──────────────────────────────────────────────────────────── */
+async function login(){
+  const h = await sha256(document.getElementById('pw').value.trim().toLowerCase());
+  if(h !== LOGIN_PW_HASH){ document.getElementById('gate-err').textContent = '密碼錯誤'; return; }
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  boot().catch(e=>{
+    document.getElementById('body').innerHTML = `<div class="card"><div class="notice">載入失敗：${esc(e.message)}</div></div>`;
+  });
+}
+document.getElementById('gate-btn').onclick = login;
+document.getElementById('pw').addEventListener('keydown', e=>{ if(e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

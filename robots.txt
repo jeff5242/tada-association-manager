@@ -8,6 +8,7 @@ Disallow: /ballot/
 Disallow: /scan/
 Disallow: /checkin/
 Disallow: /vote/
+Disallow: /runoff/
 Disallow: /print/
 Disallow: /portal.html
 Disallow: /docs/
