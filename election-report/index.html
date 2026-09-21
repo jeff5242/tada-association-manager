@@ -156,38 +156,30 @@ function memberCount(rows){
 
 (async function(){
   try{
-    const [election, roster, proxies, scans, outcome] = await Promise.all([
+    const [election, roster, scans, outcome] = await Promise.all([
       sbGet(`tada_v_election?id=eq.${E_ID}&select=*`).then(r=>r[0]),
-      sbGet(`tada_v_members?election_id=eq.${E_ID}&select=member_no,name,member_type,can_vote,is_checked_in,check_in_time`),
-      sbGet(`tada_v_proxy?election_id=eq.${E_ID}&select=principal_name,delegate_name,proxy_vote,proxy_attend,status`),
+      sbGet(`tada_v_members?election_id=eq.${E_ID}&select=member_no,name,member_type,can_vote`),
       sbGet(`tada_ballot_scans?election_id=eq.${E_ID}&select=position,verdict,counted,is_test,marked_nos,created_at`),
       rpc('vote_outcome', { p_election: E_ID })
     ]);
-    render(election, roster, proxies, scans, outcome.candidates || []);
+    render(election, roster, scans, outcome.candidates || []);
   }catch(e){
     document.getElementById('sheet').innerHTML =
       `<div class="loading">讀取失敗：${esc(e.message)}</div>`;
   }
 })();
 
-function render(election, roster, proxies, scans, cands){
-  /* ── 選舉人與出席 ─────────────────────────────────────────────── */
-  const voters   = roster.filter(r=>r.can_vote);            // 具選舉權（第五屆有效會員）
-  const attended = voters.filter(r=>r.is_checked_in);       // 全日完成報到者（含餐會時段）
+function render(election, roster, scans, cands){
+  /* ── 選舉人 ───────────────────────────────────────────────────── */
+  const voters = roster.filter(r=>r.can_vote);              // 具選舉權（第五屆有效會員）
   const vCount = memberCount(voters);
+  const fmtT = d => d ? d.toLocaleTimeString('zh-TW',{hour12:false, timeZone:'Asia/Taipei'}) : '—';
 
-  // 投票截止時間以「第一張選票開始掃描」為界：其後才報到者係參加餐會，未及投票。
+  // 投票截止時間以「第一張選票開始開票判讀」為界
   const real0 = scans.filter(s=>!s.is_test && s.created_at);
   const closeAt = real0.length
     ? new Date(Math.min(...real0.map(s=>new Date(s.created_at).getTime())))
     : null;
-  const inTime  = closeAt ? attended.filter(r=>r.check_in_time && new Date(r.check_in_time) < closeAt) : attended;
-  const inTimeNames = new Set(inTime.map(r=>r.name));
-
-  const act = proxies.filter(p=>p.status === 'active');
-  // 委託人縱於餐會時段報到，其投票權已由受託人行使，不另發給選票。
-  const selfWaived = act.filter(p=>p.proxy_vote && inTimeNames.has(p.principal_name)).length;
-  const fmtT = d => d ? d.toLocaleTimeString('zh-TW',{hour12:false, timeZone:'Asia/Taipei'}) : '—';
 
   /* ── 選票統計（以電子判讀系統計入者為準）──────────────────────── */
   const real = scans.filter(s=>!s.is_test);
@@ -225,8 +217,6 @@ function render(election, roster, proxies, scans, cands){
         理事票 ${election.director_pick} 人　／　監事票 ${election.supervisor_pick} 人（連記法）</td></tr>
     </tbody></table>`);
 
-  const waivedNames = act.filter(p=>p.proxy_vote && inTimeNames.has(p.principal_name))
-                         .map(p=>`${esc(p.principal_name)}（委託 ${esc(p.delegate_name)} 代行）`);
   H.push(`<h2>二、選舉權人數及出席情形<span class="en">ELECTORATE &amp; ATTENDANCE</span></h2>
     <table><thead><tr><th style="width:40%">項目</th><th style="width:15%">人數／票數</th><th>說明</th></tr></thead>
     <tbody>
@@ -239,12 +229,9 @@ function render(election, roster, proxies, scans, cands){
               以第一張選票開始開票之時間 ${fmtT(closeAt)} 為截止界線</td></tr>
       <tr><td>委託出席（受託人代為出席）</td><td class="c mono">${edn(ONSITE.proxyAttend)}</td>
           <td>以現場受理之紙本委託書為準</td></tr>
-      <tr><td>已將投票權委託他人，本人不另發票者</td><td class="c mono">${selfWaived}</td>
-          <td>${waivedNames.join('、') || '無'}；投票權已由受託人行使，本人縱於餐會時段報到亦不另發選票，避免一權二票</td></tr>
     </tbody></table>
-    <div class="note">本會受理之出席／投票委託書以<b>現場紙本正本</b>為準，部分委託書未及登錄線上系統，
-      故上表委託件數之欄位得由秘書處依紙本清點結果填寫。
-      <b>選票數一律以現場實際領出並投入票匭之選票為準</b>，詳見下表。</div>`);
+    <div class="note">本會受理之出席委託書以<b>現場紙本正本</b>為準；委託人之投票權由受託人代為行使，
+      本人不另發給選票。<b>選票數一律以現場實際領出並投入票匭之選票為準</b>，詳見下表。</div>`);
 
   const row = (label, d, s, cls) => `<tr${cls?` style="background:#f4f6f1"`:''}>
       <td>${label}</td><td class="c mono">${d}</td><td class="c mono">${s}</td></tr>`;
