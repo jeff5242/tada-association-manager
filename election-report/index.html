@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第六屆理監事選舉開票結果紀錄表｜TADA</title>
+<meta name="robots" content="noindex">
+<script src="../assets/liff-common.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+:root{
+  --ink:#1d1f1c;--ink2:#4a4f47;--rule:#b9bfb4;--rule2:#dfe3da;
+  --paper:#ffffff;--tint:#f4f6f1;--seal:#8a1f11;--gold:#8a6a1c;--ok:#1f5c33;
+  --serif:'Noto Serif TC',"Songti TC",serif;--sans:'Noto Sans TC',"PingFang TC",system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#5d6b5c;font-family:var(--sans);color:var(--ink);line-height:1.75;
+     -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.mono{font-variant-numeric:tabular-nums}
+
+.toolbar{position:sticky;top:0;z-index:9;background:#2d3a2c;color:#e8e0d0;padding:10px 16px;
+         display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:13px}
+.toolbar button{font-family:inherit;font-size:13px;font-weight:700;border:1px solid #6d7f6b;
+  background:#3c4c3a;color:#e8e0d0;border-radius:7px;padding:7px 15px;cursor:pointer}
+.toolbar button.primary{background:#c4922a;border-color:#c4922a;color:#1a1a12}
+.toolbar span{color:#aab8a7}
+
+.sheet{background:var(--paper);width:210mm;min-height:297mm;margin:18px auto;padding:18mm 16mm 16mm;
+       box-shadow:0 6px 30px rgba(0,0,0,.35)}
+
+/* ── 表頭 ── */
+.org{text-align:center;font-family:var(--serif);font-size:15px;letter-spacing:.35em;color:var(--ink2)}
+h1{text-align:center;font-family:var(--serif);font-size:25px;font-weight:900;letter-spacing:.08em;
+   margin:6px 0 3px}
+.sub{text-align:center;font-size:12.5px;color:var(--ink2);letter-spacing:.06em}
+.hr{height:2px;background:var(--ink);margin:13px 0 4px}
+.hr.thin{height:1px;background:var(--rule);margin:4px 0 20px}
+
+h2{font-family:var(--serif);font-size:16px;font-weight:700;margin:24px 0 9px;
+   padding-left:9px;border-left:4px solid var(--ink)}
+h2 .en{font-size:11px;color:var(--ink2);font-weight:400;letter-spacing:.1em;margin-left:8px}
+
+/* ── 表格 ── */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border:1px solid var(--rule);padding:6px 9px;vertical-align:middle}
+thead th{background:var(--tint);font-weight:700;font-size:12.5px;text-align:center;letter-spacing:.04em}
+td.c{text-align:center}td.r{text-align:right}
+tbody tr:nth-child(even) td{background:#fbfcfa}
+.kv th{background:var(--tint);width:31%;text-align:left;font-weight:500;color:var(--ink2)}
+.kv td{font-weight:700}
+.kv td .u{font-weight:400;color:var(--ink2);font-size:12px;margin-left:3px}
+.fill{color:var(--rule);font-weight:400;letter-spacing:.3em}
+
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:3px;padding:1px 7px;letter-spacing:.06em}
+.tag.e{background:#e9f1ea;color:var(--ok);border:1px solid #b6d3bd}
+.tag.r{background:#fdf4e2;color:var(--gold);border:1px solid #e6d19a}
+.tag.n{background:#f2f2f0;color:#8a8f86;border:1px solid #dcdfd8}
+.tag.t{background:#fbeae6;color:var(--seal);border:1px solid #edc2b8}
+
+.note{font-size:12px;color:var(--ink2);background:var(--tint);border-left:3px solid var(--rule);
+      padding:9px 12px;margin-top:10px;line-height:1.85}
+.note b{color:var(--ink)}
+.warn{background:#fdf3ef;border-left-color:var(--seal)}
+.warn b{color:var(--seal)}
+
+.elected-box{border:1.5px solid var(--ink);padding:13px 16px;margin-top:10px}
+.elected-box .ttl{font-family:var(--serif);font-size:14px;font-weight:700;margin-bottom:5px}
+.elected-box .names{font-size:14.5px;line-height:2.1;letter-spacing:.02em}
+.elected-box .names i{font-style:normal;color:var(--ink2);font-size:12px}
+.elected-box + .elected-box{margin-top:12px}
+
+.sign{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:30px}
+.sign div{border-top:1px solid var(--ink);padding-top:7px;font-size:12.5px;color:var(--ink2);text-align:center}
+.foot{margin-top:26px;padding-top:9px;border-top:1px solid var(--rule2);
+      display:flex;justify-content:space-between;font-size:11px;color:#8a8f86}
+
+.loading{padding:70px 0;text-align:center;color:var(--ink2);font-size:14px}
+
+@media print{
+  body{background:#fff}
+  .toolbar{display:none}
+  .sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}
+  h2{break-after:avoid}
+  table{break-inside:auto}
+  tr{break-inside:avoid}
+  .elected-box,.sign{break-inside:avoid}
+}
+@page{size:A4;margin:16mm 14mm}
+@media(max-width:840px){.sheet{width:auto;padding:16px}.sign{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="primary" onclick="window.print()">🖨 列印／存成 PDF</button>
+  <button onclick="location.reload()">↻ 重新讀取</button>
+  <span id="tb-note">資料即時取自開票系統</span>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="loading">讀取開票結果…</div>
+</div>
+
+<script>
+const E_ID = '66666666-6666-4666-8666-666666666666';   // 第六屆理監事改選
+const MEETING = {
+  date:  '中華民國 115 年 9 月 4 日（星期五）',
+  place: '臻愛婚宴會館（嘉義縣太保市)',
+  body:  '第六屆第一次會員大會',
+  chair: '胡炳輝（第五屆理事長）',
+  method:'無記名連記法，紙本選票現場圈選，投票結束後當場開票，以電子判讀系統計票並由監票人複核'
+};
+const POS = { director:{ label:'理事' }, supervisor:{ label:'監事' } };
+
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function sbGet(p){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/${p}`, { headers: window.tadaSbHeaders() });
+  if(!r.ok) throw new Error(`HTTP ${r.status} · ${p.split('?')[0]}`);
+  return r.json();
+}
+async function rpc(fn, body){
+  const r = await fetch(`${window.TADA_SB_URL}/rest/v1/rpc/${fn}`,
+    { method:'POST', headers: window.tadaSbHeaders(), body: JSON.stringify(body) });
+  if(!r.ok) throw new Error(`HTTP ${r.status} · ${fn}`);
+  return r.json();
+}
+// 團體會員之多位代表共用同一組編號前綴，計「會員數」時併為一家
+const baseNo = no => String(no||'').split('-')[0];
+function memberCount(rows){
+  const persons = new Set(), groups = new Set();
+  rows.forEach(r=>{
+    if(r.member_type === 'group' || String(r.member_no||'').includes('-')) groups.add(baseNo(r.member_no));
+    else persons.add(r.member_no);
+  });
+  return { total: persons.size + groups.size, persons: persons.size, groups: groups.size };
+}
+
+(async function(){
+  try{
+    const [election, roster, proxies, scans, outcome] = await Promise.all([
+      sbGet(`tada_v_election?id=eq.${E_ID}&select=*`).then(r=>r[0]),
+      sbGet(`tada_v_members?election_id=eq.${E_ID}&select=member_no,name,member_type,can_vote,is_checked_in`),
+      sbGet(`tada_v_proxy?election_id=eq.${E_ID}&select=principal_name,delegate_name,proxy_vote,proxy_attend,status`),
+      sbGet(`tada_ballot_scans?election_id=eq.${E_ID}&select=position,verdict,counted,is_test,marked_nos`),
+      rpc('vote_outcome', { p_election: E_ID })
+    ]);
+    render(election, roster, proxies, scans, outcome.candidates || []);
+  }catch(e){
+    document.getElementById('sheet').innerHTML =
+      `<div class="loading">讀取失敗：${esc(e.message)}</div>`;
+  }
+})();
+
+function render(election, roster, proxies, scans, cands){
+  /* ── 選舉人與出席 ─────────────────────────────────────────────── */
+  const voters   = roster.filter(r=>r.can_vote);            // 具選舉權（第五屆有效會員）
+  const attended = voters.filter(r=>r.is_checked_in);       // 實到並領票
+  const vCount = memberCount(voters), aCount = memberCount(attended);
+  const attendedNames = new Set(attended.map(r=>r.name));
+
+  const act = proxies.filter(p=>p.status === 'active');
+  // 委託投票：受託人已到場方能代行；委託人若已將投票權委託他人，本人到場亦不另發票
+  const proxyVoteUsed = act.filter(p=>p.proxy_vote && attendedNames.has(p.delegate_name)).length;
+  const selfWaived    = act.filter(p=>p.proxy_vote && attendedNames.has(p.principal_name)).length;
+  const issuable      = attended.length - selfWaived + proxyVoteUsed;   // 應發選票數
+
+  /* ── 選票統計（以電子判讀系統計入者為準）──────────────────────── */
+  const real = scans.filter(s=>!s.is_test);
+  const stat = pos => {
+    const rows  = real.filter(s=>s.position === pos);
+    const valid = rows.filter(s=>s.counted && s.verdict === 'valid');
+    return {
+      received: rows.length,
+      valid:    valid.length,
+      invalid:  rows.length - valid.length,
+      marks:    valid.reduce((n,s)=>n + (s.marked_nos ? s.marked_nos.length : 0), 0)
+    };
+  };
+  const sD = stat('director'), sS = stat('supervisor');
+
+  /* ── 組版 ─────────────────────────────────────────────────────── */
+  const H = [];
+  H.push(`
+    <div class="org">台灣科技農企業發展協會</div>
+    <h1>第六屆理事、監事選舉開票結果紀錄表</h1>
+    <div class="sub">${MEETING.body}　·　${MEETING.date}</div>
+    <div class="hr"></div><div class="hr thin"></div>`);
+
+  H.push(`<h2>一、選舉基本資料<span class="en">ELECTION INFORMATION</span></h2>
+    <table class="kv"><tbody>
+      <tr><th>會議名稱</th><td>${MEETING.body}</td><th>選舉日期</th><td>${MEETING.date}</td></tr>
+      <tr><th>會議地點</th><td>${MEETING.place}</td><th>會議主席</th><td>${MEETING.chair}</td></tr>
+      <tr><th>選舉方式</th><td colspan="3" style="font-weight:400">${MEETING.method}</td></tr>
+      <tr><th>應選名額</th><td colspan="3">
+        理事 ${election.director_seats} 人（候補理事 ${election.director_reserve} 人）　／
+        監事 ${election.supervisor_seats} 人（候補監事 ${election.supervisor_reserve} 人）</td></tr>
+      <tr><th>每張選票圈選上限</th><td colspan="3">
+        理事票 ${election.director_pick} 人　／　監事票 ${election.supervisor_pick} 人（連記法）</td></tr>
+    </tbody></table>`);
+
+  H.push(`<h2>二、選舉權人數及出席情形<span class="en">ELECTORATE &amp; ATTENDANCE</span></h2>
+    <table><thead><tr><th style="width:46%">項目</th><th style="width:18%">人數／票數</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td>具選舉權會員數（應到）</td><td class="c mono"><b>${vCount.total}</b></td>
+          <td>個人會員 ${vCount.persons} 人、團體會員 ${vCount.groups} 家</td></tr>
+      <tr><td>具選舉權之票權總數</td><td class="c mono"><b>${voters.length}</b></td>
+          <td>團體會員每位會員代表各一票</td></tr>
+      <tr><td>實到並完成領票會員數</td><td class="c mono"><b>${aCount.total}</b></td>
+          <td>個人會員 ${aCount.persons} 人、團體會員 ${aCount.groups} 家</td></tr>
+      <tr><td>實到領票之票權數</td><td class="c mono"><b>${attended.length}</b></td>
+          <td>出席率 ${(attended.length / voters.length * 100).toFixed(1)}%（票權基準）</td></tr>
+      <tr><td>委託出席（受託人代為出席）</td><td class="c mono">${act.filter(p=>p.proxy_attend).length}</td>
+          <td>依章程受理之出席委託書件數</td></tr>
+      <tr><td>委託投票（受託人代為行使投票權）</td><td class="c mono">${proxyVoteUsed}</td>
+          <td>受託人須本人到場始得代行</td></tr>
+      <tr><td>本人到場但已將投票權委託他人者</td><td class="c mono">${selfWaived}</td>
+          <td>本人不另發給選票，避免一權二票</td></tr>
+      <tr style="background:#f4f6f1"><td><b>應發選票數</b></td><td class="c mono"><b>${issuable}</b></td>
+          <td>實到領票票權 ${attended.length} － 已委託他人 ${selfWaived} ＋ 受託代行 ${proxyVoteUsed}</td></tr>
+    </tbody></table>`);
+
+  const row = (label, d, s, cls) => `<tr${cls?` style="background:#f4f6f1"`:''}>
+      <td>${label}</td><td class="c mono">${d}</td><td class="c mono">${s}</td></tr>`;
+  H.push(`<h2>三、選票統計<span class="en">BALLOT COUNT</span></h2>
+    <table><thead><tr><th style="width:46%">項目</th><th style="width:27%">理事選票</th><th>監事選票</th></tr></thead>
+    <tbody>
+      ${row('應發選票數', issuable, issuable)}
+      ${row('實際收回並計入之選票數', `<b>${sD.received}</b>`, `<b>${sS.received}</b>`)}
+      ${row('有效票', `<b>${sD.valid}</b>`, `<b>${sS.valid}</b>`)}
+      ${row('無效票', sD.invalid, sS.invalid)}
+      ${row('有效圈選總人次', sD.marks, sS.marks, true)}
+    </tbody></table>`);
+
+  const gapD = issuable - sD.received, gapS = issuable - sS.received;
+  if(gapD !== 0 || gapS !== 0){
+    H.push(`<div class="note warn"><b>※ 待複核事項：</b>
+      應發選票數 ${issuable} 張，與系統計入之選票數（理事 ${sD.received} 張、監事 ${sS.received} 張）
+      不一致${gapD>0?`，理事票短少 ${gapD} 張`:''}${gapS>0?`，監事票短少 ${gapS} 張`:''}。
+      可能原因為領票後未投入票匭（棄權）或選票未完成掃描。
+      <b>本表送件前，請由監票人依現場紙本清點紀錄核對並於本欄加註說明。</b></div>`);
+  }
+
+  /* ── 得票明細 ── */
+  const table = pos => {
+    const seatInfo = cands.find(c=>c.position === pos) || {};
+    const rows = cands.filter(c=>c.position === pos).sort((a,b)=> a.rank - b.rank || a.sort - b.sort);
+    const TAG = { elected:'<span class="tag e">當　選</span>', reserve:'<span class="tag r">候　補</span>',
+                  tiebreak:'<span class="tag t">同票待抽籤</span>', not_elected:'<span class="tag n">未當選</span>' };
+    return `<h2>${pos==='director'?'四':'五'}、${POS[pos].label}候選人得票明細
+        <span class="en">應選 ${seatInfo.n_seat} 席・候補 ${seatInfo.n_reserve} 席</span></h2>
+      <table><thead><tr>
+        <th style="width:9%">票面號次</th><th style="width:17%">姓名</th>
+        <th>服務機關（團體會員名稱）</th>
+        <th style="width:11%">得票數</th><th style="width:9%">名次</th><th style="width:15%">結果</th>
+      </tr></thead><tbody>` +
+      rows.map(c=>`<tr>
+        <td class="c mono">${c.no ?? ''}</td>
+        <td class="c"><b>${esc(c.name)}</b></td>
+        <td>${esc(c.company || '—')}</td>
+        <td class="c mono"><b>${c.votes}</b></td>
+        <td class="c mono">${c.rank}</td>
+        <td class="c">${TAG[c.status] || ''}</td>
+      </tr>`).join('') + `</tbody></table>`;
+  };
+  H.push(table('director'));
+  H.push(table('supervisor'));
+
+  /* ── 當選名單 ── */
+  const listOf = (pos, st) => cands.filter(c=>c.position === pos && c.status === st)
+    .sort((a,b)=> a.rank - b.rank || a.sort - b.sort);
+  const namesHtml = arr => arr.length
+    ? arr.map((c,i)=>`${i+1}. ${esc(c.name)}<i>（${esc(c.company || '個人會員')}・${c.votes} 票）</i>`).join('　')
+    : '<i>無</i>';
+  H.push(`<h2>六、當選名單<span class="en">ELECTED</span></h2>
+    <div class="elected-box"><div class="ttl">第六屆理事（${listOf('director','elected').length} 人）</div>
+      <div class="names">${namesHtml(listOf('director','elected'))}</div></div>
+    <div class="elected-box"><div class="ttl">第六屆候補理事（${listOf('director','reserve').length} 人・依得票順序）</div>
+      <div class="names">${namesHtml(listOf('director','reserve'))}</div></div>
+    <div class="elected-box"><div class="ttl">第六屆監事（${listOf('supervisor','elected').length} 人）</div>
+      <div class="names">${namesHtml(listOf('supervisor','elected'))}</div></div>
+    <div class="elected-box"><div class="ttl">第六屆候補監事（${listOf('supervisor','reserve').length} 人・依得票順序）</div>
+      <div class="names">${namesHtml(listOf('supervisor','reserve'))}</div></div>`);
+
+  const ties = cands.filter(c=>c.status === 'tiebreak');
+  H.push(`<h2>七、附註<span class="en">NOTES</span></h2>
+    <div class="note">
+      一、當選與候補之判定依得票數高低順序排列；<b>得票數為零者不予當選，寧使席次從缺</b>，不以號次遞補。<br>
+      二、得票相同而同時落在應選名額（或候補名額）之內者，全數當選（或候補）；
+          同票組跨越當選與候補之分界線時，依人民團體選舉罷免慣例<b>當場抽籤決定</b>，
+          本系統不以號次或其他方式自動決定名次。
+          ${ties.length ? `本次選舉<b>有 ${ties.length} 位候選人須抽籤</b>（${ties.map(c=>esc(c.name)).join('、')}），抽籤結果請於本欄補述。`
+                        : '本次選舉<b>未發生須抽籤之同票情形</b>。'}<br>
+      三、常務理事、理事長及常務監事，依本會章程第十八條、第二十條，
+          於理事會、監事會分別互選產生，其開票結果另表列明。<br>
+      四、本表各項數據由本會選舉開票系統即時產生，得票數以監票人複核後計入之有效票為準。
+    </div>`);
+
+  H.push(`<div class="sign">
+      <div>會議主席<br><span class="fill">（簽章）</span></div>
+      <div>監票人<br><span class="fill">（簽章）</span></div>
+      <div>計票人<br><span class="fill">（簽章）</span></div>
+      <div>紀錄<br><span class="fill">（簽章）</span></div>
+    </div>
+    <div class="foot">
+      <span>台灣科技農企業發展協會　${esc(election.title)}</span>
+      <span>本表產生時間：${new Date().toLocaleString('zh-TW',{hour12:false})}</span>
+    </div>`);
+
+  document.getElementById('sheet').innerHTML = H.join('');
+  document.getElementById('tb-note').textContent =
+    `理事 ${sD.valid} 張有效票・監事 ${sS.valid} 張有效票`;
+}
+</script>
+</body>
+</html>

@@ -9,6 +9,7 @@ Disallow: /scan/
 Disallow: /checkin/
 Disallow: /vote/
 Disallow: /runoff/
+Disallow: /election-report/
 Disallow: /print/
 Disallow: /portal.html
 Disallow: /docs/
