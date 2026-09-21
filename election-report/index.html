@@ -120,6 +120,8 @@ const MEETING = {
   method:'無記名連記法，紙本選票現場圈選，投票結束後當場開票，以電子判讀系統計票並由監票人複核'
 };
 const ed = (key, cls) => `<span class="ed${cls?' '+cls:''}" contenteditable="true" data-k="${key}">${MEETING[key]}</span>`;
+// 現場紙本為準、系統無法查證的數字（發出票數、委託書件數）：可於頁面直接改寫
+const edn = v => `<span class="ed" contenteditable="true">${v}</span>`;
 const POS = { director:{ label:'理事' }, supervisor:{ label:'監事' } };
 
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -182,7 +184,6 @@ function render(election, roster, proxies, scans, cands){
   // 委託人縱於餐會時段報到，其投票權已委託他人，不另發給選票。
   const proxyVoteUsed = act.filter(p=>p.proxy_vote && inTimeNames.has(p.delegate_name)).length;
   const selfWaived    = act.filter(p=>p.proxy_vote && inTimeNames.has(p.principal_name)).length;
-  const issuable      = inTime.length - selfWaived + proxyVoteUsed;   // 應發選票數
   const fmtT = d => d ? d.toLocaleTimeString('zh-TW',{hour12:false, timeZone:'Asia/Taipei'}) : '—';
 
   /* ── 選票統計（以電子判讀系統計入者為準）──────────────────────── */
@@ -239,38 +240,37 @@ function render(election, roster, proxies, scans, cands){
               以第一張選票開始開票之時間 ${fmtT(closeAt)} 為截止界線</td></tr>
       <tr><td>投票結束後始報到者（未參與投票）</td><td class="c mono">${lateIn.length}</td>
           <td>${lateIn.length ? lateIn.map(r=>`${esc(r.name)} ${fmtT(new Date(r.check_in_time))}`).join('、') : '無'}</td></tr>
-      <tr><td>委託出席（受託人代為出席）</td><td class="c mono">${act.filter(p=>p.proxy_attend).length}</td>
-          <td>依章程受理之出席委託書件數</td></tr>
-      <tr><td>委託投票（受託人代為行使投票權）</td><td class="c mono">${proxyVoteUsed}</td>
-          <td>${proxyNames.join('、') || '無'}</td></tr>
+      <tr><td>委託出席（受託人代為出席）</td><td class="c mono">${edn(act.filter(p=>p.proxy_attend).length)}</td>
+          <td>以現場受理之紙本委託書為準；線上系統登錄 ${act.filter(p=>p.proxy_attend).length} 件</td></tr>
+      <tr><td>委託投票（受託人代為行使投票權）</td><td class="c mono">${edn(proxyVoteUsed)}</td>
+          <td>以現場受理之紙本委託書為準；線上系統登錄 ${proxyVoteUsed} 件
+              （${proxyNames.join('、') || '無'}）</td></tr>
       <tr><td>已將投票權委託他人，本人不另發票者</td><td class="c mono">${selfWaived}</td>
           <td>${waivedNames.join('、') || '無'}；投票權已由受託人行使，本人縱於餐會時段報到亦不另發選票，避免一權二票</td></tr>
-      <tr style="background:#f4f6f1"><td><b>應發選票數</b></td><td class="c mono"><b>${issuable}</b></td>
-          <td>投票截止前領票票權 ${inTime.length} － 已委託他人代行 ${selfWaived} ＋ 受託代行 ${proxyVoteUsed}</td></tr>
-    </tbody></table>`);
+    </tbody></table>
+    <div class="note">本會受理之出席／投票委託書以<b>現場紙本正本</b>為準，部分委託書未及登錄線上系統，
+      故上表委託件數之欄位得由秘書處依紙本清點結果填寫。
+      <b>選票數一律以現場實際領出並投入票匭之選票為準</b>，詳見下表。</div>`);
 
   const row = (label, d, s, cls) => `<tr${cls?` style="background:#f4f6f1"`:''}>
       <td>${label}</td><td class="c mono">${d}</td><td class="c mono">${s}</td></tr>`;
   H.push(`<h2>三、選票統計<span class="en">BALLOT COUNT</span></h2>
     <table><thead><tr><th style="width:46%">項目</th><th style="width:27%">理事選票</th><th>監事選票</th></tr></thead>
     <tbody>
-      ${row('應發選票數', issuable, issuable)}
-      ${row('實際收回並計入之選票數', `<b>${sD.received}</b>`, `<b>${sS.received}</b>`)}
+      ${row('發出選票數（含受託代行）', edn(sD.received), edn(sS.received))}
+      ${row('實際收回並開出之選票數', `<b>${sD.received}</b>`, `<b>${sS.received}</b>`)}
       ${row('有效票', `<b>${sD.valid}</b>`, `<b>${sS.valid}</b>`)}
       ${row('無效票', sD.invalid, sS.invalid)}
       ${row('有效圈選總人次', sD.marks, sS.marks)}
       ${row('開票（選票判讀）時間', sD.span, sS.span, true)}
-    </tbody></table>`);
+    </tbody></table>
+    <div class="note">選票數以現場實際領出、投入票匭並完成開票判讀者為準。
+      每位出席會員（會員代表）領理事票、監事票各一張；受託代行投票者按受託件數加發。</div>`);
 
-  const gapD = sD.received - issuable, gapS = sS.received - issuable;
-  if(gapD !== 0 || gapS !== 0){
-    const dir = n => n > 0 ? `多 ${n} 張` : `少 ${-n} 張`;
+  if(sD.received !== sS.received){
     H.push(`<div class="note warn"><b>※ 待複核事項：</b>
-      依報到與委託紀錄推算之應發選票數為 ${issuable} 張，與實際計入之選票數
-      （理事 ${sD.received} 張、監事 ${sS.received} 張）不一致：理事票${dir(gapD)}、監事票${dir(gapS)}。
-      ${(gapD > 0 || gapS > 0) ? `可能原因為現場紙本委託書未全數登錄系統（系統現有委託書 ${act.length} 件），
-        或部分會員代表之領票未經系統登錄。` : `可能原因為領票後未投入票匭（棄權）或選票未完成掃描。`}
-      <b>本表送件前，請由監票人依現場領票簽名冊與委託書正本核對，並於本欄加註實際數字與說明。</b></div>`);
+      理事票 ${sD.received} 張與監事票 ${sS.received} 張數量不一致，
+      請由監票人依現場清點紀錄核對後於本欄加註說明。</div>`);
   }
 
   /* ── 得票明細 ── */
@@ -346,7 +346,9 @@ function render(election, roster, proxies, scans, cands){
   // 同一欄位在抬頭與表格各出現一次，失焦時同步，避免兩處內容不一致
   document.querySelectorAll('.ed').forEach(el=>{
     el.addEventListener('blur', ()=>{
-      const k = el.dataset.k, v = el.textContent.trim();
+      const k = el.dataset.k;
+      if(!k) return;                       // 純數字欄位（發出票數／委託件數）無需同步
+      const v = el.textContent.trim();
       MEETING[k] = v;
       document.querySelectorAll(`.ed[data-k="${k}"]`).forEach(o=>{ if(o !== el) o.textContent = v; });
     });
