@@ -1416,7 +1416,19 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div id="lb-mode-card" style="display:none;">
       <input id="lb-lead" placeholder="前導訊息（選填，卡片前先送一句話）" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;margin-bottom:12px;">
       <div id="lb-cards"></div>
-      <button class="btn btn-outline btn-sm" onclick="addLbCard()" style="margin-top:6px;">＋ 新增卡片</button>
+      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="addLbCard()">＋ 新增卡片</button>
+        <button class="btn btn-outline btn-sm" onclick="toggleLbDraft()" id="lb-draft-btn">📋 匯入／匯出草稿</button>
+        <span style="font-size:11px;color:var(--gray);">草稿可存成文字保留，下次直接貼回來</span>
+      </div>
+      <div id="lb-draft-box" style="display:none;margin-top:10px;">
+        <textarea id="lb-draft" placeholder="貼上草稿 JSON 後按「載入」；或按「產生」把目前內容複製走" style="width:100%;min-height:120px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px;font-size:12px;line-height:1.6;resize:vertical;outline:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-gold btn-sm" onclick="importLbDraft()">⬇ 載入草稿</button>
+          <button class="btn btn-outline btn-sm" onclick="exportLbDraft()">⬆ 產生目前內容</button>
+          <span id="lb-draft-msg" style="font-size:12px;color:var(--gray);align-self:center;"></span>
+        </div>
+      </div>
       <div style="margin-top:16px;">
         <div style="font-size:12px;color:var(--gray);margin-bottom:8px;">預覽（實際外觀以 LINE 為準，卡片可左右滑動）</div>
         <div id="lb-preview" style="display:flex;gap:12px;overflow-x:auto;padding:4px 2px 10px;"></div>
@@ -3919,6 +3931,38 @@ async function uploadLbImage(i, input){
     renderLbCards();
     st.style.color='#66bb6a'; st.textContent='✓ 圖片已上傳';
   }catch(e){ st.style.color='#ef5350'; st.textContent='上傳失敗：'+e.message; }
+}
+
+/* 草稿匯入／匯出：把整組卡片存成一段 JSON，免得每次都要重打，
+   也讓別人把排好的內容直接傳過來貼上就能發。 */
+function toggleLbDraft(){
+  const box = document.getElementById('lb-draft-box');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  if(box.style.display === 'block' && !document.getElementById('lb-draft').value.trim()) exportLbDraft();
+}
+function exportLbDraft(){
+  const draft = { lead: document.getElementById('lb-lead').value,
+                  cards: lbCards.map(({img,title,desc,btn,link})=>({img,title,desc,btn,link})) };
+  document.getElementById('lb-draft').value = JSON.stringify(draft, null, 2);
+  document.getElementById('lb-draft-msg').textContent = '已產生，可全選複製保存';
+}
+function importLbDraft(){
+  const msg = document.getElementById('lb-draft-msg');
+  let d;
+  try{ d = JSON.parse(document.getElementById('lb-draft').value); }
+  catch(e){ msg.style.color='#ef5350'; msg.textContent='JSON 格式有誤：'+e.message; return; }
+  const cards = Array.isArray(d) ? d : (Array.isArray(d.cards) ? d.cards : null);
+  if(!cards){ msg.style.color='#ef5350'; msg.textContent='找不到 cards 陣列'; return; }
+  if(cards.length > LB_MAX_CARDS){ msg.style.color='#ef5350'; msg.textContent=`最多 ${LB_MAX_CARDS} 張卡片`; return; }
+  if(!Array.isArray(d)) document.getElementById('lb-lead').value = String(d.lead || '');
+  lbCards = cards.map(c=>({
+    img:String(c.img||''), w:0, h:0,
+    title:String(c.title||''), desc:String(c.desc||''),
+    btn:String(c.btn||'查看詳情'), link:String(c.link||'')
+  }));
+  lbCards.forEach((c,i)=>{ if(c.img) loadLbImageSize(i, c.img); });
+  renderLbCards();
+  msg.style.color='#66bb6a'; msg.textContent=`已載入 ${lbCards.length} 張卡片`;
 }
 
 function renderLbCards(){
