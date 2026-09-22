@@ -4130,14 +4130,9 @@ async function sendLineBroadcast(isTest){
     if(d.ok){
       st.style.color='#66bb6a';
       st.textContent = isTest ? '✓ 已試發，請到手機 LINE 確認' : '✓ 已廣播給所有好友';
-      // 正式廣播才記進發信記錄；試發不留紀錄，避免混淆
-      if(!isTest){
-        try{ await fetch(`${SB_URL}/rest/v1/tada_mail_log`,{method:'POST',
-          headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
-          body:JSON.stringify({to_email:'LINE 官方帳號好友', name:'全體好友',
-            subject:'[LINE廣播] '+built.summary.split('\n')[0].slice(0,80), category:'line_broadcast', status:'sent'})}); }catch(_){}
-        renderMailLog();
-      }
+      // 發送紀錄改由 edge function 以 service role 寫入
+      // （tada_mail_log 對 anon 只開放讀取，前端寫入會靜默失敗）
+      if(!isTest) renderMailLog();
     } else if(r.status===403){ st.style.color='#ef5350'; st.textContent='金鑰錯誤（403）'; }
     else { st.style.color='#ef5350'; st.textContent='失敗：'+(d.error||d.detail||('HTTP '+r.status)); }
   }catch(e){ st.style.color='#ef5350'; st.textContent='連線失敗：'+e.message; }

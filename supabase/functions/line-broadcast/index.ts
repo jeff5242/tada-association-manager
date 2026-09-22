@@ -82,5 +82,44 @@ Deno.serve(async (req) => {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
-  return json({ ok: r.ok, status: r.status, mode: endpoint, count: messages.length, detail: await r.text() });
+  const detail = await r.text();
+
+  // 發送紀錄由伺服器端寫入：tada_mail_log 對 anon 只開放讀取，
+  // 前端寫入會靜默失敗（fetch 不會 throw），記錄不到「何時廣播過什麼」。
+  await logSend(endpoint, messages, r.ok, detail);
+
+  return json({ ok: r.ok, status: r.status, mode: endpoint, count: messages.length, detail });
 });
+
+/** 從訊息內容取一行摘要：文字取首行，Flex 取 altText */
+function summarize(messages: unknown[]): string {
+  for (const m of messages as Array<{ type?: string; text?: string; altText?: string }>) {
+    if (m.type === 'text' && m.text) return m.text.split('\n')[0];
+    if (m.type === 'flex' && m.altText) return m.altText;
+  }
+  return `${messages.length} 則訊息`;
+}
+
+async function logSend(mode: string, messages: unknown[], ok: boolean, detail: string) {
+  const SB_URL = Deno.env.get('SUPABASE_URL');
+  const SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!SB_URL || !SRK) return;                      // 環境不完整就跳過，不影響發送結果
+  const label = mode === 'broadcast' ? '廣播' : mode === 'multicast' ? '指定多人' : '指定單人';
+  try {
+    await fetch(`${SB_URL}/rest/v1/tada_mail_log`, {
+      method: 'POST',
+      headers: {
+        apikey: SRK, Authorization: `Bearer ${SRK}`,
+        'Content-Type': 'application/json', Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        category: 'line_broadcast',
+        to_email: mode === 'broadcast' ? 'LINE 官方帳號好友' : 'LINE 指定對象',
+        name: label,
+        subject: `[LINE${label}] ${summarize(messages).slice(0, 120)}`,
+        status: ok ? 'sent' : 'failed',
+        error: ok ? null : detail.slice(0, 500),
+      }),
+    });
+  } catch (_) { /* 記錄失敗不影響已送出的訊息 */ }
+}
