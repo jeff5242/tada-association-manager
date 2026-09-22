@@ -30,8 +30,11 @@ Deno.serve(async (req) => {
   const token = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') || '';
   if (!token) return json({ ok: false, error: 'no line token' }, 500);
 
-  let body: { text?: string; messages?: unknown[]; to?: string | string[] };
+  let body: { text?: string; messages?: unknown[]; to?: string | string[]; verify?: boolean };
   try { body = await req.json(); } catch { return json({ ok: false, error: 'bad json' }, 400); }
+
+  // 只驗金鑰、不發任何訊息：讓後台在排版前就能確認金鑰正確
+  if (body.verify) return json({ ok: true, verified: true });
 
   let messages: unknown[];
   if (Array.isArray(body.messages)) {

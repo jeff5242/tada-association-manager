@@ -1438,6 +1438,7 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;">
       <input id="lb-key" type="password" placeholder="廣播金鑰" autocomplete="off" style="width:200px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;">
       <select id="lb-test-to" onfocus="loadLbTestTargets()" onmousedown="loadLbTestTargets()" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;max-width:220px;"><option value="">（試發對象）</option></select>
+      <button class="btn btn-outline btn-sm" onclick="verifyLbKey()">🔑 驗證金鑰</button>
       <button class="btn btn-outline btn-sm" onclick="sendLineBroadcast(true)">🧪 只試發給這個人</button>
       <button class="btn btn-gold btn-sm" onclick="sendLineBroadcast(false)">💬 廣播給所有好友</button>
       <span id="lb-status" style="font-size:12px;color:var(--gray);"></span>
@@ -4079,6 +4080,28 @@ async function loadLbTestTargets(){
     sel.dataset.loaded = '1';
     try{ const last = localStorage.getItem('tadaLbTestTo'); if(last) sel.value = last; }catch(_){}
   }catch(_){}
+}
+
+// 只驗金鑰、不送任何訊息。排完整組卡片才發現金鑰錯很浪費時間。
+async function verifyLbKey(){
+  const key = document.getElementById('lb-key').value.trim();
+  const st = document.getElementById('lb-status');
+  if(!key){ alert('請先輸入廣播金鑰'); return; }
+  st.style.color='var(--gray)'; st.textContent='驗證中…';
+  try{
+    const r = await fetch(`${SB_URL}/functions/v1/line-broadcast`, { method:'POST',
+      headers:{...SB_HEADERS,'Content-Type':'application/json','x-broadcast-key':key},
+      body: JSON.stringify({ verify:true }) });
+    if(r.ok){
+      try{ localStorage.setItem('tadaBroadcastKey', key); }catch(_){}
+      st.style.color='#66bb6a'; st.textContent='✓ 金鑰正確，已記在這台瀏覽器';
+    } else if(r.status===403){
+      st.style.color='#ef5350';
+      st.textContent='金鑰錯誤。請到 Supabase → Edge Functions → Secrets 重設 BROADCAST_KEY';
+    } else {
+      st.style.color='#ef5350'; st.textContent='驗證失敗：HTTP '+r.status;
+    }
+  }catch(e){ st.style.color='#ef5350'; st.textContent='連線失敗：'+e.message; }
 }
 
 async function sendLineBroadcast(isTest){
