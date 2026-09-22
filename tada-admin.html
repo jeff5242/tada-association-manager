@@ -1402,13 +1402,33 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="section-header"><div class="section-title">💬 LINE 廣播</div>
       <span style="font-size:11.5px;color:var(--gray);margin-left:10px;">發給官方帳號「所有好友」，發出後無法收回；LINE 免費方案每月訊息額度有限</span>
     </div>
-    <textarea id="lb-text" placeholder="輸入要廣播的訊息（純文字，可用表情符號）" style="width:100%;min-height:170px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
-    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
+    <div class="sub-tabs" style="margin-bottom:14px;">
+      <button class="sub-tab active" onclick="switchLbMode('text',this)">純文字</button>
+      <button class="sub-tab" onclick="switchLbMode('card',this)">圖文卡片</button>
+    </div>
+
+    <!-- 純文字 -->
+    <div id="lb-mode-text">
+      <textarea id="lb-text" placeholder="輸入要廣播的訊息（純文字，可用表情符號）" style="width:100%;min-height:170px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
+    </div>
+
+    <!-- 圖文卡片（Flex carousel）-->
+    <div id="lb-mode-card" style="display:none;">
+      <input id="lb-lead" placeholder="前導訊息（選填，卡片前先送一句話）" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;margin-bottom:12px;">
+      <div id="lb-cards"></div>
+      <button class="btn btn-outline btn-sm" onclick="addLbCard()" style="margin-top:6px;">＋ 新增卡片</button>
+      <div style="margin-top:16px;">
+        <div style="font-size:12px;color:var(--gray);margin-bottom:8px;">預覽（實際外觀以 LINE 為準，卡片可左右滑動）</div>
+        <div id="lb-preview" style="display:flex;gap:12px;overflow-x:auto;padding:4px 2px 10px;"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;">
       <input id="lb-key" type="password" placeholder="廣播金鑰" autocomplete="off" style="width:220px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;">
       <button class="btn btn-gold btn-sm" onclick="sendLineBroadcast()">💬 廣播給所有好友</button>
       <span id="lb-status" style="font-size:12px;color:var(--gray);"></span>
     </div>
-    <p style="font-size:11px;color:var(--gray);margin-top:8px;">金鑰輸入一次後會記在這台瀏覽器；金鑰保存在 Supabase（BROADCAST_KEY），遺失時請重設。</p>
+    <p style="font-size:11px;color:var(--gray);margin-top:8px;">金鑰輸入一次後會記在這台瀏覽器；金鑰保存在 Supabase（BROADCAST_KEY），遺失時請重設。圖片上傳前請先於 SQL Editor 執行 <code>supabase/tada_line_assets.sql</code>。</p>
   </div>
 
   <div class="section-card">
@@ -3833,20 +3853,172 @@ async function loadMailCenter(){
   try{ const k=localStorage.getItem('tadaBroadcastKey'); if(k) document.getElementById('lb-key').value=k; }catch(_){}
 }
 
-/* ── LINE 廣播（line-broadcast edge function，需 BROADCAST_KEY 金鑰）── */
+/* ══════════ LINE 廣播（line-broadcast edge function，需 BROADCAST_KEY 金鑰）══════════ */
+const LB_BUCKET = 'line-assets';     // 見 supabase/tada_line_assets.sql
+const LB_MAX_CARDS = 10;             // LINE carousel 上限 12 泡泡，留餘裕
+let lbMode = 'text';
+let lbCards = [];                    // {img, w, h, title, desc, btn, link}
+
+function switchLbMode(mode, el){
+  lbMode = mode;
+  document.querySelectorAll('#lb-mode-text,#lb-mode-card').forEach(d=>d.style.display='none');
+  document.getElementById(mode==='card'?'lb-mode-card':'lb-mode-text').style.display='block';
+  el.parentNode.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  if(mode==='card' && !lbCards.length) addLbCard();
+}
+
+function addLbCard(){
+  if(lbCards.length >= LB_MAX_CARDS) return alert(`最多 ${LB_MAX_CARDS} 張卡片`);
+  lbCards.push({ img:'', w:0, h:0, title:'', desc:'', btn:'查看詳情', link:'' });
+  renderLbCards();
+}
+function removeLbCard(i){ lbCards.splice(i,1); renderLbCards(); }
+function setLbField(i, field, value){ lbCards[i][field] = value; renderLbPreview(); }
+
+// 圖片尺寸決定 Flex hero 的 aspectRatio；直接用原圖比例，海報才不會被裁掉重點
+function loadLbImageSize(i, url){
+  const im = new Image();
+  im.onload = ()=>{ lbCards[i].w = im.naturalWidth; lbCards[i].h = im.naturalHeight; renderLbPreview(); };
+  im.onerror = ()=>{ lbCards[i].w = 0; lbCards[i].h = 0; renderLbPreview(); };
+  im.src = url;
+}
+function setLbImage(i, url){
+  lbCards[i].img = url.trim();
+  if(lbCards[i].img) loadLbImageSize(i, lbCards[i].img); else renderLbPreview();
+}
+
+async function uploadLbImage(i, input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(!/^image\/(jpeg|png)$/.test(file.type)) return alert('只接受 JPG 或 PNG');
+  if(file.size > 10*1024*1024) return alert('圖片請小於 10MB');
+  const st = document.getElementById('lb-status');
+  st.style.color='var(--gray)'; st.textContent='上傳圖片中…';
+  const ext = file.type === 'image/png' ? 'png' : 'jpg';
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  try{
+    const r = await fetch(`${SB_URL}/storage/v1/object/${LB_BUCKET}/${name}`, {
+      method:'POST',
+      headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type':file.type },
+      body:file
+    });
+    if(!r.ok){
+      const t = await r.text();
+      st.style.color='#ef5350';
+      st.textContent = /Bucket not found/i.test(t)
+        ? '找不到儲存空間，請先在 SQL Editor 執行 supabase/tada_line_assets.sql'
+        : '上傳失敗：'+t.slice(0,120);
+      return;
+    }
+    setLbImage(i, `${SB_URL}/storage/v1/object/public/${LB_BUCKET}/${name}`);
+    renderLbCards();
+    st.style.color='#66bb6a'; st.textContent='✓ 圖片已上傳';
+  }catch(e){ st.style.color='#ef5350'; st.textContent='上傳失敗：'+e.message; }
+}
+
+function renderLbCards(){
+  const box = document.getElementById('lb-cards');
+  const inp = 'background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:8px 10px;font-size:13px;outline:none;width:100%;font-family:inherit;';
+  box.innerHTML = lbCards.map((c,i)=>`
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--surface2);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <b style="font-size:13px;color:var(--gold-lt);">卡片 ${i+1}</b>
+        <button class="btn btn-sm btn-outline" style="margin-left:auto;color:#ef5350;border-color:rgba(239,83,80,.4);" onclick="removeLbCard(${i})">刪除</button>
+      </div>
+      <div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start;">
+        <div>
+          ${c.img?`<img src="${escapeHtml(c.img)}" style="width:120px;border-radius:6px;display:block;margin-bottom:6px;">`:''}
+          <input type="file" accept="image/jpeg,image/png" style="font-size:11px;width:120px;" onchange="uploadLbImage(${i},this)">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <input style="${inp}" placeholder="圖片網址（上傳後自動帶入，也可直接貼）" value="${escapeHtml(c.img)}" onchange="setLbImage(${i},this.value);renderLbCards()">
+          <input style="${inp}" placeholder="標題（必填）" value="${escapeHtml(c.title)}" oninput="setLbField(${i},'title',this.value)">
+          <textarea style="${inp}min-height:66px;resize:vertical;" placeholder="說明文字（時間、地點、對象…）" oninput="setLbField(${i},'desc',this.value)">${escapeHtml(c.desc)}</textarea>
+          <div style="display:flex;gap:8px;">
+            <input style="${inp}max-width:140px;" placeholder="按鈕文字" value="${escapeHtml(c.btn)}" oninput="setLbField(${i},'btn',this.value)">
+            <input style="${inp}" placeholder="按鈕連結 https://…" value="${escapeHtml(c.link)}" oninput="setLbField(${i},'link',this.value)">
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+  renderLbPreview();
+}
+
+function renderLbPreview(){
+  const box = document.getElementById('lb-preview');
+  if(!box) return;
+  box.innerHTML = lbCards.map(c=>`
+    <div style="flex:0 0 230px;background:#fff;border-radius:12px;overflow:hidden;color:#222;">
+      ${c.img?`<img src="${escapeHtml(c.img)}" style="width:100%;display:block;">`:'<div style="height:110px;background:#e8e8e8;"></div>'}
+      <div style="padding:10px 12px;">
+        <div style="font-weight:700;font-size:14px;line-height:1.35;">${escapeHtml(c.title)||'（未填標題）'}</div>
+        <div style="font-size:11.5px;color:#666;white-space:pre-wrap;margin-top:4px;line-height:1.6;">${escapeHtml(c.desc)}</div>
+      </div>
+      ${c.link?`<div style="padding:0 12px 12px;"><div style="background:#2d5235;color:#fff;text-align:center;border-radius:6px;padding:8px;font-size:13px;font-weight:700;">${escapeHtml(c.btn)||'查看詳情'}</div></div>`:''}
+    </div>`).join('') || '<div style="font-size:12px;color:var(--gray);">尚未新增卡片</div>';
+}
+
+// 依卡片組出 LINE messages 陣列；回傳 null 代表資料不完整（已跳提示）
+function buildLbMessages(){
+  if(lbMode === 'text'){
+    const text = document.getElementById('lb-text').value.trim();
+    if(!text) { alert('請輸入訊息內容'); return null; }
+    return { messages:[{ type:'text', text }], summary:text };
+  }
+  const cards = lbCards.filter(c=>c.title.trim());
+  if(!cards.length){ alert('請至少填一張卡片的標題'); return null; }
+  const bad = cards.find(c=>!c.img);
+  if(bad){ alert(`「${bad.title}」還沒有圖片`); return null; }
+
+  const bubbles = cards.map(c=>{
+    const uri = c.link.trim();
+    const hero = {
+      type:'image', url:c.img, size:'full', aspectMode:'cover',
+      aspectRatio: (c.w && c.h) ? `${c.w}:${c.h}` : '20:13'
+    };
+    if(uri) hero.action = { type:'uri', uri };
+    const body = [{ type:'text', text:c.title.trim(), weight:'bold', size:'lg', wrap:true }];
+    if(c.desc.trim()) body.push({ type:'text', text:c.desc.trim(), size:'sm', color:'#666666', wrap:true, margin:'md' });
+    const bubble = {
+      type:'bubble', size:'mega',
+      hero,
+      body:{ type:'box', layout:'vertical', contents:body }
+    };
+    if(uri){
+      bubble.footer = { type:'box', layout:'vertical', contents:[
+        { type:'button', style:'primary', color:'#2d5235', height:'sm',
+          action:{ type:'uri', label:(c.btn.trim()||'查看詳情').slice(0,20), uri } }
+      ]};
+    }
+    return bubble;
+  });
+
+  const messages = [];
+  const lead = document.getElementById('lb-lead').value.trim();
+  if(lead) messages.push({ type:'text', text:lead });
+  messages.push({
+    type:'flex',
+    altText: cards.map(c=>c.title.trim()).join('／').slice(0,395),
+    contents: bubbles.length === 1 ? bubbles[0] : { type:'carousel', contents:bubbles }
+  });
+  return { messages, summary:(lead?lead+'\n':'') + cards.map(c=>'・'+c.title.trim()).join('\n') };
+}
+
 async function sendLineBroadcast(){
-  const text=document.getElementById('lb-text').value.trim();
-  const key=document.getElementById('lb-key').value.trim();
-  const st=document.getElementById('lb-status');
-  if(!text){ alert('請輸入訊息內容'); return; }
+  const key = document.getElementById('lb-key').value.trim();
+  const st = document.getElementById('lb-status');
+  const built = buildLbMessages();
+  if(!built) return;
   if(!key){ alert('請輸入廣播金鑰'); return; }
-  if(!confirm('確定透過 LINE 官方帳號廣播給「所有好友」？發出後無法收回。\n\n──訊息預覽──\n'+text.slice(0,150)+(text.length>150?'…':''))) return;
+  if(!confirm('確定透過 LINE 官方帳號廣播給「所有好友」？發出後無法收回。\n\n──訊息預覽──\n'
+              + built.summary.slice(0,200) + (built.summary.length>200?'…':''))) return;
   try{ localStorage.setItem('tadaBroadcastKey',key); }catch(_){}
   st.style.color='var(--gray)'; st.textContent='發送中…';
   try{
     const r=await fetch(`${SB_URL}/functions/v1/line-broadcast`,{method:'POST',
       headers:{...SB_HEADERS,'Content-Type':'application/json','x-broadcast-key':key},
-      body:JSON.stringify({text})});
+      body:JSON.stringify({ messages: built.messages })});
     const d=await r.json().catch(()=>({}));
     if(d.ok){
       st.style.color='#66bb6a'; st.textContent='✓ 已廣播給所有好友';
@@ -3854,7 +4026,7 @@ async function sendLineBroadcast(){
       try{ await fetch(`${SB_URL}/rest/v1/tada_mail_log`,{method:'POST',
         headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify({to_email:'LINE 官方帳號好友', name:'全體好友',
-          subject:'[LINE廣播] '+text.split('\n')[0].slice(0,80), category:'line_broadcast', status:'sent'})}); }catch(_){}
+          subject:'[LINE廣播] '+built.summary.split('\n')[0].slice(0,80), category:'line_broadcast', status:'sent'})}); }catch(_){}
       renderMailLog();
     } else if(r.status===403){ st.style.color='#ef5350'; st.textContent='金鑰錯誤（403）'; }
     else { st.style.color='#ef5350'; st.textContent='失敗：'+(d.error||d.detail||('HTTP '+r.status)); }
