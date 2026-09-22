@@ -17,11 +17,20 @@
 const MAX_MESSAGES = 5;
 const MAX_TEXT_LEN = 4900;
 
+// 後台是瀏覽器頁面，且帶自訂標頭 x-broadcast-key，
+// 瀏覽器會先送 OPTIONS 預檢；少了這段預檢會失敗，前端只看得到 "Failed to fetch"。
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-broadcast-key',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 const json = (o: unknown, status = 200) =>
-  new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json' } });
+  new Response(JSON.stringify(o), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
 Deno.serve(async (req) => {
-  if (req.method !== 'POST') return new Response('method not allowed', { status: 405 });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  if (req.method !== 'POST') return new Response('method not allowed', { status: 405, headers: CORS });
 
   const expect = Deno.env.get('BROADCAST_KEY') || '';
   if (!expect || (req.headers.get('x-broadcast-key') || '') !== expect) {
