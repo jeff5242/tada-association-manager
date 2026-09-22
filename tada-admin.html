@@ -1424,10 +1424,13 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     </div>
 
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center;">
-      <input id="lb-key" type="password" placeholder="廣播金鑰" autocomplete="off" style="width:220px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;">
-      <button class="btn btn-gold btn-sm" onclick="sendLineBroadcast()">💬 廣播給所有好友</button>
+      <input id="lb-key" type="password" placeholder="廣播金鑰" autocomplete="off" style="width:200px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;">
+      <select id="lb-test-to" onfocus="loadLbTestTargets()" onmousedown="loadLbTestTargets()" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;max-width:220px;"><option value="">（試發對象）</option></select>
+      <button class="btn btn-outline btn-sm" onclick="sendLineBroadcast(true)">🧪 只試發給這個人</button>
+      <button class="btn btn-gold btn-sm" onclick="sendLineBroadcast(false)">💬 廣播給所有好友</button>
       <span id="lb-status" style="font-size:12px;color:var(--gray);"></span>
     </div>
+    <p style="font-size:11px;color:var(--gray);margin-top:6px;">建議先試發給自己，在手機上確認版面與連結無誤，再按廣播。</p>
     <p style="font-size:11px;color:var(--gray);margin-top:8px;">金鑰輸入一次後會記在這台瀏覽器；金鑰保存在 Supabase（BROADCAST_KEY），遺失時請重設。圖片上傳前請先於 SQL Editor 執行 <code>supabase/tada_line_assets.sql</code>。</p>
   </div>
 
@@ -3865,6 +3868,7 @@ function switchLbMode(mode, el){
   document.getElementById(mode==='card'?'lb-mode-card':'lb-mode-text').style.display='block';
   el.parentNode.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
+  loadLbTestTargets();
   if(mode==='card' && !lbCards.length) addLbCard();
 }
 
@@ -4005,29 +4009,56 @@ function buildLbMessages(){
   return { messages, summary:(lead?lead+'\n':'') + cards.map(c=>'・'+c.title.trim()).join('\n') };
 }
 
-async function sendLineBroadcast(){
+// 試發對象＝名冊中已綁定 LINE 的會員
+async function loadLbTestTargets(){
+  const sel = document.getElementById('lb-test-to');
+  if(!sel || sel.dataset.loaded) return;
+  try{
+    const r = await fetch(`${SB_URL}/rest/v1/tada_members?line_user_id=not.is.null&hidden=eq.false`
+      + `&select=name,member_no,line_user_id&order=name`, { headers: SB_HEADERS });
+    if(!r.ok) return;
+    const rows = await r.json();
+    sel.innerHTML = '<option value="">（試發對象）</option>'
+      + rows.map(m=>`<option value="${escapeHtml(m.line_user_id)}">${escapeHtml(m.name)}（${escapeHtml(m.member_no)}）</option>`).join('');
+    sel.dataset.loaded = '1';
+    try{ const last = localStorage.getItem('tadaLbTestTo'); if(last) sel.value = last; }catch(_){}
+  }catch(_){}
+}
+
+async function sendLineBroadcast(isTest){
   const key = document.getElementById('lb-key').value.trim();
   const st = document.getElementById('lb-status');
+  const to = document.getElementById('lb-test-to').value;
   const built = buildLbMessages();
   if(!built) return;
   if(!key){ alert('請輸入廣播金鑰'); return; }
-  if(!confirm('確定透過 LINE 官方帳號廣播給「所有好友」？發出後無法收回。\n\n──訊息預覽──\n'
+  if(isTest && !to){ alert('請先選擇試發對象'); return; }
+  if(isTest){ try{ localStorage.setItem('tadaLbTestTo', to); }catch(_){} }
+  const who = isTest
+    ? '試發給「' + document.getElementById('lb-test-to').selectedOptions[0].textContent + '」'
+    : '廣播給「所有好友」？發出後無法收回。';
+  if(!confirm('確定' + who + '\n\n──訊息預覽──\n'
               + built.summary.slice(0,200) + (built.summary.length>200?'…':''))) return;
   try{ localStorage.setItem('tadaBroadcastKey',key); }catch(_){}
   st.style.color='var(--gray)'; st.textContent='發送中…';
   try{
+    const payload = { messages: built.messages };
+    if(isTest) payload.to = to;
     const r=await fetch(`${SB_URL}/functions/v1/line-broadcast`,{method:'POST',
       headers:{...SB_HEADERS,'Content-Type':'application/json','x-broadcast-key':key},
-      body:JSON.stringify({ messages: built.messages })});
+      body:JSON.stringify(payload)});
     const d=await r.json().catch(()=>({}));
     if(d.ok){
-      st.style.color='#66bb6a'; st.textContent='✓ 已廣播給所有好友';
-      // 記進發信記錄，事後查得到「何時廣播過什麼」
-      try{ await fetch(`${SB_URL}/rest/v1/tada_mail_log`,{method:'POST',
-        headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({to_email:'LINE 官方帳號好友', name:'全體好友',
-          subject:'[LINE廣播] '+built.summary.split('\n')[0].slice(0,80), category:'line_broadcast', status:'sent'})}); }catch(_){}
-      renderMailLog();
+      st.style.color='#66bb6a';
+      st.textContent = isTest ? '✓ 已試發，請到手機 LINE 確認' : '✓ 已廣播給所有好友';
+      // 正式廣播才記進發信記錄；試發不留紀錄，避免混淆
+      if(!isTest){
+        try{ await fetch(`${SB_URL}/rest/v1/tada_mail_log`,{method:'POST',
+          headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify({to_email:'LINE 官方帳號好友', name:'全體好友',
+            subject:'[LINE廣播] '+built.summary.split('\n')[0].slice(0,80), category:'line_broadcast', status:'sent'})}); }catch(_){}
+        renderMailLog();
+      }
     } else if(r.status===403){ st.style.color='#ef5350'; st.textContent='金鑰錯誤（403）'; }
     else { st.style.color='#ef5350'; st.textContent='失敗：'+(d.error||d.detail||('HTTP '+r.status)); }
   }catch(e){ st.style.color='#ef5350'; st.textContent='連線失敗：'+e.message; }

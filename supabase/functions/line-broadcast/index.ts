@@ -2,10 +2,15 @@
 // 保護：需帶 x-broadcast-key 標頭，值須等於 Supabase secret BROADCAST_KEY，
 // 避免 anon key 外流（本來就是公開的）被拿來亂發廣播。
 //
-// 用法擇一：
+// 內容擇一：
 //   { "text": "純文字內容" }                      ← 單則文字（原有用法，保留相容）
 //   { "messages": [ {...}, {...} ] }              ← LINE message 物件陣列（圖片／Flex／文字混搭）
-// LINE 單次廣播上限 5 則訊息。
+// LINE 單次上限 5 則訊息。
+//
+// 對象：
+//   不帶 to            → 廣播給所有好友
+//   "to": "Uxxx"       → 只發給這個人（正式廣播前先試發給自己，強烈建議）
+//   "to": ["U1","U2"]  → 指定多人（multicast，上限 500 人）
 //
 // 部署：supabase functions deploy line-broadcast --use-api --no-verify-jwt --project-ref ldjugtfxtxnpvkqvjxew
 
@@ -25,7 +30,7 @@ Deno.serve(async (req) => {
   const token = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') || '';
   if (!token) return json({ ok: false, error: 'no line token' }, 500);
 
-  let body: { text?: string; messages?: unknown[] };
+  let body: { text?: string; messages?: unknown[]; to?: string | string[] };
   try { body = await req.json(); } catch { return json({ ok: false, error: 'bad json' }, 400); }
 
   let messages: unknown[];
@@ -46,10 +51,24 @@ Deno.serve(async (req) => {
     messages = [{ type: 'text', text }];
   }
 
-  const r = await fetch('https://api.line.me/v2/bot/message/broadcast', {
+  // 指定對象 → push / multicast；未指定 → broadcast
+  const ID_RE = /^U[0-9a-f]{32}$/;
+  let endpoint = 'broadcast';
+  let payload: Record<string, unknown> = { messages };
+  if (body.to !== undefined) {
+    const list = (Array.isArray(body.to) ? body.to : [body.to]).map((s) => String(s).trim());
+    if (!list.length) return json({ ok: false, error: 'to empty' }, 400);
+    if (list.length > 500) return json({ ok: false, error: 'too many recipients (max 500)' }, 400);
+    const bad = list.find((u) => !ID_RE.test(u));
+    if (bad) return json({ ok: false, error: `bad line user id: ${bad}` }, 400);
+    endpoint = list.length === 1 ? 'push' : 'multicast';
+    payload = list.length === 1 ? { to: list[0], messages } : { to: list, messages };
+  }
+
+  const r = await fetch(`https://api.line.me/v2/bot/message/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify(payload),
   });
-  return json({ ok: r.ok, status: r.status, count: messages.length, detail: await r.text() });
+  return json({ ok: r.ok, status: r.status, mode: endpoint, count: messages.length, detail: await r.text() });
 });
