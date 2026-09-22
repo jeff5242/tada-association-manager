@@ -39,11 +39,14 @@ Deno.serve(async (req) => {
   const token = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') || '';
   if (!token) return json({ ok: false, error: 'no line token' }, 500);
 
-  let body: { text?: string; messages?: unknown[]; to?: string | string[]; verify?: boolean };
+  let body: { text?: string; messages?: unknown[]; to?: string | string[]; verify?: boolean; quota?: boolean };
   try { body = await req.json(); } catch { return json({ ok: false, error: 'bad json' }, 400); }
 
   // 只驗金鑰、不發任何訊息：讓後台在排版前就能確認金鑰正確
   if (body.verify) return json({ ok: true, verified: true });
+
+  // 查本月訊息額度與好友數：廣播是「一位好友算一則」，發之前要看得到還剩多少
+  if (body.quota) return json(await readQuota(token));
 
   let messages: unknown[];
   if (Array.isArray(body.messages)) {
@@ -122,4 +125,50 @@ async function logSend(mode: string, messages: unknown[], ok: boolean, detail: s
       }),
     });
   } catch (_) { /* 記錄失敗不影響已送出的訊息 */ }
+}
+
+
+/**
+ * 本月訊息額度概況。
+ *   type='limited' → value 為當月上限；type='none' → 方案不限則數
+ *   totalUsage 為本月已計入額度的發送則數（LINE 於每月 1 日重置）
+ * 好友數取自 insight，LINE 的統計資料到前一日為止，當日資料尚未產生。
+ */
+async function readQuota(token: string) {
+  const h = { Authorization: `Bearer ${token}` };
+  const API = 'https://api.line.me/v2/bot';
+
+  const tw = new Date(Date.now() + 8 * 3600 * 1000);      // 台北時間
+  tw.setUTCDate(tw.getUTCDate() - 1);                     // insight 只到前一日
+  const day = tw.toISOString().slice(0, 10).replace(/-/g, '');
+
+  const grab = async (url: string) => {
+    try {
+      const r = await fetch(url, { headers: h });
+      return r.ok ? await r.json() : null;
+    } catch (_) { return null; }
+  };
+
+  const [quota, used, insight] = await Promise.all([
+    grab(`${API}/message/quota`),
+    grab(`${API}/message/quota/consumption`),
+    grab(`${API}/insight/followers?date=${day}`),
+  ]);
+
+  if (!quota) return { ok: false, error: 'quota_unavailable' };
+
+  const limited = quota.type === 'limited';
+  const total = limited ? (quota.value ?? null) : null;
+  const totalUsage = used?.totalUsage ?? null;
+  const followers = insight?.status === 'ready' ? (insight.followers ?? null) : null;
+
+  return {
+    ok: true,
+    limited,
+    total,
+    used: totalUsage,
+    remaining: (limited && total != null && totalUsage != null) ? Math.max(0, total - totalUsage) : null,
+    followers,
+    followers_date: followers != null ? day : null,
+  };
 }

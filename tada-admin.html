@@ -1402,6 +1402,20 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <div class="section-header"><div class="section-title">💬 LINE 廣播</div>
       <span style="font-size:11.5px;color:var(--gray);margin-left:10px;">發給官方帳號「所有好友」，發出後無法收回；LINE 免費方案每月訊息額度有限</span>
     </div>
+    <div id="lb-quota" style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;background:var(--surface2);">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <b style="font-size:13px;color:var(--gold-lt);">📊 本月訊息額度</b>
+        <span id="lb-quota-text" style="font-size:12.5px;color:var(--gray);">尚未查詢</span>
+        <button class="btn btn-outline btn-sm" style="margin-left:auto;" onclick="loadLbQuota()">↻ 查詢額度</button>
+      </div>
+      <div id="lb-quota-bar" style="display:none;margin-top:10px;">
+        <div style="height:8px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden;">
+          <div id="lb-quota-fill" style="height:100%;width:0;background:linear-gradient(90deg,#c4922a,#e0b458);transition:width .4s;"></div>
+        </div>
+        <div id="lb-quota-note" style="font-size:11.5px;color:var(--gray);margin-top:7px;line-height:1.7;"></div>
+      </div>
+    </div>
+
     <div class="sub-tabs" style="margin-bottom:14px;">
       <button class="sub-tab active" onclick="switchLbMode('text',this)">純文字</button>
       <button class="sub-tab" onclick="switchLbMode('card',this)">圖文卡片</button>
@@ -3866,7 +3880,10 @@ async function loadMailCenter(){
   await populateMcTemplates();
   loadMcMembers();
   renderMailLog();
-  try{ const k=localStorage.getItem('tadaBroadcastKey'); if(k) document.getElementById('lb-key').value=k; }catch(_){}
+  try{
+    const k = localStorage.getItem('tadaBroadcastKey');
+    if(k){ document.getElementById('lb-key').value = k; loadLbQuota(); }
+  }catch(_){}
 }
 
 /* ══════════ LINE 廣播（line-broadcast edge function，需 BROADCAST_KEY 金鑰）══════════ */
@@ -4082,6 +4099,65 @@ async function loadLbTestTargets(){
   }catch(_){}
 }
 
+/* ── 本月訊息額度 ─────────────────────────────────────────────────
+   LINE 廣播是「一位好友算一則」，額度不足時 LINE 會整批拒絕。
+   發送前先看得到剩多少，才不會發到一半被擋。 */
+async function loadLbQuota(){
+  const key = document.getElementById('lb-key').value.trim();
+  const txt = document.getElementById('lb-quota-text');
+  const bar = document.getElementById('lb-quota-bar');
+  if(!key){ txt.style.color='var(--gray)'; txt.textContent='請先輸入廣播金鑰再查詢'; return; }
+  txt.style.color='var(--gray)'; txt.textContent='查詢中…';
+  try{
+    const r = await fetch(`${SB_URL}/functions/v1/line-broadcast`, { method:'POST',
+      headers:{...SB_HEADERS,'Content-Type':'application/json','x-broadcast-key':key},
+      body: JSON.stringify({ quota:true }) });
+    if(r.status === 403){ txt.style.color='#ef5350'; txt.textContent='金鑰錯誤（403）'; return; }
+    const d = await r.json().catch(()=>({}));
+    if(!d.ok){ txt.style.color='#ef5350'; txt.textContent='查詢失敗：'+(d.error||('HTTP '+r.status)); return; }
+    renderLbQuota(d);
+  }catch(e){ txt.style.color='#ef5350'; txt.textContent='連線失敗：'+e.message; }
+}
+
+function renderLbQuota(d){
+  const txt = document.getElementById('lb-quota-text');
+  const bar = document.getElementById('lb-quota-bar');
+  const fill = document.getElementById('lb-quota-fill');
+  const note = document.getElementById('lb-quota-note');
+  const n = v => v == null ? '—' : Number(v).toLocaleString('zh-TW');
+
+  if(!d.limited){
+    txt.style.color='#66bb6a';
+    txt.textContent = `方案不限則數・本月已發送 ${n(d.used)} 則`;
+    bar.style.display='none';
+  }else{
+    const pct = (d.total && d.used != null) ? Math.min(100, Math.round(d.used / d.total * 100)) : 0;
+    const low = d.remaining != null && d.followers != null && d.remaining < d.followers;
+    txt.style.color = low ? '#ef5350' : (pct >= 80 ? '#e0b458' : '#66bb6a');
+    txt.textContent = `總額度 ${n(d.total)} 則・已使用 ${n(d.used)} 則・剩餘 ${n(d.remaining)} 則（${pct}%）`;
+    bar.style.display='block';
+    fill.style.width = pct + '%';
+    fill.style.background = low ? 'linear-gradient(90deg,#c0392b,#ef5350)'
+                                : (pct >= 80 ? 'linear-gradient(90deg,#b8860b,#e0b458)'
+                                             : 'linear-gradient(90deg,#c4922a,#e0b458)');
+  }
+
+  const lines = [];
+  if(d.followers != null){
+    lines.push(`好友數 ${n(d.followers)} 人（統計至 ${String(d.followers_date).replace(/(\d{4})(\d{2})(\d{2})/,'$1/$2/$3')}）`
+             + `；廣播一次約消耗 ${n(d.followers)} 則。`);
+    if(d.limited && d.remaining != null){
+      lines.push(d.remaining < d.followers
+        ? `⚠ 剩餘額度不足以廣播給全部好友，LINE 會整批拒絕。請改用「指定對象」分批發送，或等下月 1 日重置。`
+        : `目前額度可再廣播約 ${Math.floor(d.remaining / Math.max(1, d.followers))} 次。`);
+    }
+  }else{
+    lines.push('好友數統計尚未產生（LINE 的數據到前一日為止，新帳號需等隔日）。');
+  }
+  lines.push('額度每月 1 日重置；試發給單一對象只消耗 1 則。');
+  note.innerHTML = lines.join('<br>');
+}
+
 // 只驗金鑰、不送任何訊息。排完整組卡片才發現金鑰錯很浪費時間。
 async function verifyLbKey(){
   const key = document.getElementById('lb-key').value.trim();
@@ -4095,6 +4171,7 @@ async function verifyLbKey(){
     if(r.ok){
       try{ localStorage.setItem('tadaBroadcastKey', key); }catch(_){}
       st.style.color='#66bb6a'; st.textContent='✓ 金鑰正確，已記在這台瀏覽器';
+      loadLbQuota();
     } else if(r.status===403){
       st.style.color='#ef5350';
       st.textContent='金鑰錯誤。請到 Supabase → Edge Functions → Secrets 重設 BROADCAST_KEY';
@@ -4133,6 +4210,7 @@ async function sendLineBroadcast(isTest){
       // 發送紀錄改由 edge function 以 service role 寫入
       // （tada_mail_log 對 anon 只開放讀取，前端寫入會靜默失敗）
       if(!isTest) renderMailLog();
+      loadLbQuota();                 // 這次發送已扣額度，順手更新
     } else if(r.status===403){ st.style.color='#ef5350'; st.textContent='金鑰錯誤（403）'; }
     else { st.style.color='#ef5350'; st.textContent='失敗：'+(d.error||d.detail||('HTTP '+r.status)); }
   }catch(e){ st.style.color='#ef5350'; st.textContent='連線失敗：'+e.message; }
