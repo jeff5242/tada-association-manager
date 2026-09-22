@@ -3963,6 +3963,16 @@ function renderLbPreview(){
     </div>`).join('') || '<div style="font-size:12px;color:var(--gray);">尚未新增卡片</div>';
 }
 
+// LINE 的 hero aspectRatio 僅接受 1:3 ~ 3:1，超出範圍會整則訊息被退件。
+// 極端長圖夾到邊界（再由 aspectMode:'cover' 裁切），一般海報則維持原比例不變形。
+function lbAspectRatio(w, h){
+  if(!w || !h) return '20:13';
+  const r = w / h;
+  if(r > 3)   return '3:1';
+  if(r < 1/3) return '1:3';
+  return `${w}:${h}`;
+}
+
 // 依卡片組出 LINE messages 陣列；回傳 null 代表資料不完整（已跳提示）
 function buildLbMessages(){
   if(lbMode === 'text'){
@@ -3974,12 +3984,14 @@ function buildLbMessages(){
   if(!cards.length){ alert('請至少填一張卡片的標題'); return null; }
   const bad = cards.find(c=>!c.img);
   if(bad){ alert(`「${bad.title}」還沒有圖片`); return null; }
+  const insecure = cards.find(c=>!/^https:\/\//i.test(c.img) || (c.link.trim() && !/^https?:\/\//i.test(c.link.trim())));
+  if(insecure){ alert(`「${insecure.title}」的圖片網址必須是 https，連結必須是 http(s)`); return null; }
 
   const bubbles = cards.map(c=>{
     const uri = c.link.trim();
     const hero = {
       type:'image', url:c.img, size:'full', aspectMode:'cover',
-      aspectRatio: (c.w && c.h) ? `${c.w}:${c.h}` : '20:13'
+      aspectRatio: lbAspectRatio(c.w, c.h)
     };
     if(uri) hero.action = { type:'uri', uri };
     const body = [{ type:'text', text:c.title.trim(), weight:'bold', size:'lg', wrap:true }];
