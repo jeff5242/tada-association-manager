@@ -1393,6 +1393,15 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <input id="mc-subject" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:10px 12px;font-size:13px;outline:none;margin-bottom:10px;">
     <label style="font-size:12px;color:var(--gray);display:block;margin-bottom:4px;">內文（{姓名} 自動代換）</label>
     <textarea id="mc-body" style="width:100%;min-height:260px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
+    <!-- 信件圖片（選填）：有圖片就寄 HTML 信（圖片在最上方），同時附純文字版 -->
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;padding:10px 12px;border:1px dashed var(--border);border-radius:8px;">
+      <span style="font-size:12px;color:var(--gray);">🖼️ 信件圖片（選填，放在信件最上方）</span>
+      <label class="btn btn-outline btn-sm" style="cursor:pointer;">上傳圖片<input type="file" accept="image/jpeg,image/png" onchange="uploadMcImage(this)" style="display:none;"></label>
+      <img id="mc-img-preview" alt="信件圖片預覽" style="display:none;max-height:64px;border:1px solid var(--border);border-radius:4px;">
+      <input id="mc-img-link" type="url" placeholder="點圖片要前往的網址（選填，例如問卷連結）" style="flex:1;min-width:220px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:8px 11px;font-size:13px;outline:none;">
+      <button class="btn btn-outline btn-sm" id="mc-img-clear" style="display:none;" onclick="setMcImage('')">移除圖片</button>
+      <span id="mc-img-msg" style="font-size:12px;color:var(--gray);"></span>
+    </div>
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-outline btn-sm" onclick="saveAssemblyTpl()">💾 儲存範本</button>
       <span style="font-size:12px;color:var(--gray);align-self:center;">發送對象：</span>
@@ -4091,33 +4100,37 @@ function setLbImage(i, url){
   if(lbCards[i].img) loadLbImageSize(i, lbCards[i].img); else renderLbPreview();
 }
 
+/** 上傳 JPG／PNG 到公開圖片空間，回傳 https 網址；失敗丟出可直接顯示的錯誤訊息。
+ *  LINE 與 Email 都只能用「公開可讀的網址」顯示圖片，所以共用 line-assets bucket。 */
+async function uploadPublicImage(file){
+  if(!/^image\/(jpeg|png)$/.test(file.type)) throw new Error('只接受 JPG 或 PNG');
+  if(file.size > 10*1024*1024) throw new Error('圖片請小於 10MB');
+  const ext = file.type === 'image/png' ? 'png' : 'jpg';
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const r = await fetch(`${SB_URL}/storage/v1/object/${LB_BUCKET}/${name}`, {
+    method:'POST',
+    headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type':file.type },
+    body:file
+  });
+  if(!r.ok){
+    const t = await r.text();
+    throw new Error(/Bucket not found/i.test(t)
+      ? '找不到儲存空間，請先在 SQL Editor 執行 supabase/tada_line_assets.sql'
+      : '上傳失敗：'+t.slice(0,120));
+  }
+  return `${SB_URL}/storage/v1/object/public/${LB_BUCKET}/${name}`;
+}
+
 async function uploadLbImage(i, input){
   const file = input.files && input.files[0];
   if(!file) return;
-  if(!/^image\/(jpeg|png)$/.test(file.type)) return alert('只接受 JPG 或 PNG');
-  if(file.size > 10*1024*1024) return alert('圖片請小於 10MB');
   const st = document.getElementById('lb-status');
   st.style.color='var(--gray)'; st.textContent='上傳圖片中…';
-  const ext = file.type === 'image/png' ? 'png' : 'jpg';
-  const name = `${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
   try{
-    const r = await fetch(`${SB_URL}/storage/v1/object/${LB_BUCKET}/${name}`, {
-      method:'POST',
-      headers:{ apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, 'Content-Type':file.type },
-      body:file
-    });
-    if(!r.ok){
-      const t = await r.text();
-      st.style.color='#ef5350';
-      st.textContent = /Bucket not found/i.test(t)
-        ? '找不到儲存空間，請先在 SQL Editor 執行 supabase/tada_line_assets.sql'
-        : '上傳失敗：'+t.slice(0,120);
-      return;
-    }
-    setLbImage(i, `${SB_URL}/storage/v1/object/public/${LB_BUCKET}/${name}`);
+    setLbImage(i, await uploadPublicImage(file));
     renderLbCards();
     st.style.color='#66bb6a'; st.textContent='✓ 圖片已上傳';
-  }catch(e){ st.style.color='#ef5350'; st.textContent='上傳失敗：'+e.message; }
+  }catch(e){ st.style.color='#ef5350'; st.textContent=e.message; }
 }
 
 /* 草稿匯入／匯出：把整組卡片存成一段 JSON，免得每次都要重打，
@@ -4483,7 +4496,7 @@ async function sendAssemblyTest(){
   st.style.color='var(--gray)'; st.textContent='寄送中…';
   try{
     const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},
-      body:JSON.stringify({to:email,subject:'【測試】'+subject,text,category:'assembly-test',name:'測試'})});
+      body:JSON.stringify({to:email,subject:'【測試】'+subject,...mailContent(text),category:'assembly-test',name:'測試'})});
     const d=await res.json().catch(()=>({}));
     if(d.ok){ st.style.color='#66bb6a'; st.textContent='✓ 測試信已寄出至 '+email; renderMailLog(); }
     else{ const M={recipient_not_member:'此信箱不在白名單，請告知我加入測試白名單。',not_configured:'寄信尚未設定。',send_failed:'寄送失敗，請檢查 Resend。'};
@@ -4522,6 +4535,45 @@ async function loadRsvpSeatMap(){
 /* 信件變數代入。報到機支援 會員編號／統一編號／手機 三種查詢，
    87 位收件人全都有會員編號與手機，但只有 62 位有統編，
    所以 {報到資料} 只列出該會員實際有的欄位，不會出現空白行。 */
+/* ── 信件圖片：有圖片就寄 HTML（圖片＋原文，網址可點），同時附純文字版給不顯示圖片的信箱 ── */
+let mcImage = '';
+function setMcImage(url){
+  mcImage = url;
+  const pv = document.getElementById('mc-img-preview');
+  pv.src = url || ''; pv.style.display = url ? '' : 'none';
+  document.getElementById('mc-img-clear').style.display = url ? '' : 'none';
+  document.getElementById('mc-img-msg').textContent = url ? '已附圖片：將以 HTML 格式寄出' : '';
+}
+async function uploadMcImage(input){
+  const file = input.files && input.files[0];
+  input.value = '';
+  if(!file) return;
+  const msg = document.getElementById('mc-img-msg');
+  msg.style.color = 'var(--gray)'; msg.textContent = '上傳中…';
+  try{ setMcImage(await uploadPublicImage(file)); msg.style.color = '#66bb6a'; }
+  catch(e){ msg.style.color = '#ef5350'; msg.textContent = e.message; }
+}
+
+/** 純文字內文 → 簡單的 HTML 信：跳脫、網址變連結、換行保留；有圖片就放最上方 */
+function buildMailHtml(text, img, link){
+  const body = escapeHtml(text)
+    .replace(/https?:\/\/[^\s<）」』，。、；]+/g, url => `<a href="${url}" style="color:#2d5235;">${url}</a>`)
+    .replace(/\r?\n/g, '<br>');
+  const safeLink = /^https?:\/\//i.test(String(link||'').trim()) ? escapeHtml(String(link).trim()) : '';
+  const picture = img
+    ? `<img src="${escapeHtml(img)}" alt="" style="display:block;max-width:100%;height:auto;border:0;margin:0 0 20px;">`
+    : '';
+  return `<div style="max-width:600px;margin:0 auto;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;font-size:15px;line-height:1.8;color:#222;">`
+    + (picture && safeLink ? `<a href="${safeLink}">${picture}</a>` : picture)
+    + `<div>${body}</div></div>`;
+}
+/** 依目前是否附圖，產生要送給 send-email 的內容欄位 */
+function mailContent(text){
+  return mcImage
+    ? { text, html: buildMailHtml(text, mcImage, document.getElementById('mc-img-link').value) }
+    : { text };
+}
+
 function fillMailVars(tpl, m, info){
   const no=String(m.member_no||'').trim();
   const tax=String(m.tax_id||'').trim();
@@ -4571,7 +4623,7 @@ async function batchSendAssembly(){
     const text=fillMailVars(bodyTpl, m, info);
     try{
       const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},
-        body:JSON.stringify({to:m._email,subject,text,category:(mcCurrentTplKey||'').startsWith('dues')?'dues':'assembly',name:m.name,member_no:m.member_no})});
+        body:JSON.stringify({to:m._email,subject,...mailContent(text),category:(mcCurrentTplKey||'').startsWith('dues')?'dues':'assembly',name:m.name,member_no:m.member_no})});
       const d=await res.json().catch(()=>({})); d.ok?ok++:fail++;
     }catch(e){ fail++; }
     prog.textContent=`發送中… ${i+1}/${mems.length}（成功 ${ok}／失敗 ${fail}）`;
