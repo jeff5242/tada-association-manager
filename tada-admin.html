@@ -4512,7 +4512,8 @@ async function sendAssemblyTest(){
   st.style.color='var(--gray)'; st.textContent='寄送中…';
   try{
     const res=await fetch(`${SB_URL}/functions/v1/send-email`,{method:'POST',headers:{...SB_HEADERS},
-      body:JSON.stringify({to:email,subject:'【測試】'+subject,...mailContent(text),category:'assembly-test',name:'測試'})});
+      // 主旨帶寄出時間：每封測試信主旨不同，Gmail 才不會串成同一串、把重複的內文摺進「⋯」
+      body:JSON.stringify({to:email,subject:`【測試 ${new Date().toLocaleTimeString('zh-TW',{hour12:false})}】`+subject,...mailContent(text),category:'assembly-test',name:'測試'})});
     const d=await res.json().catch(()=>({}));
     if(d.ok){ st.style.color='#66bb6a'; st.textContent='✓ 測試信已寄出至 '+email; renderMailLog(); }
     else{ const M={recipient_not_member:'此信箱不在白名單，請告知我加入測試白名單。',not_configured:'寄信尚未設定。',send_failed:'寄送失敗，請檢查 Resend。'};
