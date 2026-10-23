@@ -1395,9 +1395,14 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     <textarea id="mc-body" style="width:100%;min-height:260px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:12px;font-size:13px;line-height:1.7;resize:vertical;outline:none;font-family:'Noto Sans TC',sans-serif;"></textarea>
     <!-- 信件圖片（選填）：有圖片就寄 HTML 信（圖片在最上方），同時附純文字版 -->
     <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;padding:10px 12px;border:1px dashed var(--border);border-radius:8px;">
-      <span style="font-size:12px;color:var(--gray);">🖼️ 信件圖片（選填，放在信件最上方）</span>
+      <span style="font-size:12px;color:var(--gray);">🖼️ 信件圖片（選填）</span>
       <label class="btn btn-outline btn-sm" style="cursor:pointer;">上傳圖片<input type="file" accept="image/jpeg,image/png" onchange="uploadMcImage(this)" style="display:none;"></label>
       <img id="mc-img-preview" alt="信件圖片預覽" style="display:none;max-height:64px;border:1px solid var(--border);border-radius:4px;">
+      <select id="mc-img-pos" title="圖片在信件中的位置" style="background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:8px 10px;font-size:13px;outline:none;">
+        <option value="top">圖片在最上方</option>
+        <option value="after-first">圖片在第一段後面</option>
+        <option value="bottom">圖片在信件最後</option>
+      </select>
       <input id="mc-img-link" type="url" placeholder="點圖片要前往的網址（選填，例如問卷連結）" style="flex:1;min-width:220px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:8px 11px;font-size:13px;outline:none;">
       <button class="btn btn-outline btn-sm" id="mc-img-clear" style="display:none;" onclick="setMcImage('')">移除圖片</button>
       <span id="mc-img-msg" style="font-size:12px;color:var(--gray);"></span>
@@ -4439,6 +4444,7 @@ function applyMcTemplate(key){
   document.getElementById('mc-body').value = t?.body || '';
   setMcImage(t?.image_url || '');
   document.getElementById('mc-img-link').value = t?.image_link || '';
+  document.getElementById('mc-img-pos').value = MAIL_IMG_POSITIONS.includes(t?.image_pos) ? t.image_pos : 'top';
 }
 function onMcTplChange(){ applyMcTemplate(document.getElementById('mc-tpl').value); }
 // 快取有 Email 的會員（含狀態），供對象人數即時預估
@@ -4475,24 +4481,30 @@ async function saveAssemblyTpl(){
   const key=mcCurrentTplKey||'assembly';
   const image_url = mcImage || null;
   const image_link = document.getElementById('mc-img-link').value.trim() || null;
+  const image_pos = document.getElementById('mc-img-pos').value || 'top';
   const upsert = row => fetch(`${SB_URL}/rest/v1/tada_mail_templates?on_conflict=key`, {method:'POST',
     headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
     body:JSON.stringify(row)});
   const base = {key,subject,body,updated_at:new Date().toISOString()};
-  let r = await upsert({...base, image_url, image_link});
-  let imageSaved = true;
-  if(!r.ok && /image_url|image_link/.test(await r.clone().text())){
-    // 圖片欄位尚未建立：先存文字，提示執行 SQL
-    r = await upsert(base);
-    imageSaved = false;
+  // 依序嘗試：全部 → 少了位置欄 → 只存文字（對應 SQL 還沒跑或只跑了舊版）
+  const attempts = [
+    { row:{...base, image_url, image_link, image_pos}, cache:{subject, body, image_url, image_link, image_pos} },
+    { row:{...base, image_url, image_link},            cache:{subject, body, image_url, image_link} },
+    { row:base,                                        cache:{subject, body} },
+  ];
+  let r, level = 0;
+  for(; level < attempts.length; level++){
+    r = await upsert(attempts[level].row);
+    if(r.ok || !/image_url|image_link|image_pos/.test(await r.clone().text())) break;
   }
   if(r.ok){
-    st.style.color = imageSaved ? '#66bb6a' : '#f0a07a';
-    st.textContent = imageSaved
-      ? '✓ 已儲存範本' + (image_url ? '（含圖片）' : '')
-      : '✓ 已存主旨與內文；圖片未存，請先在 SQL Editor 執行 supabase/tada_mail_templates_image.sql';
+    const SQL_HINT = '請先在 SQL Editor 執行 supabase/tada_mail_templates_image.sql';
+    st.style.color = level === 0 ? '#66bb6a' : '#f0a07a';
+    st.textContent = level === 0 ? '✓ 已儲存範本' + (image_url ? '（含圖片與位置）' : '')
+      : level === 1 ? `✓ 已存文字與圖片；圖片位置未存，${SQL_HINT}`
+      : `✓ 已存主旨與內文；圖片未存，${SQL_HINT}`;
     // 更新快取與下拉選單標籤（主旨可能已改）
-    const saved = imageSaved ? {subject, body, image_url, image_link} : {subject, body};
+    const saved = attempts[level].cache;
     const t=mcTemplates.find(x=>x.key===key);
     if(t){ Object.assign(t, saved); } else { mcTemplates.push({key, ...saved}); }
     const sel=document.getElementById('mc-tpl');
@@ -4572,22 +4584,46 @@ async function uploadMcImage(input){
 }
 
 /** 純文字內文 → 簡單的 HTML 信：跳脫、網址變連結、換行保留；有圖片就放最上方 */
-function buildMailHtml(text, img, link){
-  const body = escapeHtml(text)
+const MAIL_IMG_POSITIONS = ['top', 'after-first', 'bottom'];
+
+/** 純文字 → HTML 片段：跳脫、網址變連結、換行保留 */
+function mailTextToHtml(text){
+  return escapeHtml(text)
     .replace(/https?:\/\/[^\s<）」』，。、；]+/g, url => `<a href="${url}" style="color:#2d5235;">${url}</a>`)
     .replace(/\r?\n/g, '<br>');
+}
+
+/** 把內文切成「第一段」與「其餘」：第一個空行為界；沒有空行就以第一行為界 */
+function splitFirstParagraph(text){
+  const t = String(text || '');
+  const m = /\r?\n[ \t　]*\r?\n/.exec(t) || /\r?\n/.exec(t);
+  return m ? [t.slice(0, m.index), t.slice(m.index + m[0].length)] : [t, ''];
+}
+
+/**
+ * 純文字內文 → 簡單的 HTML 信。
+ *   pos：'top' 最上方（預設）｜'after-first' 第一段後面｜'bottom' 信件最後
+ */
+function buildMailHtml(text, img, link, pos = 'top'){
   const safeLink = /^https?:\/\//i.test(String(link||'').trim()) ? escapeHtml(String(link).trim()) : '';
-  const picture = img
-    ? `<img src="${escapeHtml(img)}" alt="" style="display:block;max-width:100%;height:auto;border:0;margin:0 0 20px;">`
+  const imgTag = img
+    ? `<img src="${escapeHtml(img)}" alt="" style="display:block;max-width:100%;height:auto;border:0;">`
     : '';
+  const picture = imgTag
+    ? `<div style="margin:20px 0;">${safeLink ? `<a href="${safeLink}">${imgTag}</a>` : imgTag}</div>`
+    : '';
+  const para = t => t ? `<div>${mailTextToHtml(t)}</div>` : '';
+  let inner;
+  if(!picture || pos === 'top') inner = picture + para(text);
+  else if(pos === 'bottom') inner = para(text) + picture;
+  else { const [first, rest] = splitFirstParagraph(text); inner = para(first) + picture + para(rest); }
   return `<div style="max-width:600px;margin:0 auto;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;font-size:15px;line-height:1.8;color:#222;">`
-    + (picture && safeLink ? `<a href="${safeLink}">${picture}</a>` : picture)
-    + `<div>${body}</div></div>`;
+    + inner + `</div>`;
 }
 /** 依目前是否附圖，產生要送給 send-email 的內容欄位 */
 function mailContent(text){
   return mcImage
-    ? { text, html: buildMailHtml(text, mcImage, document.getElementById('mc-img-link').value) }
+    ? { text, html: buildMailHtml(text, mcImage, document.getElementById('mc-img-link').value, document.getElementById('mc-img-pos').value) }
     : { text };
 }
 

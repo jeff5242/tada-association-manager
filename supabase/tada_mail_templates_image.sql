@@ -4,10 +4,12 @@
 --
 -- image_url  ← 信件最上方的圖片（公開網址，存在 line-assets 空間）
 -- image_link ← 點圖片要前往的網址（選填）
+-- image_pos  ← 圖片位置：top 最上方｜after-first 第一段後面｜bottom 信件最後
 -- 欄位未建立前，後台「儲存範本」只會存主旨與內文，並提示先執行本檔。
 -- ============================================================================
 
 ALTER TABLE tada_mail_templates ADD COLUMN IF NOT EXISTS image_url  TEXT;
 ALTER TABLE tada_mail_templates ADD COLUMN IF NOT EXISTS image_link TEXT;
+ALTER TABLE tada_mail_templates ADD COLUMN IF NOT EXISTS image_pos  TEXT;
 
 NOTIFY pgrst, 'reload schema';
