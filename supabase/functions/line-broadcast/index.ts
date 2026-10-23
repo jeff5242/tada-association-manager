@@ -108,22 +108,26 @@ async function logSend(mode: string, messages: unknown[], ok: boolean, detail: s
   const SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!SB_URL || !SRK) return;                      // 環境不完整就跳過，不影響發送結果
   const label = mode === 'broadcast' ? '廣播' : mode === 'multicast' ? '指定多人' : '指定單人';
+  const row = {
+    category: 'line_broadcast',
+    to_email: mode === 'broadcast' ? 'LINE 官方帳號好友' : 'LINE 指定對象',
+    name: label,
+    subject: `[LINE${label}] ${summarize(messages).slice(0, 120)}`,
+    status: ok ? 'sent' : 'failed',
+    error: ok ? null : detail.slice(0, 500),
+  };
+  const insert = (body: Record<string, unknown>) => fetch(`${SB_URL}/rest/v1/tada_mail_log`, {
+    method: 'POST',
+    headers: {
+      apikey: SRK, Authorization: `Bearer ${SRK}`,
+      'Content-Type': 'application/json', Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(body),
+  });
   try {
-    await fetch(`${SB_URL}/rest/v1/tada_mail_log`, {
-      method: 'POST',
-      headers: {
-        apikey: SRK, Authorization: `Bearer ${SRK}`,
-        'Content-Type': 'application/json', Prefer: 'return=minimal',
-      },
-      body: JSON.stringify({
-        category: 'line_broadcast',
-        to_email: mode === 'broadcast' ? 'LINE 官方帳號好友' : 'LINE 指定對象',
-        name: label,
-        subject: `[LINE${label}] ${summarize(messages).slice(0, 120)}`,
-        status: ok ? 'sent' : 'failed',
-        error: ok ? null : detail.slice(0, 500),
-      }),
-    });
+    // payload＝完整訊息內容，後台「載入過去發送」用；欄位尚未建立時退回只記摘要
+    const r = await insert({ ...row, payload: messages });
+    if (!r.ok && /payload/.test(await r.text())) await insert(row);
   } catch (_) { /* 記錄失敗不影響已送出的訊息 */ }
 }
 

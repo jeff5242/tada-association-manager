@@ -1417,8 +1417,15 @@ tr:hover td{background:rgba(74,124,89,0.06);}
     </div>
 
     <div class="sub-tabs" style="margin-bottom:14px;">
-      <button class="sub-tab active" onclick="switchLbMode('text',this)">純文字</button>
-      <button class="sub-tab" onclick="switchLbMode('card',this)">圖文卡片</button>
+      <button class="sub-tab active" id="lb-tab-text" onclick="switchLbMode('text',this)">純文字</button>
+      <button class="sub-tab" id="lb-tab-card" onclick="switchLbMode('card',this)">圖文卡片</button>
+    </div>
+
+    <!-- 從過去發送載入：不用重新填 -->
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+      <select id="lb-history" onfocus="loadLbHistory()" onmousedown="loadLbHistory()" style="flex:1;min-width:220px;max-width:520px;background:var(--surface2);border:1px solid var(--border);color:var(--ink);padding:9px 11px;font-size:13px;outline:none;"><option value="">📜 從過去發送載入…</option></select>
+      <button class="btn btn-outline btn-sm" onclick="applyLbHistory()">載入</button>
+      <span id="lb-history-msg" style="font-size:12px;color:var(--gray);"></span>
     </div>
 
     <!-- 純文字 -->
@@ -3902,6 +3909,71 @@ function switchLbMode(mode, el){
   if(mode==='card' && !lbCards.length) addLbCard();
 }
 
+/* ── 從過去發送載入 ─────────────────────────────────────────────
+   line-broadcast 會把送出的 LINE 訊息原樣存進 tada_mail_log.payload；
+   這裡把它還原成「純文字」或「圖文卡片」的可編輯內容。 */
+let lbHistory = [];
+async function loadLbHistory(force){
+  const sel = document.getElementById('lb-history');
+  if(!sel || (sel.dataset.loaded && !force)) return;
+  try{
+    const r = await fetch(`${SB_URL}/rest/v1/tada_mail_log?category=eq.line_broadcast&payload=not.is.null`
+      + `&select=id,created_at,name,subject,payload&order=created_at.desc&limit=30`, { headers: SB_HEADERS });
+    lbHistory = r.ok ? await r.json() : [];
+  }catch(_){ lbHistory = []; }
+  const fmt = iso => new Date(iso).toLocaleString('zh-TW', { hour12:false, month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  const title = h => String(h.subject||'').replace(/^\[LINE[^\]]*\]\s*/, '').slice(0, 40);
+  sel.innerHTML = '<option value="">📜 從過去發送載入…</option>'
+    + (lbHistory.length ? '' : '<option value="" disabled>（尚無可載入的紀錄）</option>')
+    + lbHistory.map(h => `<option value="${escapeHtml(h.id)}">${escapeHtml(fmt(h.created_at))}・${escapeHtml(h.name||'')}・${escapeHtml(title(h))}</option>`).join('');
+  sel.dataset.loaded = '1';
+}
+
+/** LINE 訊息陣列 → { mode, text, lead, cards }（只認本後台產生的格式） */
+function lbDraftFromMessages(messages){
+  const list = Array.isArray(messages) ? messages : [];
+  const texts = list.filter(m => m && m.type === 'text').map(m => String(m.text||''));
+  const flex = list.find(m => m && m.type === 'flex');
+  if(!flex) return { mode:'text', text: texts.join('\n\n') };
+  const c = flex.contents || {};
+  const bubbles = c.type === 'carousel' ? (c.contents||[]) : [c];
+  const cards = bubbles.map(b => {
+    const body = (b.body && b.body.contents) || [];
+    const btn = b.footer && b.footer.contents && b.footer.contents[0] && b.footer.contents[0].action;
+    return {
+      img: (b.hero && b.hero.url) || '',
+      title: (body[0] && body[0].text) || '',
+      desc: (body[1] && body[1].text) || '',
+      btn: (btn && btn.label) || '查看詳情',
+      link: (btn && btn.uri) || (b.hero && b.hero.action && b.hero.action.uri) || '',
+    };
+  });
+  return { mode:'card', lead: texts[0] || '', cards };
+}
+
+function applyLbHistory(){
+  const id = document.getElementById('lb-history').value;
+  const msg = document.getElementById('lb-history-msg');
+  const h = lbHistory.find(x => x.id === id);
+  if(!h){ msg.style.color='var(--gray)'; msg.textContent='請先選一筆'; return; }
+  const hasContent = document.getElementById('lb-text').value.trim()
+    || document.getElementById('lb-lead').value.trim() || lbCards.some(c => c.title.trim() || c.img);
+  if(hasContent && !confirm('目前編輯中的內容會被取代，確定載入？')) return;
+  const d = lbDraftFromMessages(h.payload);
+  if(d.mode === 'text'){
+    document.getElementById('lb-text').value = d.text;
+    switchLbMode('text', document.getElementById('lb-tab-text'));
+  } else {
+    document.getElementById('lb-lead').value = d.lead;
+    lbCards = d.cards.slice(0, LB_MAX_CARDS).map(c => ({ ...c, w:0, h:0 }));
+    switchLbMode('card', document.getElementById('lb-tab-card'));
+    lbCards.forEach((c,i) => { if(c.img) loadLbImageSize(i, c.img); });
+    renderLbCards();
+  }
+  msg.style.color = '#66bb6a';
+  msg.textContent = '已載入，可修改後再試發／廣播';
+}
+
 function addLbCard(){
   if(lbCards.length >= LB_MAX_CARDS) return alert(`最多 ${LB_MAX_CARDS} 張卡片`);
   lbCards.push({ img:'', w:0, h:0, title:'', desc:'', btn:'查看詳情', link:'' });
@@ -4230,6 +4302,7 @@ async function sendLineBroadcast(isTest){
       // 發送紀錄改由 edge function 以 service role 寫入
       // （tada_mail_log 對 anon 只開放讀取，前端寫入會靜默失敗）
       if(!isTest) renderMailLog();
+      loadLbHistory(true);           // 剛送出的這則也能馬上叫回來
       loadLbQuota();                 // 這次發送已扣額度，順手更新
     } else if(r.status===403){ st.style.color='#ef5350'; st.textContent='金鑰錯誤（403）'; }
     else { st.style.color='#ef5350'; st.textContent='失敗：'+(d.error||d.detail||('HTTP '+r.status)); }
