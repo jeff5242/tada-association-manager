@@ -4083,20 +4083,40 @@ function buildLbMessages(){
   return { messages, summary:(lead?lead+'\n':'') + cards.map(c=>'・'+c.title.trim()).join('\n') };
 }
 
-// 試發對象＝名冊中已綁定 LINE 的會員
+// 試發對象，依序合併三個來源（同一個 LINE 帳號只列一次）：
+//   1. 管理者：「LINE 使用者」分頁勾選管理者的人（理事長、秘書長等，不一定是會員本人）
+//   2. 會員：主名冊已綁定 LINE 者
+//   3. 團體代表：代表的 LINE 只綁在本屆投票名冊，主名冊查不到
 async function loadLbTestTargets(){
   const sel = document.getElementById('lb-test-to');
   if(!sel || sel.dataset.loaded) return;
-  try{
-    const r = await fetch(`${SB_URL}/rest/v1/tada_members?line_user_id=not.is.null&hidden=eq.false`
-      + `&select=name,member_no,line_user_id&order=name`, { headers: SB_HEADERS });
-    if(!r.ok) return;
-    const rows = await r.json();
-    sel.innerHTML = '<option value="">（試發對象）</option>'
-      + rows.map(m=>`<option value="${escapeHtml(m.line_user_id)}">${escapeHtml(m.name)}（${escapeHtml(m.member_no)}）</option>`).join('');
-    sel.dataset.loaded = '1';
-    try{ const last = localStorage.getItem('tadaLbTestTo'); if(last) sel.value = last; }catch(_){}
-  }catch(_){}
+  const get = async (path) => {
+    try{
+      const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_HEADERS });
+      return r.ok ? await r.json() : [];
+    }catch(_){ return []; }
+  };
+  const [admins, members, reps] = await Promise.all([
+    get('tada_line_users?is_admin=eq.true&select=user_id,display_name&order=display_name'),
+    get('tada_members?line_user_id=not.is.null&hidden=eq.false&select=name,member_no,line_user_id&order=name'),
+    get(`tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&line_user_id=not.is.null`
+      + '&select=name,member_no,line_user_id&order=name'),
+  ]);
+
+  const seen = new Set();
+  const optionsOf = (rows, idOf, labelOf) => rows
+    .filter(r => { const id = idOf(r); if(!id || seen.has(id)) return false; seen.add(id); return true; })
+    .map(r => `<option value="${escapeHtml(idOf(r))}">${escapeHtml(labelOf(r))}</option>`)
+    .join('');
+  const group = (label, html) => html ? `<optgroup label="${label}">${html}</optgroup>` : '';
+
+  const adminOpts  = optionsOf(admins,  r => r.user_id,      r => r.display_name || '（未命名）');
+  const memberOpts = optionsOf(members, r => r.line_user_id, r => `${r.name}（${r.member_no}）`);
+  const repOpts    = optionsOf(reps,    r => r.line_user_id, r => `${r.name}（${r.member_no}）`);
+  sel.innerHTML = '<option value="">（試發對象）</option>'
+    + group('管理者', adminOpts) + group('會員', memberOpts) + group('團體代表', repOpts);
+  sel.dataset.loaded = '1';
+  try{ const last = localStorage.getItem('tadaLbTestTo'); if(last) sel.value = last; }catch(_){}
 }
 
 /* ── 本月訊息額度 ─────────────────────────────────────────────────
