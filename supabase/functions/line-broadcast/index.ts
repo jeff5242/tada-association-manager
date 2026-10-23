@@ -12,6 +12,11 @@
 //   "to": "Uxxx"       → 只發給這個人（正式廣播前先試發給自己，強烈建議）
 //   "to": ["U1","U2"]  → 指定多人（multicast，上限 500 人）
 //
+// 查詢（不發送）：
+//   { "verify": true }                                  ← 只驗金鑰
+//   { "quota": true }                                   ← 本月額度與好友數
+//   { "stats": { "requestId": "...", "date": "yyyyMMdd" } } ← 單次廣播成效（隔天才有資料）
+//
 // 部署：supabase functions deploy line-broadcast --use-api --no-verify-jwt --project-ref ldjugtfxtxnpvkqvjxew
 
 const MAX_MESSAGES = 5;
@@ -39,7 +44,10 @@ Deno.serve(async (req) => {
   const token = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN') || '';
   if (!token) return json({ ok: false, error: 'no line token' }, 500);
 
-  let body: { text?: string; messages?: unknown[]; to?: string | string[]; verify?: boolean; quota?: boolean };
+  let body: {
+    text?: string; messages?: unknown[]; to?: string | string[];
+    verify?: boolean; quota?: boolean; stats?: { requestId?: string; date?: string };
+  };
   try { body = await req.json(); } catch { return json({ ok: false, error: 'bad json' }, 400); }
 
   // 只驗金鑰、不發任何訊息：讓後台在排版前就能確認金鑰正確
@@ -47,6 +55,16 @@ Deno.serve(async (req) => {
 
   // 查本月訊息額度與好友數：廣播是「一位好友算一則」，發之前要看得到還剩多少
   if (body.quota) return json(await readQuota(token));
+
+  // 查單次廣播成效：送達、開封、點擊人數
+  if (body.stats) {
+    const requestId = String(body.stats.requestId ?? '').trim();
+    const date = String(body.stats.date ?? '').trim();
+    if (requestId && !/^[0-9a-f-]{20,64}$/i.test(requestId)) return json({ ok: false, error: 'bad requestId' }, 400);
+    if (date && !/^\d{8}$/.test(date)) return json({ ok: false, error: 'bad date' }, 400);
+    if (!requestId && !date) return json({ ok: false, error: 'requestId or date required' }, 400);
+    return json(await readStats(token, requestId, date));
+  }
 
   let messages: unknown[];
   if (Array.isArray(body.messages)) {
@@ -86,12 +104,14 @@ Deno.serve(async (req) => {
     body: JSON.stringify(payload),
   });
   const detail = await r.text();
+  // LINE 每次請求的編號，之後查這次廣播的成效要用
+  const requestId = r.headers.get('x-line-request-id');
 
   // 發送紀錄由伺服器端寫入：tada_mail_log 對 anon 只開放讀取，
   // 前端寫入會靜默失敗（fetch 不會 throw），記錄不到「何時廣播過什麼」。
-  await logSend(endpoint, messages, r.ok, detail);
+  await logSend(endpoint, messages, r.ok, detail, requestId);
 
-  return json({ ok: r.ok, status: r.status, mode: endpoint, count: messages.length, detail });
+  return json({ ok: r.ok, status: r.status, mode: endpoint, count: messages.length, requestId, detail });
 });
 
 /** 從訊息內容取一行摘要：文字取首行，Flex 取 altText */
@@ -103,7 +123,7 @@ function summarize(messages: unknown[]): string {
   return `${messages.length} 則訊息`;
 }
 
-async function logSend(mode: string, messages: unknown[], ok: boolean, detail: string) {
+async function logSend(mode: string, messages: unknown[], ok: boolean, detail: string, requestId: string | null) {
   const SB_URL = Deno.env.get('SUPABASE_URL');
   const SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!SB_URL || !SRK) return;                      // 環境不完整就跳過，不影響發送結果
@@ -125,9 +145,9 @@ async function logSend(mode: string, messages: unknown[], ok: boolean, detail: s
     body: JSON.stringify(body),
   });
   try {
-    // payload＝完整訊息內容，後台「載入過去發送」用；欄位尚未建立時退回只記摘要
-    const r = await insert({ ...row, payload: messages });
-    if (!r.ok && /payload/.test(await r.text())) await insert(row);
+    // payload＝完整內容（載入過去發送）、line_request_id＝查成效用；欄位尚未建立時退回只記摘要
+    const r = await insert({ ...row, payload: messages, line_request_id: requestId });
+    if (!r.ok && /payload|line_request_id/.test(await r.text())) await insert(row);
   } catch (_) { /* 記錄失敗不影響已送出的訊息 */ }
 }
 
@@ -174,5 +194,42 @@ async function readQuota(token: string) {
     remaining: (limited && total != null && totalUsage != null) ? Math.max(0, total - totalUsage) : null,
     followers,
     followers_date: followers != null ? day : null,
+  };
+}
+
+
+/**
+ * 單次廣播成效。
+ *   event：以請求編號查（送達、開封、點擊）。開封與點擊未滿 20 人時 LINE 回 null（隱私保護）。
+ *   delivery：以日期查當天 API 廣播總則數（UTC+9），給沒有請求編號的舊紀錄當備案。
+ * 兩者通常都要隔天才有資料；event 只更新到發送後 14 天。速率限制各 60 次／小時。
+ */
+async function readStats(token: string, requestId: string, date: string) {
+  const API = 'https://api.line.me/v2/bot/insight/message';
+  const grab = async (url: string) => {
+    try {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      return r.ok ? { ok: true, data: await r.json() } : { ok: false, error: `HTTP ${r.status}: ${(await r.text()).slice(0, 200)}` };
+    } catch (e) {
+      return { ok: false, error: String(e) };
+    }
+  };
+  const [event, delivery] = await Promise.all([
+    requestId ? grab(`${API}/event?requestId=${encodeURIComponent(requestId)}`) : Promise.resolve(null),
+    date ? grab(`${API}/delivery?date=${date}`) : Promise.resolve(null),
+  ]);
+  const ov = event?.ok ? (event.data?.overview ?? {}) : null;
+  type Click = { url?: string; click?: number | null; uniqueClick?: number | null };
+  return {
+    ok: true,
+    event: ov ? {
+      delivered: ov.delivered ?? null,
+      uniqueImpression: ov.uniqueImpression ?? null,
+      uniqueClick: ov.uniqueClick ?? null,
+      clicks: ((event!.data?.clicks ?? []) as Click[]).map((c) => ({ url: c.url ?? '', click: c.click ?? null, uniqueClick: c.uniqueClick ?? null })),
+    } : null,
+    eventError: event && !event.ok ? event.error : null,
+    delivery: delivery?.ok ? { status: delivery.data?.status ?? null, apiBroadcast: delivery.data?.apiBroadcast ?? null } : null,
+    deliveryError: delivery && !delivery.ok ? delivery.error : null,
   };
 }

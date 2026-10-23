@@ -4595,13 +4595,81 @@ async function renderMailLog(){
   const tb=document.getElementById('mc-log-tbody');
   if(!rows.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gray);padding:20px;">'+(all.length?'此狀態無記錄':'尚無發信記錄')+'</td></tr>'; return; }
   tb.innerHTML=rows.map(x=>{ const st=MAIL_STATUS_LBL[x.status]||[x.status,'#9aa'];
+    // LINE 廣播（發給所有好友且成功）可查成效；試發的指定對象沒有統計
+    const canStats = x.category==='line_broadcast' && x.name==='廣播' && x.status==='sent';
     return `<tr><td style="font-size:11px;color:var(--gray);white-space:nowrap;">${new Date(x.created_at).toLocaleString('zh-TW',{hour12:false})}</td>
       <td style="font-size:12px;">${MAIL_CAT_LBL[x.category]||x.category||'–'}</td>
       <td style="font-size:12px;">${escapeHtml(x.name||'')} <span style="color:var(--gray);">${escapeHtml(x.to_email||'')}</span></td>
       <td style="font-size:11px;color:var(--gray);max-width:220px;">${escapeHtml(x.subject||'')}</td>
-      <td><span style="font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid ${st[1]};color:${st[1]};">${st[0]}</span></td></tr>`;
+      <td style="white-space:nowrap;"><span style="font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid ${st[1]};color:${st[1]};">${st[0]}</span>`
+      + (canStats ? ` <button class="btn btn-outline btn-sm" style="margin-left:6px;padding:2px 8px;font-size:11px;" onclick="showLbStats('${escapeHtml(x.id)}')">📈 查看成效</button>` : '')
+      + `</td></tr>`
+      + (canStats ? `<tr id="lbs-${escapeHtml(x.id)}" style="display:none;"><td colspan="5" style="background:var(--surface2);padding:12px 14px;font-size:12.5px;line-height:1.8;"></td></tr>` : '');
   }).join('');
 }
+/* ── LINE 廣播成效（line-broadcast 的 stats 模式）────────────────────
+   有請求編號 → 這一則的送達／開封／點擊人數；
+   沒有（成效追蹤上線前的舊紀錄）→ 退而求其次，給當天 API 廣播送達總數。 */
+const LB_PRIVACY_MIN = 20;   // LINE 開封、點擊未滿 20 人不公開（回 null）
+async function showLbStats(id){
+  const row = document.getElementById('lbs-' + id);
+  const cell = row && row.firstElementChild;
+  const x = mcLogRows.find(r => r.id === id);
+  if(!cell || !x) return;
+  if(row.style.display !== 'none' && cell.dataset.loaded){ row.style.display = 'none'; return; }   // 再按一次收合
+  row.style.display = '';
+  const key = (document.getElementById('lb-key').value || '').trim()
+    || (()=>{ try{ return localStorage.getItem('tadaBroadcastKey') || ''; }catch(_){ return ''; } })();
+  if(!key){ cell.innerHTML = '<span style="color:#ef5350;">請先在上方「LINE 廣播」輸入廣播金鑰</span>'; return; }
+  cell.textContent = '查詢中…';
+
+  // LINE 的日期以日本時間（UTC+9）計
+  const jst = new Date(Date.parse(x.created_at) + 9 * 3600e3).toISOString().slice(0,10).replace(/-/g,'');
+  const requestId = x.line_request_id || '';
+  try{
+    const r = await fetch(`${SB_URL}/functions/v1/line-broadcast`, { method:'POST',
+      headers:{ ...SB_HEADERS, 'Content-Type':'application/json', 'x-broadcast-key':key },
+      body: JSON.stringify({ stats: { requestId: requestId || undefined, date: jst } }) });
+    if(r.status === 403){ cell.innerHTML = '<span style="color:#ef5350;">廣播金鑰錯誤（403）</span>'; return; }
+    const d = await r.json().catch(()=>({}));
+    if(!d.ok){ cell.innerHTML = `<span style="color:#ef5350;">查詢失敗：${escapeHtml(d.error || ('HTTP ' + r.status))}</span>`; return; }
+    cell.innerHTML = renderLbStats(x, d, !!requestId);
+    cell.dataset.loaded = '1';
+  }catch(e){ cell.innerHTML = `<span style="color:#ef5350;">連線失敗：${escapeHtml(e.message)}</span>`; }
+}
+
+function renderLbStats(x, d, hasRequestId){
+  const hoursAgo = (Date.now() - Date.parse(x.created_at)) / 3600e3;
+  const pending = '<span style="color:var(--gray);">統計中（通常隔天才有）</span>';
+  const hidden = `<span style="color:var(--gray);">未滿 ${LB_PRIVACY_MIN} 人（LINE 為保護隱私不公開）</span>`;
+  const num = n => `<b style="font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums;">${Number(n).toLocaleString()}</b> 人`;
+  const line = (label, html) => `<div style="display:flex;gap:10px;"><div style="width:110px;color:var(--gray);">${label}</div><div>${html}</div></div>`;
+  const ev = d.event;
+  const parts = [];
+
+  if(hasRequestId && ev){
+    const delivered = ev.delivered;
+    parts.push(line('📬 送達人數', delivered == null ? pending : num(delivered)));
+    // 送達還沒算好時，開封／點擊的 null 是「還沒算」，不是「未滿 20 人」
+    const openOrClick = n => n != null ? num(n) : (delivered == null ? pending : hidden);
+    parts.push(line('👀 開封人數', openOrClick(ev.uniqueImpression)
+      + (ev.uniqueImpression != null && delivered ? `（開封率 ${Math.round(ev.uniqueImpression / delivered * 1000) / 10}%）` : '')));
+    parts.push(line('👆 點擊人數', openOrClick(ev.uniqueClick)));
+    (ev.clicks || []).forEach(c => parts.push(line('　└ 連結', `${escapeHtml(c.url)}：${c.uniqueClick != null ? num(c.uniqueClick) : hidden}`)));
+  } else {
+    const dl = d.delivery;
+    const ready = dl && dl.status === 'ready';
+    parts.push(line('📬 送達（當日）', ready && dl.apiBroadcast != null
+      ? num(dl.apiBroadcast) + '<span style="color:var(--gray);">（當天所有 API 廣播合計，同日多次廣播會加總）</span>'
+      : pending));
+    parts.push(line('👀 開封／點擊', '<span style="color:var(--gray);">這則在「查看成效」上線前發出，沒有記下請求編號，只查得到當日送達總數</span>'));
+  }
+  if(d.eventError) parts.push(`<div style="color:#ef5350;">LINE 回應：${escapeHtml(d.eventError)}</div>`);
+  if(hoursAgo < 24) parts.push(`<div style="color:var(--gray);margin-top:4px;">發送後約 ${Math.max(1, Math.round(hoursAgo))} 小時，資料可能還不完整，明天再查會比較準。</div>`);
+  if(hoursAgo > 24 * 14) parts.push('<div style="color:var(--gray);margin-top:4px;">LINE 只更新到發送後 14 天，以下為最終數字。</div>');
+  return parts.join('');
+}
+
 function exportMailLog(){
   if(!mcLogRows.length){ alert('目前沒有可匯出的記錄'); return; }
   const fmtT=t=>t?new Date(t).toLocaleString('zh-TW',{hour12:false}):'';
