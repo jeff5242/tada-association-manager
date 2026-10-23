@@ -1356,6 +1356,22 @@ tr:hover td{background:rgba(74,124,89,0.06);}
 
 <!-- ══════════ 發信中心 ══════════ -->
 <div class="page" id="page-mailcenter">
+  <div class="section-card" id="reach-card">
+    <div class="section-header"><div class="section-title">📡 會員觸及概況</div>
+      <span id="reach-updated" style="margin-left:auto;font-size:12px;color:var(--gray);align-self:center;"></span>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+      <span style="font-size:12px;color:var(--gray);">計算對象：</span>
+      <div id="reach-status" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+    <div id="reach-body" style="font-size:13px;color:var(--gray);">載入中…</div>
+    <p style="font-size:11.5px;color:var(--gray);line-height:1.8;margin-top:10px;">
+      以「會員」為單位（團體會員算一位，任一代表聯絡得到即算觸及），不含已隱藏的資料列。
+      Email＝批次發信實際寄得到的地址（已扣除曾退信）；簡訊＝有 09 開頭手機號碼（系統尚未串接簡訊發送）；
+      LINE＝已綁定電子會員證（團體看代表是否綁定）。LINE 官方帳號的好友另含非會員，人數見下方「LINE 廣播」額度面板。
+    </p>
+  </div>
+
   <div class="section-card">
     <div class="section-header"><div class="section-title">📤 開會通知批次發送</div>
       <span id="mc-status" style="margin-left:auto;font-size:12px;align-self:center;"></span>
@@ -3886,11 +3902,92 @@ let mcCurrentTplKey = 'assembly';
 async function loadMailCenter(){
   await populateMcTemplates();
   loadMcMembers();
+  loadReach();
   renderMailLog();
   try{
     const k = localStorage.getItem('tadaBroadcastKey');
     if(k){ document.getElementById('lb-key').value = k; loadLbQuota(); }
   }catch(_){}
+}
+
+/* ══════════ 會員觸及概況 ══════════
+   以會員為單位（團體一位），算 Email／簡訊／LINE 各自觸及多少人、佔多少比例。 */
+const REACH_STATUSES = ['有效會員','待續約會員','榮譽會員','永久會員','待審核','退會會員'];
+const REACH_DEFAULT = new Set(['有效會員','待續約會員','榮譽會員','永久會員']);
+let reachRows = null;   // [{status, email, sms, line}]
+
+const isEmailAddr = s => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s||'').trim());
+const isTwMobile  = s => /^09\d{8}$/.test(String(s||'').replace(/\D/g,''));
+
+async function loadReach(){
+  const body = document.getElementById('reach-body');
+  try{
+    const [mr, bounced, rr] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_members?hidden=eq.false&select=member_no,status,email,contact_email,mobile,contact_phone,line_user_id,reps&limit=2000`, {headers:SB_HEADERS}),
+      loadBouncedEmails(),
+      fetch(`${SB_URL}/rest/v1/tada_v_members?election_id=eq.${BALLOT_ELECTION_ID}&line_user_id=not.is.null&select=member_no`, {headers:SB_HEADERS}),
+    ]);
+    if(!mr.ok) throw new Error('HTTP '+mr.status);
+    // 團體代表的 LINE 只綁在投票名冊，編號為「母號-N」
+    const repBound = new Set((rr.ok ? await rr.json() : []).map(r => String(r.member_no).split('-')[0]));
+    reachRows = (await mr.json()).map(m => {
+      const reps = Array.isArray(m.reps) ? m.reps : [];
+      const mail = (m.email || m.contact_email || '').trim();
+      return {
+        status: m.status || '（未填）',
+        email: isEmailAddr(mail) && !bounced.has(mail.toLowerCase()),
+        sms: [m.mobile, m.contact_phone, ...reps.map(r => r && r.tel)].some(isTwMobile),
+        line: !!m.line_user_id || repBound.has(String(m.member_no)),
+      };
+    });
+    renderReachStatus();
+    renderReach();
+    document.getElementById('reach-updated').textContent = '更新於 ' + new Date().toLocaleTimeString('zh-TW',{hour12:false});
+  }catch(e){
+    body.textContent = '讀取失敗：' + e.message;
+  }
+}
+
+function renderReachStatus(){
+  const box = document.getElementById('reach-status');
+  if(box.dataset.ready) return;
+  const count = st => reachRows.filter(r => r.status === st).length;
+  box.innerHTML = REACH_STATUSES.map(st =>
+    `<label class="msopt" style="display:flex;align-items:center;gap:5px;padding:5px 9px;font-size:12px;color:var(--ink);cursor:pointer;white-space:nowrap;background:var(--surface2);border:1px solid var(--border);border-radius:6px;">`
+    + `<input type="checkbox" value="${escapeHtml(st)}" ${REACH_DEFAULT.has(st)?'checked':''} onchange="renderReach()"> ${escapeHtml(st)}（${count(st)}）</label>`
+  ).join('');
+  box.dataset.ready = '1';
+}
+
+function renderReach(){
+  const body = document.getElementById('reach-body');
+  const picked = new Set(Array.from(document.querySelectorAll('#reach-status input:checked')).map(c => c.value));
+  const rows = reachRows.filter(r => picked.has(r.status));
+  const total = rows.length;
+  if(!total){ body.textContent = '請至少勾選一種會員狀態'; return; }
+  const pct = n => Math.round(n / total * 1000) / 10;
+  const channels = [
+    { key:'email', icon:'✉️', name:'Email', n: rows.filter(r => r.email).length },
+    { key:'sms',   icon:'📱', name:'簡訊（有手機）', n: rows.filter(r => r.sms).length },
+    { key:'line',  icon:'💬', name:'LINE（已綁會員證）', n: rows.filter(r => r.line).length },
+  ];
+  const best = Math.max(...channels.map(c => c.n));
+  const anyReach = rows.filter(r => r.email || r.sms || r.line).length;
+  const bar = (n, color) => `<div style="flex:1;min-width:120px;height:10px;background:var(--surface2);border-radius:5px;overflow:hidden;">`
+    + `<div style="width:${pct(n)}%;height:100%;background:${color};"></div></div>`;
+  const row = (label, n, color, tag='') =>
+    `<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px dashed var(--border);">`
+    + `<div style="width:170px;color:var(--ink);">${label}${tag}</div>`
+    + `<div style="width:110px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);"><b>${n}</b> / ${total}</div>`
+    + `<div style="width:64px;text-align:right;font-variant-numeric:tabular-nums;color:var(--gold-lt);">${pct(n)}%</div>`
+    + bar(n, color) + `</div>`;
+  const BEST = ' <span style="font-size:11px;color:#66bb6a;border:1px solid #66bb6a;border-radius:99px;padding:0 6px;margin-left:4px;">最高</span>';
+  body.innerHTML =
+    `<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:8px;color:var(--ink);">`
+    + `<div>👥 會員總數 <b style="font-size:20px;">${total}</b></div>`
+    + `<div>🔗 至少一種管道 <b style="font-size:20px;">${anyReach}</b>（${pct(anyReach)}%）</div>`
+    + `<div style="color:${total-anyReach?'#ef5350':'var(--gray)'};">⚠️ 完全聯絡不到 <b style="font-size:20px;">${total-anyReach}</b></div></div>`
+    + channels.map(c => row(`${c.icon} ${c.name}`, c.n, c.n === best ? '#66bb6a' : 'var(--gold)', c.n === best ? BEST : '')).join('');
 }
 
 /* ══════════ LINE 廣播（line-broadcast edge function，需 BROADCAST_KEY 金鑰）══════════ */
@@ -4333,21 +4430,29 @@ function onMcTplChange(){ applyMcTemplate(document.getElementById('mc-tpl').valu
 let mcMembers = null;
 async function loadMcMembers(){
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,email,contact_email,status&order=member_no`, {headers:SB_HEADERS});
+    const [r, bounced] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/tada_members?hidden=eq.false&select=member_no,name,email,contact_email,status&order=member_no`, {headers:SB_HEADERS}),
+      loadBouncedEmails(),
+    ]);
+    // 與 batchSendAssembly 同一套篩選：有效 Email、未隱藏、未曾退信 → 預估數＝實寄數
     mcMembers=(r.ok?await r.json():[]).map(m=>({...m,_email:(m.email||m.contact_email||'').trim()}))
-      .filter(m=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m._email));
+      .filter(m=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m._email))
+      .filter(m=>!bounced.has(m._email.toLowerCase()));
   }catch(e){ mcMembers=[]; }
   updateSendCount();
 }
 function selectedSendStatuses(){
   return Array.from(document.querySelectorAll('#mc-audience input:checked')).map(c=>c.value);
 }
+const MAIL_DAILY_LIMIT = 100;   // Resend 免費版每日上限（測試信也算）
 function updateSendCount(){
   const prog=document.getElementById('mc-progress'); if(!prog) return;
   const statuses=selectedSendStatuses();
   if(!mcMembers){ prog.textContent=''; return; }
   const n=mcMembers.filter(m=>statuses.includes(m.status)).length;
-  prog.textContent=statuses.length?`預估收件：${n} 位（有 Email）`:'請勾選至少一種會員狀態';
+  prog.style.color = n > MAIL_DAILY_LIMIT ? '#ef5350' : '';
+  prog.textContent=!statuses.length ? '請勾選至少一種會員狀態'
+    : `預估收件：${n} 位（已扣曾退信）` + (n > MAIL_DAILY_LIMIT ? `｜超過每日 ${MAIL_DAILY_LIMIT} 封上限，需分兩天寄` : '');
 }
 async function saveAssemblyTpl(){
   const subject=document.getElementById('mc-subject').value, body=document.getElementById('mc-body').value;
@@ -4443,7 +4548,7 @@ async function batchSendAssembly(){
   const statuses=selectedSendStatuses();
   if(!subject || !bodyTpl){ alert('請填寫主旨與內文'); return; }
   if(!statuses.length){ alert('請至少勾選一種會員狀態'); return; }
-  const r=await fetch(`${SB_URL}/rest/v1/tada_members?select=member_no,name,email,contact_email,status,reps,member_type&order=member_no`, {headers:SB_HEADERS});
+  const r=await fetch(`${SB_URL}/rest/v1/tada_members?hidden=eq.false&select=member_no,name,email,contact_email,status,reps,member_type&order=member_no`, {headers:SB_HEADERS});
   let mems=(r.ok?await r.json():[]).map(m=>({...m,_email:(m.email||m.contact_email||'').trim()}))
     .filter(m=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m._email))
     .filter(m=>statuses.includes(m.status));
