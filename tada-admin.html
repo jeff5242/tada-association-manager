@@ -4421,7 +4421,7 @@ async function sendLineBroadcast(isTest){
 // 載入所有「開會通知」範本（key 以 assembly 開頭）到下拉選單
 async function populateMcTemplates(){
   try{
-    const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?or=(key.like.assembly*,key.like.dues*)&select=key,subject,body&order=key.asc`, {headers:SB_HEADERS});
+    const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?or=(key.like.assembly*,key.like.dues*)&select=*&order=key.asc`, {headers:SB_HEADERS});
     mcTemplates = r.ok ? await r.json() : [];
   }catch(e){ mcTemplates = []; }
   const sel = document.getElementById('mc-tpl');
@@ -4437,6 +4437,8 @@ function applyMcTemplate(key){
   mcCurrentTplKey = key;
   document.getElementById('mc-subject').value = t?.subject || '';
   document.getElementById('mc-body').value = t?.body || '';
+  setMcImage(t?.image_url || '');
+  document.getElementById('mc-img-link').value = t?.image_link || '';
 }
 function onMcTplChange(){ applyMcTemplate(document.getElementById('mc-tpl').value); }
 // 快取有 Email 的會員（含狀態），供對象人數即時預估
@@ -4471,14 +4473,28 @@ async function saveAssemblyTpl(){
   const subject=document.getElementById('mc-subject').value, body=document.getElementById('mc-body').value;
   const st=document.getElementById('mc-status');
   const key=mcCurrentTplKey||'assembly';
-  const r = await fetch(`${SB_URL}/rest/v1/tada_mail_templates?on_conflict=key`, {method:'POST',
+  const image_url = mcImage || null;
+  const image_link = document.getElementById('mc-img-link').value.trim() || null;
+  const upsert = row => fetch(`${SB_URL}/rest/v1/tada_mail_templates?on_conflict=key`, {method:'POST',
     headers:{...SB_HEADERS,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-    body:JSON.stringify({key,subject,body,updated_at:new Date().toISOString()})});
+    body:JSON.stringify(row)});
+  const base = {key,subject,body,updated_at:new Date().toISOString()};
+  let r = await upsert({...base, image_url, image_link});
+  let imageSaved = true;
+  if(!r.ok && /image_url|image_link/.test(await r.clone().text())){
+    // 圖片欄位尚未建立：先存文字，提示執行 SQL
+    r = await upsert(base);
+    imageSaved = false;
+  }
   if(r.ok){
-    st.style.color='#66bb6a'; st.textContent='✓ 已儲存範本';
+    st.style.color = imageSaved ? '#66bb6a' : '#f0a07a';
+    st.textContent = imageSaved
+      ? '✓ 已儲存範本' + (image_url ? '（含圖片）' : '')
+      : '✓ 已存主旨與內文；圖片未存，請先在 SQL Editor 執行 supabase/tada_mail_templates_image.sql';
     // 更新快取與下拉選單標籤（主旨可能已改）
+    const saved = imageSaved ? {subject, body, image_url, image_link} : {subject, body};
     const t=mcTemplates.find(x=>x.key===key);
-    if(t){ t.subject=subject; t.body=body; } else { mcTemplates.push({key,subject,body}); }
+    if(t){ Object.assign(t, saved); } else { mcTemplates.push({key, ...saved}); }
     const sel=document.getElementById('mc-tpl');
     if(sel){ const opt=Array.from(sel.options).find(o=>o.value===key); if(opt) opt.textContent=subject||key; }
   } else { st.style.color='#ef5350'; st.textContent='儲存失敗'; }
